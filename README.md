@@ -57,20 +57,7 @@ $ go-cpm lihouse.com
 
 ## Bugs?
 
-ARG!  Damn thing doesn't work 100% for some reason:
-
-* "TAKE TORCH"
-  * "I CAN'T SEE THAT HERE"
-
-Weirdly going downstairs and calling people works:
-
-* DOWN
-* CALL ME
-* CALL DEBBIE
-* CALL RYDER
-
-So the input works, and the tokenizing works.  Somehow `get_item_by_name` is failing.
-
+Let me know - if your program is "real" then expect failure, life is hard.
 
 
 Steve

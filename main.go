@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/koron-go/z80"
 )
@@ -88,22 +89,22 @@ func runCPM(path string) error {
 		Memory: m,
 	}
 
-	// Breakpoints
-	breakpoints := []uint16{
-		// CP/M BIOS address
-		0x05,
-	}
+	// Setup a breakpoint on 0x0005
+	// That's the BIOS entrypoint
+	cpu.BreakPoints = map[uint16]struct{}{}
+	cpu.BreakPoints[0x05] = struct{}{}
 
-	if len(breakpoints) > 0 {
-		cpu.BreakPoints = map[uint16]struct{}{}
-		for _, v := range breakpoints {
-			cpu.BreakPoints[v] = struct{}{}
-		}
-	}
-
+	// Run forever :)
 	for {
+
+		// Run until we hit an error
 		err := cpu.Run(context.Background())
+
 		if err != nil {
+
+			// A breakpoint error will be generated
+			// when the instruction-pointer is set to
+			// the BIOS entry-point
 			if err == z80.ErrBreakPoint {
 
 				// 0x00 - Exit!
@@ -111,6 +112,7 @@ func runCPM(path string) error {
 					// EXIT!
 					return nil
 				}
+
 				// 0x01 - Read a key, result returned in A
 				// TODO: We force a newline
 				if cpu.States.BC.Lo == 0x01 {
@@ -137,14 +139,15 @@ func runCPM(path string) error {
 				// 0x0A - Read line of input - buffer in DE
 				if cpu.States.BC.Lo == 0x0A {
 
-					// Read input
+					addr := cpu.States.DE.U16()
+
 					text, err := reader.ReadString('\n')
 					if err != nil {
 						return (fmt.Errorf("error reading from STDIN:%s", err))
 					}
-					text += "\n"
 
-					addr := cpu.States.DE.U16()
+					// remove trailing newline
+					text = strings.TrimSuffix(text, "\n")
 
 					// addr[0] is the size of the input buffer
 					// addr[1] should be the size of input read, set it:
@@ -156,14 +159,15 @@ func runCPM(path string) error {
 						cpu.Memory.Set(uint16(addr+2+uint16(i)), text[i])
 						i++
 					}
+
 					// Return from call
 					cpu.PC = m.readU16(cpu.SP)
 					// pop stack back.  Fun
 					cpu.SP += 2
 					continue
 				}
-				fmt.Printf("Breakpoint: %04X\n", cpu.States.PC)
-				fmt.Printf("Unknown break code: %02X\n", cpu.States.BC.Lo)
+
+				fmt.Printf("Breakpoint called %04X - Unimplemented BIOS call C:%02X\n", cpu.States.PC, cpu.States.BC.Lo)
 			}
 		}
 	}
