@@ -15,6 +15,15 @@ Bearing that in mind it seemed obvious that I could use an existing Z80 emulator
 
 
 
+# Credits
+
+99% of the functionality of this repository comes from the Z80 emulator library I'm using:
+
+* https://github.com/koron-go/z80
+
+
+
+
 # Limitations
 
 This CP/M emulator is extremely basic:
