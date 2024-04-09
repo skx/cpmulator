@@ -21,7 +21,7 @@ This CP/M emulator is extremely basic:
 
 * It loads a binary at 0x0100, which is the starting address for CP/M binaries.
 * It implements only three syscalls (i.e. BIOS functions)
-  * Read a character from the console - fake, always return "n".
+  * Read a character from the console - we force the user to press a key THEN press RETURN.
   * Read a line of input from the console.
   * Output a character.
 

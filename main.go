@@ -50,7 +50,7 @@ func (m *Memory) Get(addr uint16) uint8 {
 func (m *Memory) readU16(addr uint16) uint16 {
 	l := m.Get(addr)
 	h := m.Get(addr + 1)
-	return toU16(l, h)
+	return (uint16(h) << 8) | uint16(l)
 }
 
 // put puts "data" block from addr.
@@ -66,10 +66,6 @@ func (m *Memory) LoadFile(name string) error {
 	}
 	m.put(Start, prog...)
 	return nil
-}
-
-func toU16(l, h uint8) uint16 {
-	return (uint16(h) << 8) | uint16(l)
 }
 
 // runCPM loads and executes the given .COM file
@@ -116,9 +112,13 @@ func runCPM(path string) error {
 					return nil
 				}
 				// 0x01 - Read a key, result returned in A
+				// TODO: We force a newline
 				if cpu.States.BC.Lo == 0x01 {
-					// TODO: We're always returning "n" for no here.
-					cpu.States.AF.Hi = 'n'
+					text, err := reader.ReadString('\n')
+					if err != nil {
+						return (fmt.Errorf("error reading from STDIN:%s", err))
+					}
+					cpu.States.AF.Hi = text[0]
 
 					// Return from call
 					cpu.PC = m.readU16(cpu.SP)
@@ -137,15 +137,25 @@ func runCPM(path string) error {
 				// 0x0A - Read line of input - buffer in DE
 				if cpu.States.BC.Lo == 0x0A {
 
-					text, _ := reader.ReadString('\n')
-					cpu.Memory.Set(cpu.States.DE.U16()+1, uint8(len(text)))
+					// Read input
+					text, err := reader.ReadString('\n')
+					if err != nil {
+						return (fmt.Errorf("error reading from STDIN:%s", err))
+					}
+					text += "\n"
 
+					addr := cpu.States.DE.U16()
+
+					// addr[0] is the size of the input buffer
+					// addr[1] should be the size of input read, set it:
+					cpu.Memory.Set(addr+1, uint8(len(text)))
+
+					// addr[2+] should be the text
 					i := 0
 					for i < len(text) {
-						cpu.Memory.Set(uint16(cpu.States.DE.U16()+2+uint16(i)), text[i])
+						cpu.Memory.Set(uint16(addr+2+uint16(i)), text[i])
 						i++
 					}
-
 					// Return from call
 					cpu.PC = m.readU16(cpu.SP)
 					// pop stack back.  Fun
