@@ -36,6 +36,17 @@ func runCPM(path string) error {
 	cpu.BreakPoints = map[uint16]struct{}{}
 	cpu.BreakPoints[0x05] = struct{}{}
 
+	// Helper to return from a CALL instruction
+	//
+	// Pop the return address from the stack and
+	// return execution there.
+	callReturn := func() {
+		// Return from call
+		cpu.PC = m.GetU16(cpu.SP)
+		// pop stack back.  Fun
+		cpu.SP += 2
+	}
+
 	// Run forever :)
 	for {
 
@@ -85,22 +96,14 @@ func runCPM(path string) error {
 			// Return the character
 			cpu.States.AF.Hi = b[0]
 
-			// Return from call
-			cpu.PC = m.GetU16(cpu.SP)
-			// pop stack back.  Fun
-			cpu.SP += 2
-
+			callReturn()
 			continue
 		}
 
 		// 0x02 - Print a character, from E.
 		if function == 0x02 {
 			fmt.Printf("%c", (cpu.States.DE.Lo))
-
-			// Return from call
-			cpu.PC = m.GetU16(cpu.SP)
-			// pop stack back.  Fun
-			cpu.SP += 2
+			callReturn()
 			continue
 		}
 
@@ -114,10 +117,7 @@ func runCPM(path string) error {
 				addr++
 				c = m.Get(addr)
 			}
-			// Return from call
-			cpu.PC = m.GetU16(cpu.SP)
-			// pop stack back.  Fun
-			cpu.SP += 2
+			callReturn()
 			continue
 		}
 
@@ -145,10 +145,7 @@ func runCPM(path string) error {
 				i++
 			}
 
-			// Return from call
-			cpu.PC = m.GetU16(cpu.SP)
-			// pop stack back.  Fun
-			cpu.SP += 2
+			callReturn()
 			continue
 		}
 
