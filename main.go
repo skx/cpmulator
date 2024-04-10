@@ -130,9 +130,31 @@ func runCPM(path string) error {
 					continue
 				}
 
-				// 0x01 - Print a character, from E.
+				// 0x02 - Print a character, from E.
 				if cpu.States.BC.Lo == 0x02 {
 					fmt.Printf("%c", (cpu.States.DE.Lo))
+
+					// Return from call
+					cpu.PC = m.readU16(cpu.SP)
+					// pop stack back.  Fun
+					cpu.SP += 2
+					continue
+				}
+
+				// 0x09 - Write a string of $-terminated text - address in DE
+				if cpu.States.BC.Lo == 0x09 {
+					addr := cpu.States.DE.U16()
+
+					c := m.Get(addr)
+					for c != '$' {
+						fmt.Printf("%c", c)
+						addr++
+						c = m.Get(addr)
+					}
+					// Return from call
+					cpu.PC = m.readU16(cpu.SP)
+					// pop stack back.  Fun
+					cpu.SP += 2
 					continue
 				}
 
