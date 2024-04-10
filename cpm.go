@@ -5,9 +5,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/koron-go/z80"
+	"golang.org/x/term"
 )
 
 // runCPM loads and executes the given .COM file
@@ -62,13 +64,26 @@ func runCPM(path string) error {
 		}
 
 		// 0x01 - Read a key, result returned in A
-		// TODO: We force a newline
 		if function == 0x01 {
-			text, err := reader.ReadString('\n')
+
+			// switch stdin into 'raw' mode
+			oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
 			if err != nil {
-				return (fmt.Errorf("error reading from STDIN:%s", err))
+				return fmt.Errorf("error making raw terminal %s", err)
 			}
-			cpu.States.AF.Hi = text[0]
+
+			// read only a single byte
+			b := make([]byte, 1)
+			_, err = os.Stdin.Read(b)
+			if err != nil {
+				return fmt.Errorf("error reading a byte from stdin %s", err)
+			}
+
+			// restore the state of the terminal to avoid mixing RAW/Cooked
+			term.Restore(int(os.Stdin.Fd()), oldState)
+
+			// Return the character
+			cpu.States.AF.Hi = b[0]
 
 			// Return from call
 			cpu.PC = m.GetU16(cpu.SP)
