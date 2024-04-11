@@ -1,0 +1,107 @@
+;; user-num.z80 - Work with the user-number
+
+;; Get/Set the user-number, to confirm it works and persists.
+
+
+;
+; Simple macro to push all (important) registers.
+;
+MACRO PUSH_ALL
+        push af
+        push bc
+        push de
+        push hl
+      ENDM
+
+
+;
+; Simple macro to pop all (important) registers.
+;
+MACRO POP_ALL
+        pop hl
+        pop de
+        pop bc
+        pop af
+      ENDM
+; }}
+
+
+   ORG 0x0100
+
+   ; Get the user-number and show it.
+   call get_show_user_number
+
+   ; Change to user 1
+   LD C, 0x20
+   LD E, 01
+   CALL 0x0005
+
+   ; Confirm it has changed
+   call get_show_user_number
+
+   ; Change to user 2
+   LD C, 0x20
+   LD E, 0x02
+   CALL 0x0005
+
+   ; Confirm it has changed
+   call get_show_user_number
+
+   ; Restore back to user 0
+   LD C, 0x20
+   LD E, 0x00
+   CALL 0x0005
+
+   ; Confirm it has changed
+   call get_show_user_number
+
+   ; Terminate
+   ld c, 0x00
+   call 0x0005
+
+
+get_show_user_number:
+   ; Get the user-number
+   LD C, 0x20
+   LD E, 0xFF
+   CALL 0x0005
+
+   ; Show the user number now, which will be in A
+   call show_a_register
+
+   ; Show newline
+   LD E, 0x0a
+   LD C, 0x02
+   call 0x0005
+   ret
+
+
+
+
+DispHL:
+	ld	bc,-10000
+	call	Num1
+	ld	bc,-1000
+	call	Num1
+	ld	bc,-100
+	call	Num1
+	ld	c,-10
+	call	Num1
+	ld	c,-1
+Num1:	ld	a,'0'-1
+Num2:	inc	a
+	add	hl,bc
+	jr	c,Num2
+	sbc	hl,bc
+        PUSH_ALL
+        ld e, a
+        ld c, 0x02
+        call 0x0005
+        POP_ALL
+	ret
+
+show_a_register:
+        ld h,0
+	ld l,a
+	call DispHL
+        ret

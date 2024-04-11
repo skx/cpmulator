@@ -12,6 +12,18 @@ import (
 	"golang.org/x/term"
 )
 
+// currentDrive contains the currently selected drive.
+// Valid values are 00-15, where
+// 0  -> A:
+// 1  -> B:
+// 15 -> P:
+var currentDrive uint8
+
+// userNumber contains the current user number.
+//
+// Valid values are 00-15
+var userNumber uint8
+
 // runCPM loads and executes the given .COM file
 func runCPM(path string, args []string) error {
 
@@ -171,6 +183,45 @@ func runCPM(path string, args []string) error {
 				cpu.Memory.Set(uint16(addr+2+uint16(i)), text[i])
 				i++
 			}
+
+			callReturn()
+			continue
+		}
+
+		// 14 (DRV_SET) - Select disc
+		if function == 0x0E {
+			// The drive number passed to this routine is 0 for A:, 1 for B: up to 15 for P:.
+			currentDrive = (cpu.States.AF.Hi & 0x0F)
+
+			// Success means we return 0x00 in A
+			cpu.States.AF.Hi = 0x00
+
+			callReturn()
+			continue
+		}
+		// 25 (DRV_GET)  - Return current drive
+		if function == 0x19 {
+
+			cpu.States.AF.Hi = currentDrive
+
+			callReturn()
+			continue
+		}
+
+		// 32 (F_USERNUM) - get/set user number
+		if function == 0x20 {
+
+			// We're either setting or getting
+			//
+			// If the value is 0xFF we return it, otherwise we set
+			if cpu.States.DE.Lo != 0xFF {
+
+				// Set the number - masked, because valid values are 0-15
+				userNumber = (cpu.States.DE.Lo & 0x0F)
+			}
+
+			// Return the current number, which might have changed
+			cpu.States.AF.Hi = userNumber
 
 			callReturn()
 			continue
