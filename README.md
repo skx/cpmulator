@@ -25,11 +25,14 @@ This repository is the result, a portable and minimal emulator for CP/M that sup
 This CP/M emulator is extremely basic:
 
 * It loads a binary at 0x0100, which is the starting address for CP/M binaries.
-* It implements only four syscalls (i.e. BIOS functions):
+* Initially I implements only the four syscalls (i.e. BIOS functions) I needed:
   * Read a single character from the console.
   * Read a line of input from the console.
   * Output a character to the console.
   * Output a $-terminated string to the console.
+* I've since added a couple more.
+  * But there is currently no file/disk functionality present.
+  * I'm undecided if I wish to add them all, though running Zork would be cool.
 
 It will no doubt fail to execute any _real_ CP/M binaries.
 
@@ -55,6 +58,10 @@ After that you may launch the binary you wish to run under the emulator - in my 
 $ go-cpm lihouse.com
 ```
 
+
+## Sample Programs
+
+You'll see some Z80 assembly programs beneath [samples](samples/) which are used to check my understanding.  If you have the `pasmo` compiler enabled you can build them all by running "make".
 
 
 ## Bugs?
