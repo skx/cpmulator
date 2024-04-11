@@ -1,0 +1,51 @@
+;; cli-args.z80 - Show the CLI arguments supplied, if any.
+
+
+; This is where CP/M stores the args.
+CMDLINE	EQU	80H
+
+        ; Entry point, after the PSP.
+        ORG 0x0100
+
+        ; show prefix
+	LD	DE,COM1
+        ld C,   0x09
+        CALL    0x0005
+
+	; Display the command line (if present).
+	LD	HL,CMDLINE
+	LD	A,(HL)
+	INC	HL
+	OR	A
+	JR	Z,COMDONE
+
+	; A command line was entered.
+        ; B has the length of the string.
+	LD	B,A
+
+COMMORE:
+        ; Show it character by character
+	LD	E,(HL)
+	INC	HL
+	PUSH	BC
+	PUSH	HL
+	LD      C, 0x02
+        CALL    0x0005
+	POP	HL
+	POP	BC
+	DJNZ	COMMORE
+
+COMDONE:
+        ; Display trailing message
+	LD	DE,COM2
+	LD      C, 0x09
+        CALL    0x0005
+
+        ; Exit
+        LD      c, 0x00
+        CALL    0x0005
+
+COM1:
+        DB  "The command-line argument supplied was '$"
+
+COM2:	DB   "'", 0x0a, 0x0d, "$"
