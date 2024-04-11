@@ -178,7 +178,4 @@ func runCPM(path string, args []string) error {
 
 		fmt.Printf("Breakpoint called %04X - Unimplemented BIOS call C:%02X\n", cpu.States.PC, cpu.States.BC.Lo)
 	}
-
-	// Not reached
-	return nil
 }
