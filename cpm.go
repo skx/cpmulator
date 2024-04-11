@@ -13,7 +13,7 @@ import (
 )
 
 // runCPM loads and executes the given .COM file
-func runCPM(path string) error {
+func runCPM(path string, args []string) error {
 
 	// Create 64K of memory, full of NOPs
 	m := new(Memory)
@@ -22,6 +22,33 @@ func runCPM(path string) error {
 	err := m.LoadFile(path)
 	if err != nil {
 		return (fmt.Errorf("failed to load %s: %s", path, err))
+	}
+
+	// Convert our array of CLI arguments to a string
+	cli := strings.Join(args, " ")
+	cli = strings.TrimSpace(cli)
+
+	// Poke in the CLI argument as a Pascal string.
+	// (i.e. length prefixed)
+	if len(cli) > 0 {
+		// Pascal-Prefix
+		m.put(0x0080, uint8(len(cli)))
+		// Character copy
+		for i, c := range cli {
+			m.put(0x0081+uint16(i), uint8(c))
+		}
+	} else {
+		// No parameter was entered
+		m.put(0x0080, 0)
+
+		// The buffer-area will be filled with spaces
+		// as many CP/M programs just look for that instead
+		// of dealing with the count
+		var i uint16 = 0
+		for i < 32 {
+			m.put(0x0081+i, ' ')
+			i++
+		}
 	}
 
 	// Create the CPU, pointing to our memory
