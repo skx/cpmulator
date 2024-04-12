@@ -1,4 +1,4 @@
-;; cli-args.z80 - Show the CLI arguments supplied, if any.
+;; cli-args.z80 - Show the CLI arguments supplied, if any, and default FCBs
 
 
 ; This is where CP/M stores the args.
@@ -9,7 +9,7 @@ CMDLINE	EQU	80H
 
         ; show prefix
 	LD	DE,COM1
-        ld C,   0x09
+        LD      C,0x09
         CALL    0x0005
 
 	; Display the command line (if present).
@@ -41,11 +41,70 @@ COMDONE:
 	LD      C, 0x09
         CALL    0x0005
 
+        ; Show first FCB
+	LD	DE,FCB1
+        LD      C,0x09
+        CALL    0x0005
+        LD HL,  0x005C  ; FCB1 offset
+        CALL DUMP_FCB
+
+        ; Show second FCB
+	LD	DE,FCB2
+        LD      C,0x09
+        CALL    0x0005
+        LD      HL,0x006C  ; FCB2 offset
+        CALL DUMP_FCB
+
         ; Exit
-        LD      c, 0x00
+        LD      C,0x00
         CALL    0x0005
 
-COM1:
-        DB  "The command-line argument supplied was '$"
+; Dump the contents of an FCB
+;  HL points to the FCB
+DUMP_FCB:
+        PUSH HL
+        LD A, (HL)
 
-COM2:	DB   "'", 0x0a, 0x0d, "$"
+        ; A should have the drive number 0 means A, 1 for B, etc
+        add a,'A'
+
+        ; Show drive
+        LD     E,A
+        LD     C,0x02
+        CALL   0x0005
+
+        ; Show ":"
+        LD     E,':'
+        LD     C,0x02
+        CALL   0x0005
+
+        POP HL
+
+        ; Show the filename which is 11 characters
+        LD B, 11
+CHAR_SHOW:
+        INC HL
+        PUSH HL
+        PUSH BC
+        LD A, (HL)
+        LD E, A
+        LD C, 0x02
+        CALL 0x0005
+        POP BC
+        POP HL
+        DJNZ CHAR_SHOW
+
+        ; newline
+        LD      E,0x0a
+        LD      C,0x02
+        CALL    0x0005
+        RET
+
+COM1:
+        DB  "The command-line argument(s) were '$"
+COM2:
+        DB   "'", 0x0a, 0x0d, "$"
+FCB1:
+        DB "FCB 01: $"
+FCB2:
+        DB "FCB 02: $"
