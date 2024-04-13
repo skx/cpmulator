@@ -42,6 +42,17 @@ func (m *Memory) FillRange(addr uint16, size int, char uint8) {
 	}
 }
 
+// GetRange returns the contents of a given range
+func (m *Memory) GetRange(addr uint16, size int) []uint8 {
+	var ret []uint8
+	for size > 0 {
+		ret = append(ret, m.buf[addr])
+		addr++
+		size--
+	}
+	return ret
+}
+
 // LoadFile loads a file from "Start" (0x0100) as program.
 func (m *Memory) LoadFile(name string) error {
 

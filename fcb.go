@@ -149,3 +149,16 @@ func FCBFromString(str string) FCB {
 
 	return tmp
 }
+
+// FCBFromBytes returns an FCB entry from the given bytes
+func FCBFromBytes(bytes []uint8) FCB {
+	// Return value
+	tmp := FCB{}
+
+	tmp.Drive = bytes[0]
+	copy(tmp.Name[:], bytes[1:])
+	copy(tmp.Type[:], bytes[9:])
+	copy(tmp.Rest[:], bytes[12:])
+
+	return tmp
+}

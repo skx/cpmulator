@@ -221,6 +221,42 @@ func runCPM(path string, args []string) error {
 			callReturn()
 			continue
 		}
+
+		// 17 (F_SFIRST) - search for first
+		if function == 0x11 {
+
+			// The pointer to the FCB
+			ptr := cpu.States.DE.U16()
+
+			// Get the bytes
+			xxx := m.GetRange(ptr, 36)
+			fcb := FCBFromBytes(xxx)
+
+			fmt.Printf("find-first - %s.%s\n", fcb.GetName(), fcb.GetType())
+
+			// Return 0xFF for failure
+			cpu.States.AF.Hi = 0xFF
+			callReturn()
+			continue
+		}
+
+		// 18 (F_SNEXT) - search for next
+		if function == 0x12 {
+			// The pointer to the FCB
+			ptr := cpu.States.DE.U16()
+
+			// Get the bytes
+			xxx := m.GetRange(ptr, 36)
+			fcb := FCBFromBytes(xxx)
+
+			fmt.Printf("find-next - %s.%s\n", fcb.GetName(), fcb.GetType())
+
+			// Return 0xFF for failure
+			cpu.States.AF.Hi = 0xFF
+			callReturn()
+			continue
+		}
+
 		// 25 (DRV_GET)  - Return current drive
 		if function == 0x19 {
 
@@ -249,6 +285,6 @@ func runCPM(path string, args []string) error {
 			continue
 		}
 
-		fmt.Printf("Breakpoint called %04X - Unimplemented BIOS call C:%02X\n", cpu.States.PC, cpu.States.BC.Lo)
+		fmt.Printf("Breakpoint called %04X - Unimplemented BIOS call C:%02X / %d\n", cpu.States.PC, cpu.States.BC.Lo, cpu.States.BC.Lo)
 	}
 }
