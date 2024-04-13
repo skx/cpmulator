@@ -343,7 +343,14 @@ func runCPM(path string, args []string) error {
 			callReturn()
 			continue
 		}
+		// 31 (DRV_DPB) - get DPB address
+		if function == 0x1F {
+			cpu.States.HL.Hi = 0xCD
+			cpu.States.HL.Lo = 0xCD
+			callReturn()
+			continue
 
+		}
 		// 32 (F_USERNUM) - get/set user number
 		if function == 0x20 {
 
