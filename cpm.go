@@ -38,7 +38,7 @@ func runCPM(path string, args []string) error {
 
 	// Convert our array of CLI arguments to a string
 	cli := strings.Join(args, " ")
-	cli = strings.TrimSpace(cli)
+	cli = strings.TrimSpace(strings.ToUpper(cli))
 
 	//
 	// By default any command-line arguments need to be copied
@@ -50,11 +50,28 @@ func runCPM(path string, args []string) error {
 	// Default to emptying the FCBs and leaving the CLI args empty.
 	//
 	// DMA area / CLI Args
-	m.FillRange(0x0080, 32, 0x00)
-	// FCB1
+	m.put(0x0080, 0x00)
+	m.FillRange(0x0081, 31, 0x00)
+
+	// FCB1: Default drive, spaces for filenames.
+	m.put(0x005C, 0x00)
 	m.FillRange(0x005C+1, 11, ' ')
-	// FCB2
+
+	// FCB2: Default drive, spaces for filenames.
+	m.put(0x006C, 0x00)
 	m.FillRange(0x006C+1, 11, ' ')
+
+	// Now setup FCB1 if we have a first argument
+	if len(args) > 0 {
+		x := FCBFromString(args[0])
+		m.put(0x005C, x.AsBytes()[:]...)
+	}
+
+	// Now setup FCB2 if we have a second argument
+	if len(args) > 1 {
+		x := FCBFromString(args[1])
+		m.put(0x006C, x.AsBytes()[:]...)
+	}
 
 	// Poke in the CLI argument as a Pascal string.
 	// (i.e. length prefixed)
@@ -65,22 +82,6 @@ func runCPM(path string, args []string) error {
 		m.put(0x0080, uint8(len(cli)))
 		for i, c := range cli {
 			m.put(0x0081+uint16(i), uint8(c))
-		}
-
-		// Now setup FCB1
-		if len(args) > 0 {
-			// TODO handle this properly
-			for i, c := range args[0] {
-				m.put(0x005C+1+uint16(i), uint8(c))
-			}
-		}
-
-		// Now setup FCB2
-		if len(args) > 1 {
-			// TODO handle this properly
-			for i, c := range args[1] {
-				m.put(0x006C+1+uint16(i), uint8(c))
-			}
 		}
 	}
 
