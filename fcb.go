@@ -76,12 +76,76 @@ func FCBFromString(str string) FCB {
 		str = str[2:]
 	}
 
+	// Suffix defaults to "   "
+	copy(tmp.Type[:], "   ")
+
 	// Now we have to parse the string.
 	//
-	// We need to convert "*" to the appropriate number of "?" characters, etc.
-	//
-	// TODO: Finish this.  For the moment we just copy and pray.
-	copy(tmp.Name[:], str)
+	// 1. is there a suffix?
+	parts := strings.Split(str, ".")
+
+	// No suffix?
+	if len(parts) == 1 {
+		t := ""
+
+		// pad the value
+		name := parts[0]
+		for len(name) < 8 {
+			name += " "
+		}
+
+		// process to change "*" to "????"
+		for _, c := range name {
+			if c == '*' {
+				t += "?????????"
+			} else {
+				t += string(c)
+			}
+		}
+
+		// Copy the result into place, noting that copy will truncate
+		copy(tmp.Name[:], t)
+	}
+	if len(parts) == 2 {
+		t := ""
+
+		// pad the value
+		name := parts[0]
+		for len(name) < 8 {
+			name += " "
+		}
+
+		// process to change "*" to "????"
+		for _, c := range name {
+			if c == '*' {
+				t += "?????????"
+			} else {
+				t += string(c)
+			}
+		}
+
+		// Copy the result into place, noting that copy will truncate
+		copy(tmp.Name[:], t)
+
+		// pad the value
+		ext := parts[1]
+		for len(ext) < 3 {
+			ext += " "
+		}
+
+		// process to change "*" to "????"
+		t = ""
+		for _, c := range ext {
+			if c == '*' {
+				t += "???"
+			} else {
+				t += string(c)
+			}
+		}
+
+		// Copy the result into place, noting that copy will truncate
+		copy(tmp.Type[:], t)
+	}
 
 	return tmp
 }
