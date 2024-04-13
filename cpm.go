@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/koron-go/z80"
@@ -227,30 +228,74 @@ func runCPM(path string, args []string) error {
 
 			// The pointer to the FCB
 			ptr := cpu.States.DE.U16()
-
-			// Get the bytes
+			fmt.Printf("FCB at %04X\n", ptr)
+			// Get the bytes which make up the FCB entry.
 			xxx := m.GetRange(ptr, 36)
+
+			// Create a structure with the contents
 			fcb := FCBFromBytes(xxx)
 
-			fmt.Printf("find-first - %s.%s\n", fcb.GetName(), fcb.GetType())
+			pattern := ""
+			name := fcb.GetName()
+			ext := fcb.GetType()
 
-			// Return 0xFF for failure
-			cpu.States.AF.Hi = 0xFF
+			for _, c := range name {
+				if c == '?' {
+					pattern += "*"
+					break
+				}
+				if c == ' ' {
+					continue
+				}
+				pattern += string(c)
+			}
+			if ext != "" && ext != "   " {
+				pattern += "."
+			}
+
+			for _, c := range ext {
+				if c == '?' {
+					pattern += "*"
+					break
+				}
+				if c == ' ' {
+					continue
+				}
+				pattern += string(c)
+			}
+
+			// Run the glob.
+			matches, err := filepath.Glob(pattern)
+			if err != nil {
+				// error in pattern?
+				fmt.Printf("glob error %s\n", err)
+				cpu.States.AF.Hi = 0xFF
+				callReturn()
+				continue
+			}
+
+			// No matches on the glob-search
+			if len(matches) == 0 {
+				// Return 0xFF for failure
+				cpu.States.AF.Hi = 0xFF
+				callReturn()
+				continue
+			}
+
+			// Create a new FCB and store it in the DMA entry
+			x := FCBFromString(matches[0])
+			data := x.AsBytes()
+			m.put(0x80, data...)
+
+			// Return 0x00 to point to the first entry in the DMA area.
+			cpu.States.AF.Hi = 0x00
+
 			callReturn()
 			continue
 		}
 
 		// 18 (F_SNEXT) - search for next
 		if function == 0x12 {
-			// The pointer to the FCB
-			ptr := cpu.States.DE.U16()
-
-			// Get the bytes
-			xxx := m.GetRange(ptr, 36)
-			fcb := FCBFromBytes(xxx)
-
-			fmt.Printf("find-next - %s.%s\n", fcb.GetName(), fcb.GetType())
-
 			// Return 0xFF for failure
 			cpu.States.AF.Hi = 0xFF
 			callReturn()

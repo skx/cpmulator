@@ -18,7 +18,7 @@ type FCB struct {
 	Type [3]uint8
 
 	// Don't yet care about the rest of the entry.
-	Rest [24]uint8
+	Rest [21]uint8
 }
 
 // GetName returns the name component of an FCB entry.
@@ -74,6 +74,8 @@ func FCBFromString(str string) FCB {
 	if len(str) > 2 && str[1] == ':' {
 		tmp.Drive = str[0] - 'A'
 		str = str[2:]
+	} else {
+		tmp.Drive = 0x00
 	}
 
 	// Suffix defaults to "   "
@@ -98,6 +100,7 @@ func FCBFromString(str string) FCB {
 		for _, c := range name {
 			if c == '*' {
 				t += "?????????"
+				break
 			} else {
 				t += string(c)
 			}
@@ -119,6 +122,7 @@ func FCBFromString(str string) FCB {
 		for _, c := range name {
 			if c == '*' {
 				t += "?????????"
+				break
 			} else {
 				t += string(c)
 			}
@@ -138,6 +142,7 @@ func FCBFromString(str string) FCB {
 		for _, c := range ext {
 			if c == '*' {
 				t += "???"
+				break
 			} else {
 				t += string(c)
 			}
@@ -158,7 +163,7 @@ func FCBFromBytes(bytes []uint8) FCB {
 	tmp.Drive = bytes[0]
 	copy(tmp.Name[:], bytes[1:])
 	copy(tmp.Type[:], bytes[9:])
-	copy(tmp.Rest[:], bytes[12:])
+	copy(tmp.Rest[:], bytes[11:])
 
 	return tmp
 }
