@@ -33,6 +33,15 @@ func (m *Memory) put(addr uint16, data ...uint8) {
 	copy(m.buf[int(addr):int(addr)+len(data)], data)
 }
 
+// FillRange fills an area of memory with the given byte
+func (m *Memory) FillRange(addr uint16, size int, char uint8) {
+	for size > 0 {
+		m.buf[addr] = char
+		addr++
+		size--
+	}
+}
+
 // LoadFile loads a file from "Start" (0x0100) as program.
 func (m *Memory) LoadFile(name string) error {
 

@@ -40,26 +40,47 @@ func runCPM(path string, args []string) error {
 	cli := strings.Join(args, " ")
 	cli = strings.TrimSpace(cli)
 
+	//
+	// By default any command-line arguments need to be copied
+	// to 0x0080 - as a pascal-prefixed string.
+	//
+	// If there are arguments the default FCBs need to be updated
+	// appropriately too.
+	//
+	// Default to emptying the FCBs and leaving the CLI args empty.
+	//
+	// DMA area / CLI Args
+	m.FillRange(0x0080, 32, 0x00)
+	// FCB1
+	m.FillRange(0x005C+1, 11, ' ')
+	// FCB2
+	m.FillRange(0x006C+1, 11, ' ')
+
 	// Poke in the CLI argument as a Pascal string.
 	// (i.e. length prefixed)
 	if len(cli) > 0 {
-		// Pascal-Prefix
+
+		// Setup the CLI arguments - these are set as a pascal string
+		// (i.e. first byte is the length, then the data follows).
 		m.put(0x0080, uint8(len(cli)))
-		// Character copy
 		for i, c := range cli {
 			m.put(0x0081+uint16(i), uint8(c))
 		}
-	} else {
-		// No parameter was entered
-		m.put(0x0080, 0)
 
-		// The buffer-area will be filled with spaces
-		// as many CP/M programs just look for that instead
-		// of dealing with the count
-		var i uint16 = 0
-		for i < 32 {
-			m.put(0x0081+i, ' ')
-			i++
+		// Now setup FCB1
+		if len(args) > 0 {
+			// TODO handle this properly
+			for i, c := range args[0] {
+				m.put(0x005C+1+uint16(i), uint8(c))
+			}
+		}
+
+		// Now setup FCB2
+		if len(args) > 1 {
+			// TODO handle this properly
+			for i, c := range args[1] {
+				m.put(0x006C+1+uint16(i), uint8(c))
+			}
 		}
 	}
 
