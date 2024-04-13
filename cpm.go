@@ -25,6 +25,16 @@ var currentDrive uint8
 // Valid values are 00-15
 var userNumber uint8
 
+// findFirstResults is a sneaky cache of files that match a glob.
+//
+// For finding files CP/M uses "find first" to find the first result
+// then allows the programmer to call "find next", to continue the searching.
+//
+// This means we need to track state, the way we do this is to store the
+// results here, and bump the findOffset each time find-next is called.
+var findFirstResults []string
+var findOffset int
+
 // runCPM loads and executes the given .COM file
 func runCPM(path string, args []string) error {
 
@@ -228,7 +238,6 @@ func runCPM(path string, args []string) error {
 
 			// The pointer to the FCB
 			ptr := cpu.States.DE.U16()
-			fmt.Printf("FCB at %04X\n", ptr)
 			// Get the bytes which make up the FCB entry.
 			xxx := m.GetRange(ptr, 36)
 
@@ -282,6 +291,11 @@ func runCPM(path string, args []string) error {
 				continue
 			}
 
+			// Here we save the results in our cache,
+			// dropping the first
+			findFirstResults = matches[1:]
+			findOffset = 0
+
 			// Create a new FCB and store it in the DMA entry
 			x := FCBFromString(matches[0])
 			data := x.AsBytes()
@@ -296,8 +310,27 @@ func runCPM(path string, args []string) error {
 
 		// 18 (F_SNEXT) - search for next
 		if function == 0x12 {
-			// Return 0xFF for failure
-			cpu.States.AF.Hi = 0xFF
+			//
+			// Assume we've been called with findFirst before
+			//
+			if (len(findFirstResults) == 0) || findOffset >= len(findFirstResults) {
+				// Return 0xFF to signal an error
+				cpu.States.AF.Hi = 0xFF
+
+				callReturn()
+				continue
+			}
+
+			res := findFirstResults[findOffset]
+			findOffset++
+
+			// Create a new FCB and store it in the DMA entry
+			x := FCBFromString(res)
+			data := x.AsBytes()
+			m.put(0x80, data...)
+
+			// Return 0x00 to point to the first entry in the DMA area.
+			cpu.States.AF.Hi = 0x00
 			callReturn()
 			continue
 		}
