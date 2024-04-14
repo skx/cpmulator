@@ -123,6 +123,10 @@ func New(filename string, logger *slog.Logger) *CPM {
 		Desc:    "F_SNEXT",
 		Handler: SysCallFindNext,
 	}
+	sys[19] = CPMHandler{
+		Desc:    "F_DELETE",
+		Handler: SysCallDeleteFile,
+	}
 	sys[22] = CPMHandler{
 		Desc:    "F_MAKE",
 		Handler: SysCallMakeFile,
