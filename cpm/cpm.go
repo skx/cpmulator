@@ -5,6 +5,7 @@ package cpm
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -17,8 +18,31 @@ import (
 	"golang.org/x/term"
 )
 
+var (
+	// ErrExit will be used to handle a CP/M binary calling Exit.
+	//
+	// It should be handled and expected by callers.
+	ErrExit = errors.New("EXIT")
+)
+
+// CPMHandlerType contains the signature of a CP/M bios function
+type CPMHandlerType func() error
+
+// CPMHandler contains details of a specific call we implement.
+type CPMHandler struct {
+	// Desc contain the human-readable description of the given CP/M syscall.
+	Desc string
+
+	// Handler contains the function which should be involved for this syscall.
+	Handler CPMHandlerType
+}
+
 // CPM is the object that holds our emulator state
 type CPM struct {
+
+	// Syscalls contains the syscalls we know how to emulate.
+	Syscalls map[uint8]CPMHandler
+
 	// currentDrive contains the currently selected drive.
 	// Valid values are 00-15, where
 	// 0  -> A:
@@ -53,10 +77,19 @@ type CPM struct {
 
 // New returns a new emulation object
 func New(filename string, logger *slog.Logger) *CPM {
+
+	// Create our syscall table
+	sys := make(map[uint8]CPMHandler)
+	sys[0] = CPMHandler{
+		Desc:    "Exit",
+		Handler: SysCallExit,
+	}
+
 	tmp := &CPM{
 		Filename: filename,
 		Logger:   logger,
 		Reader:   bufio.NewReader(os.Stdin),
+		Syscalls: sys,
 	}
 	return tmp
 }
@@ -163,13 +196,31 @@ func (cpm *CPM) Execute(args []string) error {
 
 		// OK we have a breakpoint error to handle.
 		//
-		// That means we have a CP/M BIOS function to emulate.
+		// That means we have a CP/M BIOS function to emulate, the syscall
+		// identifier is stored in the C-register.  Get it.
 		function := cpu.States.BC.Lo
 
-		// 0x00 - Exit!
-		if function == 0x00 {
-			// EXIT!
-			return nil
+		//
+		// Is there a syscall entry for this number?
+		//
+		handler, exists := cpm.Syscalls[function]
+
+		if exists {
+			cpm.Logger.Info("Calling BIOS emulation",
+				slog.String("name", handler.Desc),
+				slog.Int("syscall", int(function)),
+			)
+
+			err := handler.Handler()
+			if err == ErrExit {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+
+			callReturn()
+			continue
 		}
 
 		// 0x01 - Read a key, result returned in A
