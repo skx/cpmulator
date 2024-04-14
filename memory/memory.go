@@ -1,6 +1,6 @@
-// memory.go - Memory interface
-
-package main
+// Memory is a package that provides the 64k of RAM
+// within which the emulator executes its programs.
+package memory
 
 import (
 	"os"
@@ -28,8 +28,9 @@ func (m *Memory) GetU16(addr uint16) uint16 {
 	return (uint16(h) << 8) | uint16(l)
 }
 
-// put puts "data" block from addr.
-func (m *Memory) put(addr uint16, data ...uint8) {
+// PutRange copies bytes from the given data to the specified
+// starting address in RAM.
+func (m *Memory) PutRange(addr uint16, data ...uint8) {
 	copy(m.buf[int(addr):int(addr)+len(data)], data)
 }
 
@@ -68,7 +69,7 @@ func (m *Memory) LoadFile(name string) error {
 	}
 
 	// Put it into the starting location, 0x0100
-	m.put(0x0100, prog...)
+	m.PutRange(0x0100, prog...)
 
 	return nil
 }

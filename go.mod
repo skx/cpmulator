@@ -1,4 +1,4 @@
-module github.com/skx/go-cpm
+module github.com/skx/cpmulator
 
 go 1.22.2
 
