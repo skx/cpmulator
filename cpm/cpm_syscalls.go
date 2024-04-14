@@ -36,7 +36,10 @@ func SysCallReadChar(cpm *CPM) error {
 	}
 
 	// restore the state of the terminal to avoid mixing RAW/Cooked
-	term.Restore(int(os.Stdin.Fd()), oldState)
+	err = term.Restore(int(os.Stdin.Fd()), oldState)
+	if err != nil {
+		return fmt.Errorf("error restoring terminal state %s", err)
+	}
 
 	// Return the character
 	cpm.CPU.States.AF.Hi = b[0]
@@ -192,6 +195,39 @@ func SysCallFindNext(cpm *CPM) error {
 
 	// Return 0x00 to point to the first entry in the DMA area.
 	cpm.CPU.States.AF.Hi = 0x00
+
+	return nil
+}
+
+// SysCallMakeFile creates the file named in the FCB given in DE
+func SysCallMakeFile(cpm *CPM) error {
+	// The pointer to the FCB
+	ptr := cpm.CPU.States.DE.U16()
+	// Get the bytes which make up the FCB entry.
+	xxx := cpm.Memory.GetRange(ptr, 36)
+
+	// Create a structure with the contents
+	fcbPtr := fcb.FromBytes(xxx)
+
+	// Get the name
+	name := fcbPtr.GetName()
+	ext := fcbPtr.GetType()
+
+	fileName := name
+	if ext != "" && ext != "   " {
+		fileName += "."
+		fileName += ext
+	}
+
+	// Create the file
+	file, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	err = file.Close()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
