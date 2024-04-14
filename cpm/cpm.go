@@ -87,7 +87,9 @@ type CPM struct {
 // New returns a new emulation object
 func New(filename string, logger *slog.Logger) *CPM {
 
+	//
 	// Create and populate our syscall table
+	//
 	sys := make(map[uint8]CPMHandler)
 	sys[0] = CPMHandler{
 		Desc:    "P_TERMCPM",
@@ -134,7 +136,7 @@ func New(filename string, logger *slog.Logger) *CPM {
 		Handler: SysCallUserNumber,
 	}
 
-	// Create the memory
+	// Create the object
 	tmp := &CPM{
 		Filename: filename,
 		Logger:   logger,
@@ -145,6 +147,9 @@ func New(filename string, logger *slog.Logger) *CPM {
 }
 
 // Execute executes our named binary, with the specified arguments.
+//
+// The function will not return until the process being executed terminates,
+// and any error will be returned.
 func (cpm *CPM) Execute(args []string) error {
 
 	// Create 64K of memory, full of NOPs
@@ -156,7 +161,7 @@ func (cpm *CPM) Execute(args []string) error {
 		return (fmt.Errorf("failed to load %s: %s", cpm.Filename, err))
 	}
 
-	// Convert our array of CLI arguments to a string
+	// Convert our array of CLI arguments to a string.
 	cli := strings.Join(args, " ")
 	cli = strings.TrimSpace(strings.ToUpper(cli))
 
@@ -170,15 +175,15 @@ func (cpm *CPM) Execute(args []string) error {
 	// Default to emptying the FCBs and leaving the CLI args empty.
 	//
 	// DMA area / CLI Args
-	cpm.Memory.PutRange(0x0080, 0x00)
+	cpm.Memory.Set(0x0080, 0x00)
 	cpm.Memory.FillRange(0x0081, 31, 0x00)
 
 	// FCB1: Default drive, spaces for filenames.
-	cpm.Memory.PutRange(0x005C, 0x00)
+	cpm.Memory.Set(0x005C, 0x00)
 	cpm.Memory.FillRange(0x005C+1, 11, ' ')
 
 	// FCB2: Default drive, spaces for filenames.
-	cpm.Memory.PutRange(0x006C, 0x00)
+	cpm.Memory.Set(0x006C, 0x00)
 	cpm.Memory.FillRange(0x006C+1, 11, ' ')
 
 	// Now setup FCB1 if we have a first argument
@@ -199,7 +204,7 @@ func (cpm *CPM) Execute(args []string) error {
 
 		// Setup the CLI arguments - these are set as a pascal string
 		// (i.e. first byte is the length, then the data follows).
-		cpm.Memory.PutRange(0x0080, uint8(len(cli)))
+		cpm.Memory.Set(0x0080, uint8(len(cli)))
 		for i, c := range cli {
 			cpm.Memory.PutRange(0x0081+uint16(i), uint8(c))
 		}
