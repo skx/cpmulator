@@ -1,4 +1,4 @@
-# go-cpm - A CP/M emulator written in golang
+# cpmulator - A CP/M emulator written in golang
 
 A couple of years ago I wrote a text-based adventure game, to amuse my child.  The game was written in Z80 assembly, for CP/M, and later ported to the ZX Spectrum:
 
@@ -49,13 +49,13 @@ go install .
 Or:
 
 ```
-go install github.com/skx/go-cpm@latest
+go install github.com/skx/cpmulator@latest
 ```
 
 After that you may launch the binary you wish to run under the emulator - in my case that would be `lihouse.com` from [the release page](https://github.com/skx/lighthouse-of-doom/releases):
 
 ```
-$ go-cpm lihouse.com
+$ cpmulator lihouse.com
 ```
 
 

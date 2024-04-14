@@ -12,8 +12,8 @@ import (
 	"strings"
 
 	"github.com/koron-go/z80"
-	"github.com/skx/go-cpm/fcb"
-	"github.com/skx/go-cpm/memory"
+	"github.com/skx/cpmulator/fcb"
+	"github.com/skx/cpmulator/memory"
 	"golang.org/x/term"
 )
 

@@ -7,14 +7,14 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/skx/go-cpm/cpm"
+	"github.com/skx/cpmulator/cpm"
 )
 
 func main() {
 
 	// Ensure we've been given the name of a file
 	if len(os.Args) < 2 {
-		fmt.Printf("Usage: go-cpm path/to/file.com [args]\n")
+		fmt.Printf("Usage: cpmulator path/to/file.com [args]\n")
 		return
 	}
 
