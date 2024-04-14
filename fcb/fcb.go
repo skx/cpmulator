@@ -5,21 +5,26 @@ import (
 	"strings"
 )
 
-// FCB is a placeholder struct.
+// FCB is a placeholder struct which is slowly in the process of being used.
 type FCB struct {
 	// Drive holds the drive letter for this entry.
-	// 0 is A, 1 is B, etc.
-	// Max value 15.
 	Drive uint8
 
-	// Name holds the name of the file
+	// Name holds the name of the file.
 	Name [8]uint8
 
-	// Type holds the suffix
+	// Type holds the suffix.
 	Type [3]uint8
 
-	// Don't yet care about the rest of the entry.
-	Rest [21]uint8
+	Ex uint8
+	S1 uint8
+	S2 uint8
+	RC uint8
+	Al [16]uint8
+	Cr uint8
+	R0 uint8
+	R1 uint8
+	R2 uint8
 }
 
 // GetName returns the name component of an FCB entry.
@@ -47,7 +52,7 @@ func (f *FCB) GetType() string {
 }
 
 // AsBytes returns the entry of the FCB in a format suitable
-// for copying to RAM
+// for copying to RAM.
 func (f *FCB) AsBytes() []uint8 {
 
 	var r []uint8
@@ -55,7 +60,15 @@ func (f *FCB) AsBytes() []uint8 {
 	r = append(r, f.Drive)
 	r = append(r, f.Name[:]...)
 	r = append(r, f.Type[:]...)
-	r = append(r, f.Rest[:]...)
+	r = append(r, f.Ex)
+	r = append(r, f.S1)
+	r = append(r, f.S2)
+	r = append(r, f.RC)
+	r = append(r, f.Al[:]...)
+	r = append(r, f.Cr)
+	r = append(r, f.R0)
+	r = append(r, f.R1)
+	r = append(r, f.R2)
 
 	return r
 }
@@ -164,7 +177,15 @@ func FromBytes(bytes []uint8) FCB {
 	tmp.Drive = bytes[0]
 	copy(tmp.Name[:], bytes[1:])
 	copy(tmp.Type[:], bytes[9:])
-	copy(tmp.Rest[:], bytes[11:])
+	tmp.Ex = bytes[12]
+	tmp.S1 = bytes[13]
+	tmp.S2 = bytes[14]
+	tmp.RC = bytes[15]
+	copy(tmp.Al[:], bytes[16:])
+	tmp.Cr = bytes[32]
+	tmp.R0 = bytes[33]
+	tmp.R1 = bytes[34]
+	tmp.R2 = bytes[35]
 
 	return tmp
 }

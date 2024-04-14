@@ -1,6 +1,59 @@
 package fcb
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
+
+func TestFCBSize(t *testing.T) {
+	x := FromString("blah")
+	b := x.AsBytes()
+
+	if len(b) != 36 {
+		t.Fatalf("FCB struct is %d bytes", len(b))
+	}
+}
+
+// Test we can convert an FCB to bytes, and back, without losing data in the round-trip.
+func TestCopy(t *testing.T) {
+	f1 := FromString("blah")
+	copy(f1.Al[:], "0123456789abcdef")
+	f1.Ex = 'X'
+	f1.S1 = 'S'
+	f1.S2 = '?'
+	f1.RC = 'f'
+	f1.R0 = 'R'
+	f1.R1 = '0'
+	f1.R2 = '1'
+	b := f1.AsBytes()
+
+	f2 := FromBytes(b)
+	if fmt.Sprintf("%s", f2.Al) != "0123456789abcdef" {
+		t.Fatalf("copy failed")
+	}
+	if f2.Ex != 'X' {
+		t.Fatalf("copy failed")
+	}
+	if f2.S1 != 'S' {
+		t.Fatalf("copy failed")
+	}
+	if f2.S2 != '?' {
+		t.Fatalf("copy failed")
+	}
+	if f2.RC != 'f' {
+		t.Fatalf("copy failed")
+	}
+	if f2.R0 != 'R' {
+		t.Fatalf("copy failed")
+	}
+	if f2.R1 != '0' {
+		t.Fatalf("copy failed")
+	}
+	if f2.R2 != '1' {
+		t.Fatalf("copy failed")
+	}
+
+}
 
 // TestFCBFromString is a trivial test to only cover the basics right now.
 func TestFCBFromString(t *testing.T) {
