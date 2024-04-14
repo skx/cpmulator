@@ -3,13 +3,12 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
+	"log/slog"
 	"os"
-)
 
-// Reader lets us get console input
-var reader *bufio.Reader
+	"github.com/skx/go-cpm/cpm"
+)
 
 func main() {
 
@@ -19,11 +18,31 @@ func main() {
 		return
 	}
 
-	// Populate the global reader
-	reader = bufio.NewReader(os.Stdin)
+	// Setup our logging level - default to warnings or higher
+	lvl := new(slog.LevelVar)
+	lvl.Set(slog.LevelWarn)
 
-	// Load the binary
-	err := runCPM(os.Args[1], os.Args[2:])
+	// But show "everything" if $DEBUG is non.empty
+	if os.Getenv("DEBUG") != "" {
+		lvl.Set(slog.LevelDebug)
+	}
+
+	//
+	// Create our logging handler, using the level we've just setup
+	//
+	log := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+		Level: lvl,
+	}))
+
+	//
+	// Create a new emulator.
+	//
+	cpm := cpm.New(os.Args[1], log)
+
+	//
+	// Run the binary we've been given.
+	//
+	err := cpm.Execute(os.Args[2:])
 	if err != nil {
 		fmt.Printf("Error running %s: %s\n", os.Args[1], err)
 	}

@@ -1,4 +1,4 @@
-package main
+package fcb
 
 import "testing"
 
@@ -6,7 +6,7 @@ import "testing"
 func TestFCBFromString(t *testing.T) {
 
 	// Simple test to ensure the basic one works.
-	f := FCBFromString("b:foo")
+	f := FromString("b:foo")
 	if f.Drive != 1 {
 		t.Fatalf("drive wrong")
 	}
@@ -18,7 +18,7 @@ func TestFCBFromString(t *testing.T) {
 	}
 
 	// Try a long name, to confirm it is truncated
-	f = FCBFromString("c:this-is-a-long-name")
+	f = FromString("c:this-is-a-long-name")
 	if f.Drive != 2 {
 		t.Fatalf("drive wrong")
 	}
@@ -30,7 +30,7 @@ func TestFCBFromString(t *testing.T) {
 	}
 
 	// Try a long suffix, to confirm it is truncated
-	f = FCBFromString("c:this-is-a-.long-name")
+	f = FromString("c:this-is-a-.long-name")
 	if f.Drive != 2 {
 		t.Fatalf("drive wrong")
 	}
@@ -42,7 +42,7 @@ func TestFCBFromString(t *testing.T) {
 	}
 
 	// wildcard
-	f = FCBFromString("c:steve*")
+	f = FromString("c:steve*")
 	if f.Drive != 2 {
 		t.Fatalf("drive wrong")
 	}
@@ -50,7 +50,7 @@ func TestFCBFromString(t *testing.T) {
 		t.Fatalf("name wrong, got '%v'", f.GetName())
 	}
 
-	f = FCBFromString("c:test.C*")
+	f = FromString("c:test.C*")
 	if f.Drive != 2 {
 		t.Fatalf("drive wrong")
 	}

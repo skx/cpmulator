@@ -1,50 +1,76 @@
-// cpm.go - Implement the BIOS callbacks
-
-package main
+// CPM is the main package for our emulator, it uses memory to
+// emulate execution of things at the bios level
+package cpm
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/koron-go/z80"
+	"github.com/skx/go-cpm/fcb"
+	"github.com/skx/go-cpm/memory"
 	"golang.org/x/term"
 )
 
-// currentDrive contains the currently selected drive.
-// Valid values are 00-15, where
-// 0  -> A:
-// 1  -> B:
-// 15 -> P:
-var currentDrive uint8
+// CPM is the object that holds our emulator state
+type CPM struct {
+	// currentDrive contains the currently selected drive.
+	// Valid values are 00-15, where
+	// 0  -> A:
+	// 1  -> B:
+	// 15 -> P:
+	currentDrive uint8
 
-// userNumber contains the current user number.
-//
-// Valid values are 00-15
-var userNumber uint8
+	// userNumber contains the current user number.
+	//
+	// Valid values are 00-15
+	userNumber uint8
 
-// findFirstResults is a sneaky cache of files that match a glob.
-//
-// For finding files CP/M uses "find first" to find the first result
-// then allows the programmer to call "find next", to continue the searching.
-//
-// This means we need to track state, the way we do this is to store the
-// results here, and bump the findOffset each time find-next is called.
-var findFirstResults []string
-var findOffset int
+	// findFirstResults is a sneaky cache of files that match a glob.
+	//
+	// For finding files CP/M uses "find first" to find the first result
+	// then allows the programmer to call "find next", to continue the searching.
+	//
+	// This means we need to track state, the way we do this is to store the
+	// results here, and bump the findOffset each time find-next is called.
+	findFirstResults []string
+	findOffset       int
 
-// runCPM loads and executes the given .COM file
-func runCPM(path string, args []string) error {
+	// Reader is where we get our STDIN from
+	Reader *bufio.Reader
+
+	// Filename holds the binary we're executing
+	Filename string
+
+	// Logger holds a logger, if null then no logs will be kept
+	Logger *slog.Logger
+}
+
+// New returns a new emulation object
+func New(filename string, logger *slog.Logger) *CPM {
+	tmp := &CPM{
+		Filename: filename,
+		Logger:   logger,
+		Reader:   bufio.NewReader(os.Stdin),
+	}
+	return tmp
+}
+
+// Execute executes our named binary, with the specified arguments.
+func (cpm *CPM) Execute(args []string) error {
 
 	// Create 64K of memory, full of NOPs
-	m := new(Memory)
+	m := new(memory.Memory)
 
 	// Load our binary into it
-	err := m.LoadFile(path)
+	err := m.LoadFile(cpm.Filename)
 	if err != nil {
-		return (fmt.Errorf("failed to load %s: %s", path, err))
+		return (fmt.Errorf("failed to load %s: %s", cpm.Filename, err))
 	}
 
 	// Convert our array of CLI arguments to a string
@@ -61,27 +87,27 @@ func runCPM(path string, args []string) error {
 	// Default to emptying the FCBs and leaving the CLI args empty.
 	//
 	// DMA area / CLI Args
-	m.put(0x0080, 0x00)
+	m.PutRange(0x0080, 0x00)
 	m.FillRange(0x0081, 31, 0x00)
 
 	// FCB1: Default drive, spaces for filenames.
-	m.put(0x005C, 0x00)
+	m.PutRange(0x005C, 0x00)
 	m.FillRange(0x005C+1, 11, ' ')
 
 	// FCB2: Default drive, spaces for filenames.
-	m.put(0x006C, 0x00)
+	m.PutRange(0x006C, 0x00)
 	m.FillRange(0x006C+1, 11, ' ')
 
 	// Now setup FCB1 if we have a first argument
 	if len(args) > 0 {
-		x := FCBFromString(args[0])
-		m.put(0x005C, x.AsBytes()[:]...)
+		x := fcb.FromString(args[0])
+		m.PutRange(0x005C, x.AsBytes()[:]...)
 	}
 
 	// Now setup FCB2 if we have a second argument
 	if len(args) > 1 {
-		x := FCBFromString(args[1])
-		m.put(0x006C, x.AsBytes()[:]...)
+		x := fcb.FromString(args[1])
+		m.PutRange(0x006C, x.AsBytes()[:]...)
 	}
 
 	// Poke in the CLI argument as a Pascal string.
@@ -90,9 +116,9 @@ func runCPM(path string, args []string) error {
 
 		// Setup the CLI arguments - these are set as a pascal string
 		// (i.e. first byte is the length, then the data follows).
-		m.put(0x0080, uint8(len(cli)))
+		m.PutRange(0x0080, uint8(len(cli)))
 		for i, c := range cli {
-			m.put(0x0081+uint16(i), uint8(c))
+			m.PutRange(0x0081+uint16(i), uint8(c))
 		}
 	}
 
@@ -198,7 +224,7 @@ func runCPM(path string, args []string) error {
 
 			addr := cpu.States.DE.U16()
 
-			text, err := reader.ReadString('\n')
+			text, err := cpm.Reader.ReadString('\n')
 			if err != nil {
 				return (fmt.Errorf("error reading from STDIN:%s", err))
 			}
@@ -224,7 +250,7 @@ func runCPM(path string, args []string) error {
 		// 14 (DRV_SET) - Select disc
 		if function == 0x0E {
 			// The drive number passed to this routine is 0 for A:, 1 for B: up to 15 for P:.
-			currentDrive = (cpu.States.AF.Hi & 0x0F)
+			cpm.currentDrive = (cpu.States.AF.Hi & 0x0F)
 
 			// Success means we return 0x00 in A
 			cpu.States.AF.Hi = 0x00
@@ -242,11 +268,11 @@ func runCPM(path string, args []string) error {
 			xxx := m.GetRange(ptr, 36)
 
 			// Create a structure with the contents
-			fcb := FCBFromBytes(xxx)
+			fcbPtr := fcb.FromBytes(xxx)
 
 			pattern := ""
-			name := fcb.GetName()
-			ext := fcb.GetType()
+			name := fcbPtr.GetName()
+			ext := fcbPtr.GetType()
 
 			for _, c := range name {
 				if c == '?' {
@@ -293,13 +319,13 @@ func runCPM(path string, args []string) error {
 
 			// Here we save the results in our cache,
 			// dropping the first
-			findFirstResults = matches[1:]
-			findOffset = 0
+			cpm.findFirstResults = matches[1:]
+			cpm.findOffset = 0
 
 			// Create a new FCB and store it in the DMA entry
-			x := FCBFromString(matches[0])
+			x := fcb.FromString(matches[0])
 			data := x.AsBytes()
-			m.put(0x80, data...)
+			m.PutRange(0x80, data...)
 
 			// Return 0x00 to point to the first entry in the DMA area.
 			cpu.States.AF.Hi = 0x00
@@ -313,7 +339,7 @@ func runCPM(path string, args []string) error {
 			//
 			// Assume we've been called with findFirst before
 			//
-			if (len(findFirstResults) == 0) || findOffset >= len(findFirstResults) {
+			if (len(cpm.findFirstResults) == 0) || cpm.findOffset >= len(cpm.findFirstResults) {
 				// Return 0xFF to signal an error
 				cpu.States.AF.Hi = 0xFF
 
@@ -321,13 +347,13 @@ func runCPM(path string, args []string) error {
 				continue
 			}
 
-			res := findFirstResults[findOffset]
-			findOffset++
+			res := cpm.findFirstResults[cpm.findOffset]
+			cpm.findOffset++
 
 			// Create a new FCB and store it in the DMA entry
-			x := FCBFromString(res)
+			x := fcb.FromString(res)
 			data := x.AsBytes()
-			m.put(0x80, data...)
+			m.PutRange(0x80, data...)
 
 			// Return 0x00 to point to the first entry in the DMA area.
 			cpu.States.AF.Hi = 0x00
@@ -338,7 +364,7 @@ func runCPM(path string, args []string) error {
 		// 25 (DRV_GET)  - Return current drive
 		if function == 0x19 {
 
-			cpu.States.AF.Hi = currentDrive
+			cpu.States.AF.Hi = cpm.currentDrive
 
 			callReturn()
 			continue
@@ -360,11 +386,11 @@ func runCPM(path string, args []string) error {
 			if cpu.States.DE.Lo != 0xFF {
 
 				// Set the number - masked, because valid values are 0-15
-				userNumber = (cpu.States.DE.Lo & 0x0F)
+				cpm.userNumber = (cpu.States.DE.Lo & 0x0F)
 			}
 
 			// Return the current number, which might have changed
-			cpu.States.AF.Hi = userNumber
+			cpu.States.AF.Hi = cpm.userNumber
 
 			callReturn()
 			continue

@@ -1,4 +1,6 @@
-package main
+// FCB is the package which contains helpers for reading/writing
+// and working with the CP/M FCB structure.
+package fcb
 
 import (
 	"strings"
@@ -59,10 +61,10 @@ func (f *FCB) AsBytes() []uint8 {
 	return r
 }
 
-// FCBFromString returns an FCB entry from the given string.
+// FromString returns an FCB entry from the given string.
 //
 // This is currently just used for processing command-line arguments.
-func FCBFromString(str string) FCB {
+func FromString(str string) FCB {
 
 	// Return value
 	tmp := FCB{}
@@ -155,8 +157,8 @@ func FCBFromString(str string) FCB {
 	return tmp
 }
 
-// FCBFromBytes returns an FCB entry from the given bytes
-func FCBFromBytes(bytes []uint8) FCB {
+// FromBytes returns an FCB entry from the given bytes
+func FromBytes(bytes []uint8) FCB {
 	// Return value
 	tmp := FCB{}
 
