@@ -1,0 +1,4 @@
+;; ret.z80 - A program that terminates with a single RET instruction
+
+        ORG 0x0100
+        ret
