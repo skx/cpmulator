@@ -1,0 +1,52 @@
+;; create.asm - Create the named file
+;;
+
+FCB1:    EQU 0x5C
+
+BDOS_ENTRY_POINT:    EQU 5
+
+BDOS_OUTPUT_STRING:            EQU 9
+BDOS_MAKE_FILE:                EQU 22
+
+        ;;
+        ;; CP/M programs start at 0x100.
+        ;;
+        ORG 100H
+
+        ;; The FCB will be populated with the pattern/first argument,
+        ;; if the first character of that region is a space-character
+        ;; then we've got nothing to search for.
+        ld a, (FCB1 + 1)
+        cp 0x20             ; 0x20 = 32 == SPACE
+        jp nz, got_argument ; Not a space, so we can proceed
+
+        ;;
+        ;; No argument, so show the error and exit
+        ;;
+        ld de, usage_message
+        ld c,  BDOS_OUTPUT_STRING
+        call   BDOS_ENTRY_POINT
+        jr     exit_fn
+
+got_argument:
+        LD DE, FCB1
+        LD C, 22
+        CALL BDOS_ENTRY_POINT
+
+exit_fn:
+        ;; exit
+        LD      C,0x00
+        CALL    BDOS_ENTRY_POINT
+
+
+;;;
+;;; The message displayed if no command-line argument was present.
+;;;
+usage_message:
+        db "Usage: CREATE FILENAME.EXT"
+
+        ;; note fall-through here :)
+newline:
+        db 0xa, 0xd, "$"
+
+END
