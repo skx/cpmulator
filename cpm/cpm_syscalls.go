@@ -36,7 +36,10 @@ func SysCallReadChar(cpm *CPM) error {
 	}
 
 	// restore the state of the terminal to avoid mixing RAW/Cooked
-	term.Restore(int(os.Stdin.Fd()), oldState)
+	err = term.Restore(int(os.Stdin.Fd()), oldState)
+	if err != nil {
+		return fmt.Errorf("error restoring terminal state %s", err)
+	}
 
 	// Return the character
 	cpm.CPU.States.AF.Hi = b[0]
