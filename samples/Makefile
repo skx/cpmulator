@@ -2,7 +2,7 @@
 #
 # The files we wish to generate.
 #
-all: cli-args.com user-num.com drive.com
+all: cli-args.com drive.com find.com ret.com user-num.com
 
 
 #

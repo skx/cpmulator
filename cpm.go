@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/koron-go/z80"
@@ -24,6 +25,16 @@ var currentDrive uint8
 // Valid values are 00-15
 var userNumber uint8
 
+// findFirstResults is a sneaky cache of files that match a glob.
+//
+// For finding files CP/M uses "find first" to find the first result
+// then allows the programmer to call "find next", to continue the searching.
+//
+// This means we need to track state, the way we do this is to store the
+// results here, and bump the findOffset each time find-next is called.
+var findFirstResults []string
+var findOffset int
+
 // runCPM loads and executes the given .COM file
 func runCPM(path string, args []string) error {
 
@@ -38,28 +49,50 @@ func runCPM(path string, args []string) error {
 
 	// Convert our array of CLI arguments to a string
 	cli := strings.Join(args, " ")
-	cli = strings.TrimSpace(cli)
+	cli = strings.TrimSpace(strings.ToUpper(cli))
+
+	//
+	// By default any command-line arguments need to be copied
+	// to 0x0080 - as a pascal-prefixed string.
+	//
+	// If there are arguments the default FCBs need to be updated
+	// appropriately too.
+	//
+	// Default to emptying the FCBs and leaving the CLI args empty.
+	//
+	// DMA area / CLI Args
+	m.put(0x0080, 0x00)
+	m.FillRange(0x0081, 31, 0x00)
+
+	// FCB1: Default drive, spaces for filenames.
+	m.put(0x005C, 0x00)
+	m.FillRange(0x005C+1, 11, ' ')
+
+	// FCB2: Default drive, spaces for filenames.
+	m.put(0x006C, 0x00)
+	m.FillRange(0x006C+1, 11, ' ')
+
+	// Now setup FCB1 if we have a first argument
+	if len(args) > 0 {
+		x := FCBFromString(args[0])
+		m.put(0x005C, x.AsBytes()[:]...)
+	}
+
+	// Now setup FCB2 if we have a second argument
+	if len(args) > 1 {
+		x := FCBFromString(args[1])
+		m.put(0x006C, x.AsBytes()[:]...)
+	}
 
 	// Poke in the CLI argument as a Pascal string.
 	// (i.e. length prefixed)
 	if len(cli) > 0 {
-		// Pascal-Prefix
+
+		// Setup the CLI arguments - these are set as a pascal string
+		// (i.e. first byte is the length, then the data follows).
 		m.put(0x0080, uint8(len(cli)))
-		// Character copy
 		for i, c := range cli {
 			m.put(0x0081+uint16(i), uint8(c))
-		}
-	} else {
-		// No parameter was entered
-		m.put(0x0080, 0)
-
-		// The buffer-area will be filled with spaces
-		// as many CP/M programs just look for that instead
-		// of dealing with the count
-		var i uint16 = 0
-		for i < 32 {
-			m.put(0x0081+i, ' ')
-			i++
 		}
 	}
 
@@ -199,6 +232,109 @@ func runCPM(path string, args []string) error {
 			callReturn()
 			continue
 		}
+
+		// 17 (F_SFIRST) - search for first
+		if function == 0x11 {
+
+			// The pointer to the FCB
+			ptr := cpu.States.DE.U16()
+			// Get the bytes which make up the FCB entry.
+			xxx := m.GetRange(ptr, 36)
+
+			// Create a structure with the contents
+			fcb := FCBFromBytes(xxx)
+
+			pattern := ""
+			name := fcb.GetName()
+			ext := fcb.GetType()
+
+			for _, c := range name {
+				if c == '?' {
+					pattern += "*"
+					break
+				}
+				if c == ' ' {
+					continue
+				}
+				pattern += string(c)
+			}
+			if ext != "" && ext != "   " {
+				pattern += "."
+			}
+
+			for _, c := range ext {
+				if c == '?' {
+					pattern += "*"
+					break
+				}
+				if c == ' ' {
+					continue
+				}
+				pattern += string(c)
+			}
+
+			// Run the glob.
+			matches, err := filepath.Glob(pattern)
+			if err != nil {
+				// error in pattern?
+				fmt.Printf("glob error %s\n", err)
+				cpu.States.AF.Hi = 0xFF
+				callReturn()
+				continue
+			}
+
+			// No matches on the glob-search
+			if len(matches) == 0 {
+				// Return 0xFF for failure
+				cpu.States.AF.Hi = 0xFF
+				callReturn()
+				continue
+			}
+
+			// Here we save the results in our cache,
+			// dropping the first
+			findFirstResults = matches[1:]
+			findOffset = 0
+
+			// Create a new FCB and store it in the DMA entry
+			x := FCBFromString(matches[0])
+			data := x.AsBytes()
+			m.put(0x80, data...)
+
+			// Return 0x00 to point to the first entry in the DMA area.
+			cpu.States.AF.Hi = 0x00
+
+			callReturn()
+			continue
+		}
+
+		// 18 (F_SNEXT) - search for next
+		if function == 0x12 {
+			//
+			// Assume we've been called with findFirst before
+			//
+			if (len(findFirstResults) == 0) || findOffset >= len(findFirstResults) {
+				// Return 0xFF to signal an error
+				cpu.States.AF.Hi = 0xFF
+
+				callReturn()
+				continue
+			}
+
+			res := findFirstResults[findOffset]
+			findOffset++
+
+			// Create a new FCB and store it in the DMA entry
+			x := FCBFromString(res)
+			data := x.AsBytes()
+			m.put(0x80, data...)
+
+			// Return 0x00 to point to the first entry in the DMA area.
+			cpu.States.AF.Hi = 0x00
+			callReturn()
+			continue
+		}
+
 		// 25 (DRV_GET)  - Return current drive
 		if function == 0x19 {
 
@@ -207,7 +343,14 @@ func runCPM(path string, args []string) error {
 			callReturn()
 			continue
 		}
+		// 31 (DRV_DPB) - get DPB address
+		if function == 0x1F {
+			cpu.States.HL.Hi = 0xCD
+			cpu.States.HL.Lo = 0xCD
+			callReturn()
+			continue
 
+		}
 		// 32 (F_USERNUM) - get/set user number
 		if function == 0x20 {
 
@@ -227,6 +370,6 @@ func runCPM(path string, args []string) error {
 			continue
 		}
 
-		fmt.Printf("Breakpoint called %04X - Unimplemented BIOS call C:%02X\n", cpu.States.PC, cpu.States.BC.Lo)
+		fmt.Printf("Breakpoint called %04X - Unimplemented BIOS call C:%02X / %d\n", cpu.States.PC, cpu.States.BC.Lo, cpu.States.BC.Lo)
 	}
 }
