@@ -1,5 +1,4 @@
-// FCB is the package which contains helpers for reading/writing
-// and working with the CP/M FCB structure.
+// Package FCB contains helpers for reading, writing, and working with the CP/M FCB structure.
 package fcb
 
 import (

@@ -1,4 +1,4 @@
-// CPM is the main package for our emulator, it uses memory to
+// Package CPM is the main package for our emulator, it uses memory to
 // emulate execution of things at the bios level
 package cpm
 
