@@ -31,7 +31,7 @@ func (f *FCB) GetName() string {
 			t += string(c)
 		}
 	}
-	return t
+	return strings.TrimSpace(t)
 }
 
 // GetType returns the type/extension component of an FCB entry.
@@ -43,7 +43,7 @@ func (f *FCB) GetType() string {
 			t += string(c)
 		}
 	}
-	return t
+	return strings.TrimSpace(t)
 }
 
 // AsBytes returns the entry of the FCB in a format suitable

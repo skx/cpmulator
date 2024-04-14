@@ -199,6 +199,35 @@ func SysCallFindNext(cpm *CPM) error {
 	return nil
 }
 
+// SyscallDeleteFile deletes the filename specified by the FCB in DE.
+func SysCallDeleteFile(cpm *CPM) error {
+
+	// The pointer to the FCB
+	ptr := cpm.CPU.States.DE.U16()
+	// Get the bytes which make up the FCB entry.
+	xxx := cpm.Memory.GetRange(ptr, 36)
+
+	// Create a structure with the contents
+	fcbPtr := fcb.FromBytes(xxx)
+
+	// Get the name
+	name := fcbPtr.GetName()
+	ext := fcbPtr.GetType()
+
+	fileName := name
+	if ext != "" && ext != "   " {
+		fileName += "."
+		fileName += ext
+	}
+
+	// Delete the named file
+	err := os.Remove(fileName)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	return err
+}
+
 // SysCallMakeFile creates the file named in the FCB given in DE
 func SysCallMakeFile(cpm *CPM) error {
 	// The pointer to the FCB
