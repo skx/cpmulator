@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/koron-go/z80"
@@ -22,6 +21,11 @@ var (
 	//
 	// It should be handled and expected by callers.
 	ErrExit = errors.New("EXIT")
+
+	// ErrUnimplemented will be used to handle a CP/M binary calling an unimplemented syscall.
+	//
+	// It should be handled and expected by callers.
+	ErrUnimplemented = errors.New("UNIMPLEMENTED")
 )
 
 // CPMHandlerType contains the signature of a CP/M bios function
@@ -83,7 +87,7 @@ type CPM struct {
 // New returns a new emulation object
 func New(filename string, logger *slog.Logger) *CPM {
 
-	// Create our syscall table
+	// Create and populate our syscall table
 	sys := make(map[uint8]CPMHandler)
 	sys[0] = CPMHandler{
 		Desc:    "P_TERMCPM",
@@ -105,7 +109,32 @@ func New(filename string, logger *slog.Logger) *CPM {
 		Desc:    "C_READSTRING",
 		Handler: SysCallReadString,
 	}
+	sys[14] = CPMHandler{
+		Desc:    "DRV_SET",
+		Handler: SysCallDriveSet,
+	}
+	sys[17] = CPMHandler{
+		Desc:    "F_SFIRST",
+		Handler: SysCallFindFirst,
+	}
+	sys[18] = CPMHandler{
+		Desc:    "F_SNEXT",
+		Handler: SysCallFindNext,
+	}
+	sys[25] = CPMHandler{
+		Desc:    "DRV_GET",
+		Handler: SysCallDriveGet,
+	}
+	sys[31] = CPMHandler{
+		Desc:    "DRV_DPB",
+		Handler: SysCallGetDriveDPB,
+	}
+	sys[32] = CPMHandler{
+		Desc:    "F_USERNUM",
+		Handler: SysCallUserNumber,
+	}
 
+	// Create the memory
 	tmp := &CPM{
 		Filename: filename,
 		Logger:   logger,
@@ -188,17 +217,6 @@ func (cpm *CPM) Execute(args []string) error {
 	cpm.CPU.BreakPoints = map[uint16]struct{}{}
 	cpm.CPU.BreakPoints[0x05] = struct{}{}
 
-	// Helper to return from a CALL instruction
-	//
-	// Pop the return address from the stack and
-	// return execution there.
-	callReturn := func() {
-		// Return from call
-		cpm.CPU.PC = cpm.Memory.GetU16(cpm.CPU.SP)
-		// pop stack back.  Fun
-		cpm.CPU.SP += 2
-	}
-
 	// Run forever :)
 	for {
 
@@ -219,18 +237,18 @@ func (cpm *CPM) Execute(args []string) error {
 		//
 		// That means we have a CP/M BIOS function to emulate, the syscall
 		// identifier is stored in the C-register.  Get it.
-		function := cpm.CPU.States.BC.Lo
+		syscall := cpm.CPU.States.BC.Lo
 
 		//
 		// Is there a syscall entry for this number?
 		//
-		handler, exists := cpm.Syscalls[function]
+		handler, exists := cpm.Syscalls[syscall]
 
 		if exists {
 			cpm.Logger.Info("Calling BIOS emulation",
 				slog.String("name", handler.Desc),
-				slog.Int("syscall", int(function)),
-				slog.String("syscallHex", fmt.Sprintf("0x%02X", function)),
+				slog.Int("syscall", int(syscall)),
+				slog.String("syscallHex", fmt.Sprintf("0x%02X", syscall)),
 			)
 
 			err := handler.Handler(cpm)
@@ -246,158 +264,14 @@ func (cpm *CPM) Execute(args []string) error {
 			// pop stack back.  Fun
 			cpm.CPU.SP += 2
 
-			continue
+		} else {
+
+			// Unknown opcode
+			cpm.Logger.Error("Unimplemented syscall",
+				slog.Int("syscall", int(syscall)),
+				slog.String("syscallHex", fmt.Sprintf("0x%02X", syscall)),
+			)
+			return ErrUnimplemented
 		}
-
-		// 14 (DRV_SET) - Select disc
-		if function == 0x0E {
-			// The drive number passed to this routine is 0 for A:, 1 for B: up to 15 for P:.
-			cpm.currentDrive = (cpm.CPU.States.AF.Hi & 0x0F)
-
-			// Success means we return 0x00 in A
-			cpm.CPU.States.AF.Hi = 0x00
-
-			callReturn()
-			continue
-		}
-
-		// 17 (F_SFIRST) - search for first
-		if function == 0x11 {
-
-			// The pointer to the FCB
-			ptr := cpm.CPU.States.DE.U16()
-			// Get the bytes which make up the FCB entry.
-			xxx := cpm.Memory.GetRange(ptr, 36)
-
-			// Create a structure with the contents
-			fcbPtr := fcb.FromBytes(xxx)
-
-			pattern := ""
-			name := fcbPtr.GetName()
-			ext := fcbPtr.GetType()
-
-			for _, c := range name {
-				if c == '?' {
-					pattern += "*"
-					break
-				}
-				if c == ' ' {
-					continue
-				}
-				pattern += string(c)
-			}
-			if ext != "" && ext != "   " {
-				pattern += "."
-			}
-
-			for _, c := range ext {
-				if c == '?' {
-					pattern += "*"
-					break
-				}
-				if c == ' ' {
-					continue
-				}
-				pattern += string(c)
-			}
-
-			// Run the glob.
-			matches, err := filepath.Glob(pattern)
-			if err != nil {
-				// error in pattern?
-				fmt.Printf("glob error %s\n", err)
-				cpm.CPU.States.AF.Hi = 0xFF
-				callReturn()
-				continue
-			}
-
-			// No matches on the glob-search
-			if len(matches) == 0 {
-				// Return 0xFF for failure
-				cpm.CPU.States.AF.Hi = 0xFF
-				callReturn()
-				continue
-			}
-
-			// Here we save the results in our cache,
-			// dropping the first
-			cpm.findFirstResults = matches[1:]
-			cpm.findOffset = 0
-
-			// Create a new FCB and store it in the DMA entry
-			x := fcb.FromString(matches[0])
-			data := x.AsBytes()
-			cpm.Memory.PutRange(0x80, data...)
-
-			// Return 0x00 to point to the first entry in the DMA area.
-			cpm.CPU.States.AF.Hi = 0x00
-
-			callReturn()
-			continue
-		}
-
-		// 18 (F_SNEXT) - search for next
-		if function == 0x12 {
-			//
-			// Assume we've been called with findFirst before
-			//
-			if (len(cpm.findFirstResults) == 0) || cpm.findOffset >= len(cpm.findFirstResults) {
-				// Return 0xFF to signal an error
-				cpm.CPU.States.AF.Hi = 0xFF
-
-				callReturn()
-				continue
-			}
-
-			res := cpm.findFirstResults[cpm.findOffset]
-			cpm.findOffset++
-
-			// Create a new FCB and store it in the DMA entry
-			x := fcb.FromString(res)
-			data := x.AsBytes()
-			cpm.Memory.PutRange(0x80, data...)
-
-			// Return 0x00 to point to the first entry in the DMA area.
-			cpm.CPU.States.AF.Hi = 0x00
-			callReturn()
-			continue
-		}
-
-		// 25 (DRV_GET)  - Return current drive
-		if function == 0x19 {
-
-			cpm.CPU.States.AF.Hi = cpm.currentDrive
-
-			callReturn()
-			continue
-		}
-		// 31 (DRV_DPB) - get DPB address
-		if function == 0x1F {
-			cpm.CPU.States.HL.Hi = 0xCD
-			cpm.CPU.States.HL.Lo = 0xCD
-			callReturn()
-			continue
-
-		}
-		// 32 (F_USERNUM) - get/set user number
-		if function == 0x20 {
-
-			// We're either setting or getting
-			//
-			// If the value is 0xFF we return it, otherwise we set
-			if cpm.CPU.States.DE.Lo != 0xFF {
-
-				// Set the number - masked, because valid values are 0-15
-				cpm.userNumber = (cpm.CPU.States.DE.Lo & 0x0F)
-			}
-
-			// Return the current number, which might have changed
-			cpm.CPU.States.AF.Hi = cpm.userNumber
-
-			callReturn()
-			continue
-		}
-
-		fmt.Printf("Breakpoint called %04X - Unimplemented BIOS call C:%02X / %d\n", cpm.CPU.States.PC, cpm.CPU.States.BC.Lo, cpm.CPU.States.BC.Lo)
 	}
 }
