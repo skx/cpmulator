@@ -167,7 +167,7 @@ func SysCallFileOpen(cpm *CPM) error {
 	// Get file size, in bytes
 	fi, err := cpm.file.Stat()
 	if err != nil {
-		return fmt.Errorf("Failed to get file size of %s: %s", fileName, err)
+		return fmt.Errorf("failed to get file size of %s: %s", fileName, err)
 	}
 
 	// Get file size, in bytes
@@ -311,7 +311,7 @@ func SysCallFindNext(cpm *CPM) error {
 	return nil
 }
 
-// SyscallDeleteFile deletes the filename specified by the FCB in DE.
+// SysCallDeleteFile deletes the filename specified by the FCB in DE.
 func SysCallDeleteFile(cpm *CPM) error {
 
 	// The pointer to the FCB
@@ -449,10 +449,7 @@ func SysCallReadRand(cpm *CPM) error {
 	}
 
 	// Get the record to read
-	var record int
-
-	// Damn
-	record = int(int(fcbPtr.R2)<<16) | int(int(fcbPtr.R1)<<8) | int(fcbPtr.R0)
+	record := int(int(fcbPtr.R2)<<16) | int(int(fcbPtr.R1)<<8) | int(fcbPtr.R0)
 
 	if record > 65535 {
 		cpm.CPU.States.AF.Hi = 0x06
@@ -478,10 +475,5 @@ func SysCallReadRand(cpm *CPM) error {
 	cpm.Memory.PutRange(ptr, fcbPtr.AsBytes()...)
 
 	cpm.CPU.States.AF.Hi = uint8(res)
-	return nil
-}
-
-// SysCallUnimplemented is a placeholder for functions we don't implement
-func SysCallUnimplemented(cpm *CPM) error {
 	return nil
 }
