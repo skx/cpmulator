@@ -40,49 +40,10 @@ I don't handle different drive-letters, or user-areas.  If you were to run the f
 
 
 
-## Debugging
 
-When the emulator is asked to execute an unimplemented BIOS call it will abort with a fatal error, for example:
+# Installation
 
-```
-$ ./cpmulator FOO.COM
-{"time":"2024-04-14T15:39:34.560609302+03:00",
-  "level":"ERROR",
-  "msg":"Unimplemented syscall",
-  "syscall":15,
-  "syscallHex":"0x0F"}
-Error running FOO.COM: UNIMPLEMENTED
-```
-
-You can see a lot of the functions it did successfully emulate and handle by setting the environmental variable DEBUG to a non-empty value, this will generate a log to STDERR where you can save it:
-
-```
-$ DEBUG=1 ./cpmulator ZORK1.COM  2>log.log
-..
-$ cat log.log
-{"time":"2024-04-14T15:41:20.62879931+03:00",
- "level":"INFO",
- "msg":"Calling BIOS emulation",
- "name":"DRV_GET",
- "syscall":25,
- "syscallHex":"0x19"
-}
-{"time":"2024-04-14T15:41:20.628908173+03:00",
- "level":"INFO",
- "msg":"Calling BIOS emulation",
- "name":"DRV_SET",
- "syscall":14,
- "syscallHex":"0x0E"
-}
-
-```
-
-
-
-
-# Usage
-
-This emulator is written using golong, so if you have a working golang deployment you can install in the standard way:
+This emulator is written using golang, so if you have a working golang toolchain you can install in the standard way:
 
 ```
 go install github.com/skx/cpmulator@latest
@@ -101,7 +62,7 @@ If neither of these options sufficed you may download the latest binary from [ou
 
 # Usage
 
-Usage only requires that you have a CP/M binary (Z80) which you wish to execute:
+To run the emulator you only need to specify the path to a CP/M binary (Z80) which you wish to execute, along with any optional arguments (arguments to the binary you're launching, not the emulator itself):
 
 ```
 $ cpmulator /path/to/binary [optional-args]
@@ -132,6 +93,45 @@ There is a small mailbox here.
 
 
 
+## Debugging Failures
+
+When the emulator is asked to execute an unimplemented BIOS call it will abort with a fatal error, for example:
+
+```
+$ ./cpmulator FOO.COM
+{"time":"2024-04-14T15:39:34.560609302+03:00",
+  "level":"ERROR",
+  "msg":"Unimplemented syscall",
+  "syscall":33,
+  "syscallHex":"0x21"}
+Error running FOO.COM: UNIMPLEMENTED
+```
+
+You can see a lot of the functions it did successfully emulate and handle by setting the environmental variable DEBUG to a non-empty value, this will generate a log to STDERR where you can save it:
+
+```
+$ DEBUG=1 ./cpmulator ZORK1.COM  2>log.log
+..
+$ cat log.log
+{"time":"2024-04-14T15:41:20.62879931+03:00",
+ "level":"INFO",
+ "msg":"Calling BIOS emulation",
+ "name":"DRV_GET",
+ "syscall":25,
+ "syscallHex":"0x19"
+}
+{"time":"2024-04-14T15:41:20.628908173+03:00",
+ "level":"INFO",
+ "msg":"Calling BIOS emulation",
+ "name":"DRV_SET",
+ "syscall":14,
+ "syscallHex":"0x0E"
+}
+
+```
+
+
+
 ## Sample Programs
 
 You'll see some Z80 assembly programs beneath [samples](samples/) which are used to check my understanding.  If you have the `pasmo` compiler enabled you can build them all by running "make".
@@ -142,7 +142,7 @@ In case you don't I've added the compiled versions.
 
 ## Bugs?
 
-Let me know - if your program is "real" then expect failure, life is hard.
+Let me know by filing an issue.  If your program is "real" then it is highly likely it will try to invoke an unimplemented BIOS function.
 
 
 Steve
