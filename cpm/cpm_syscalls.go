@@ -114,6 +114,20 @@ func SysCallReadString(cpm *CPM) error {
 	return nil
 }
 
+// SysCallDriveAllReset resets the drives
+func SysCallDriveAllReset(cpm *CPM) error {
+	if cpm.fileIsOpen {
+		cpm.fileIsOpen = false
+		cpm.file.Close()
+	}
+
+	cpm.currentDrive = 1
+	cpm.userNumber = 0
+
+	cpm.CPU.States.AF.Hi = 0x00
+	return nil
+}
+
 // SysCallDriveSet updates the current drive number
 func SysCallDriveSet(cpm *CPM) error {
 	// The drive number passed to this routine is 0 for A:, 1 for B: up to 15 for P:.

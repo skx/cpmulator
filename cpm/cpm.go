@@ -121,6 +121,10 @@ func New(filename string, logger *slog.Logger) *CPM {
 		Desc:    "C_READSTRING",
 		Handler: SysCallReadString,
 	}
+	sys[13] = CPMHandler{
+		Desc:    "DRV_ALLRESET",
+		Handler: SysCallDriveAllReset,
+	}
 	sys[14] = CPMHandler{
 		Desc:    "DRV_SET",
 		Handler: SysCallDriveSet,
