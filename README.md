@@ -88,19 +88,32 @@ $ cat log.log
 
 # Usage
 
-Build and install in the standard way:
-
-```
-go install .
-```
-
-Or:
+This emulator is written using golong, so if you have a working golang deployment you can install in the standard way:
 
 ```
 go install github.com/skx/cpmulator@latest
 ```
 
-If you wish to play ZORK, or a similar game you'll want to have the two files:
+If you were to clone this repository you could build and install by running:
+
+```
+go install .
+```
+
+If neither of these options sufficed you may download the latest binary from [our release page](https://github.com/skx/cpmulator/releases).
+
+
+
+
+# Usage
+
+Usage only requires that you have a CP/M binary (Z80) which you wish to execute:
+
+```
+$ cpmulator /path/to/binary [optional-args]
+```
+
+Note that the ZORK games are distributed as two files; an executable and a data-file.  For example if you wish to play ZORK, or a similar game you'll want to have the two files in the same directory:
 
 * ZORK1.COM
   * The filename of this doesn't matter.
