@@ -6,6 +6,11 @@ BASE="cpmulator"
 # I don't even ..
 go env -w GOFLAGS="-buildvcs=false"
 
+# Disable fatal error on workers
+if [ -d /github/workspace ] ; then
+    git config --global --add safe.directory /github/workspace
+fi
+
 #
 # We build on only a single platform/arch.
 #
