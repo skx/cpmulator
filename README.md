@@ -2,7 +2,7 @@
 
 A couple of years ago I wrote [a text-based adventure game](https://github.com/skx/lighthouse-of-doom/) to amuse my child, in Z80 assembly for CP/M.  Later my game was ported to the ZX Spectrum.   As only a handful of CP/M BIOS functions were used I reasoned it should be possible to emulate those BIOS calls and combine them with a Z80 emulator to allow playing my game on a modern computer.
 
-This repository is the result: A minimal cross-platform CP/M emulator for CP/M that supports _just enough_ functionality to run my game, and the Z-machine games from Infocom (i.e. ZORK 1, 2, 3, and the Hitchhiker's guide to the galaxy).
+This repository is the result: A minimal cross-platform CP/M emulator that supports _just enough_ functionality to run my game, and the Z-machine games from Infocom (i.e. ZORK 1, 2, 3, and the Hitchhiker's guide to the galaxy).
 
 
 
