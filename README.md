@@ -1,35 +1,29 @@
 # cpmulator - A CP/M emulator written in golang
 
-A couple of years ago I wrote [a text-based adventure game](https://github.com/skx/lighthouse-of-doom/) in Z80 assembly for CP/M, to amuse my child.  As only a handful of CP/M BIOS functions were used I reasoned it should be possible to emulate those BIOS calls alongside a basic Z80 emulator, and play my game on a modern computer.
+A couple of years ago I wrote [a text-based adventure game](https://github.com/skx/lighthouse-of-doom/) to amuse my child, in Z80 assembly for CP/M.  Later my game was ported to the ZX Spectrum.   As only a handful of CP/M BIOS functions were used I reasoned it should be possible to emulate those BIOS calls and combine them with a Z80 emulator to allow playing my game on a modern computer.
 
-This repository is the result, a minimal/portable emulator for CP/M that supports _just enough_ CP/M-functionality to run my game, as well as the ZORK games from Infocom!
-
-* **NOTE**: My game was later ported to the ZX Spectrum.
+This repository is the result: A minimal cross-platform CP/M emulator for CP/M that supports _just enough_ functionality to run my game, and the Z-machine games from Infocom (i.e. ZORK 1, 2, 3, and the Hitchhiker's guide to the galaxy).
 
 
 
 
 # Credits
 
-90% of the functionality of this repository comes from the Z80 emulator library I'm using:
-
-* https://github.com/koron-go/z80
+90% of the functionality of this repository comes from the [excellent Z80 emulator library](https://github.com/koron-go/z80) written by @koron-go.
 
 
 
 
 # Limitations
 
-This CP/M emulator is extremely basic, I initially implemented just those primitives required to play _my_ game.
+This CP/M emulator is pretty basic, I initially implemented just those primitives required to play my game, and later I added onlye enough of the missing BIOS functions that were required to run the Z-machine from Infocom:
 
-Later I added more BIOS functions such that it is now possible to run the Z-machine from Infocom:
+* This means you can play Zork 1!
+* This means you can play Zork 2!
+* This means you can play Zork 3!
+* This means you can play The Hitchhikers guide to the galaxy!
 
-* This means you can play Zork 1
-* This means you can play Zork 2
-* This means you can play Zork 3
-* This means you can play The Hitchhikers guide to the galacy
-
-**NOTE**: At the point I can successfully run Zork I will slow down the updates to this repository, but pull-requests to add functionality will always be welcome!
+**NOTE**: Now I've reached the point where I can successfully run Zork updates will slow down in this repository, but pull-requests to add functionality will always be welcome!
 
 
 
@@ -113,12 +107,13 @@ Usage only requires that you have a CP/M binary (Z80) which you wish to execute:
 $ cpmulator /path/to/binary [optional-args]
 ```
 
-Note that the ZORK games are distributed as two files; an executable and a data-file.  For example if you wish to play ZORK, or a similar game you'll want to have the two files in the same directory:
+Note that the Infocom games are distributed as two files; an executable and a data-file.  For example if you wish to play ZORK1 you'll need to have these two files, in the same directory:
 
 * ZORK1.COM
   * The filename of this doesn't matter.
 * ZORK1.DAT
   * This **must** be named ZORK1.DAT, in upper-case, and be in the current directory.
+  * Because ZORK1.COM will try to load it by upper-cased name.
 
 ```
 $ cpmulator ZORK1.COM
