@@ -21,8 +21,8 @@ type FCB struct {
 	S2 uint8
 	RC uint8
 	Al [16]uint8
-	Cr uint8
-	R0 uint8
+	Cr uint8 // FCB_CURRENT_RECORD_OFFSET
+	R0 uint8 // FCB_RANDOM_RECORD_OFFSET
 	R1 uint8
 	R2 uint8
 }

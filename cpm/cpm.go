@@ -64,6 +64,12 @@ type CPM struct {
 	// Valid values are 00-15
 	userNumber uint8
 
+	// fileIsOpen records whether we have an open file.
+	fileIsOpen bool
+
+	// file has the handle to the open file, if fileIsOpen is true.
+	file *os.File
+
 	// findFirstResults is a sneaky cache of files that match a glob.
 	//
 	// For finding files CP/M uses "find first" to find the first result
@@ -103,6 +109,10 @@ func New(filename string, logger *slog.Logger) *CPM {
 		Desc:    "C_WRITE",
 		Handler: SysCallWriteChar,
 	}
+	sys[6] = CPMHandler{
+		Desc:    "C_RAWIO",
+		Handler: SysCallRawIO,
+	}
 	sys[9] = CPMHandler{
 		Desc:    "C_WRITESTRING",
 		Handler: SysCallWriteString,
@@ -114,6 +124,14 @@ func New(filename string, logger *slog.Logger) *CPM {
 	sys[14] = CPMHandler{
 		Desc:    "DRV_SET",
 		Handler: SysCallDriveSet,
+	}
+	sys[15] = CPMHandler{
+		Desc:    "F_OPEN",
+		Handler: SysCallFileOpen,
+	}
+	sys[16] = CPMHandler{
+		Desc:    "F_CLOSE",
+		Handler: SysCallFileClose,
 	}
 	sys[17] = CPMHandler{
 		Desc:    "F_SFIRST",
@@ -142,6 +160,10 @@ func New(filename string, logger *slog.Logger) *CPM {
 	sys[32] = CPMHandler{
 		Desc:    "F_USERNUM",
 		Handler: SysCallUserNumber,
+	}
+	sys[33] = CPMHandler{
+		Desc:    "F_READRAND",
+		Handler: SysCallReadRand,
 	}
 
 	// Create the object
