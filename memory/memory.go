@@ -1,4 +1,4 @@
-// Memory is a package that provides the 64k of RAM
+// Package memory is a package that provides the 64k of RAM
 // within which the emulator executes its programs.
 package memory
 

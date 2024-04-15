@@ -7,6 +7,7 @@ package cpm
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,6 +15,17 @@ import (
 	"github.com/skx/cpmulator/fcb"
 	"golang.org/x/term"
 )
+
+// blkSize is the size of block-based I/O operations
+const blkSize = 128
+
+// maxRC is the maximum read count
+const maxRC = 128
+
+// dma holds the default DMA address
+const dma = 0x80
+
+const MaxS2 = 15
 
 // SysCallExit implements the Exit syscall
 func SysCallExit(cpm *CPM) error {
@@ -50,6 +62,16 @@ func SysCallReadChar(cpm *CPM) error {
 // SysCallWriteChar writes the single character in the A register to STDOUT.
 func SysCallWriteChar(cpm *CPM) error {
 	fmt.Printf("%c", (cpm.CPU.States.DE.Lo))
+	return nil
+}
+
+func SysCallRawIO(cpm *CPM) error {
+	if cpm.CPU.States.DE.Lo != 0xff {
+		fmt.Printf("%c", cpm.CPU.States.DE.Lo)
+	} else {
+		return SysCallReadChar(cpm)
+	}
+
 	return nil
 }
 
@@ -103,12 +125,102 @@ func SysCallDriveSet(cpm *CPM) error {
 	return nil
 }
 
+// SysCallFileOpen opens the filename that matches the pattern on the FCB supplied in DE
+func SysCallFileOpen(cpm *CPM) error {
+
+	// The pointer to the FCB
+	ptr := cpm.CPU.States.DE.U16()
+	// Get the bytes which make up the FCB entry.
+	xxx := cpm.Memory.GetRange(ptr, 36)
+
+	// Create a structure with the contents
+	fcbPtr := fcb.FromBytes(xxx)
+
+	// Get the parts of the name
+	name := fcbPtr.GetName()
+	ext := fcbPtr.GetType()
+
+	// Get the actual name
+	fileName := name
+	if ext != "" && ext != "   " {
+		fileName += "."
+		fileName += ext
+	}
+
+	// Now we open..
+	var err error
+	cpm.file, err = os.OpenFile(fileName, os.O_RDWR, 0644)
+	if err != nil {
+		return err
+	}
+
+	// OK so we've opened a file, and we've cached the
+	// handle in our CPM struct.  Record it
+	cpm.fileIsOpen = true
+
+	// No error, so we can proceed with the rest of the
+	// steps.
+	fcbPtr.S1 = 0x00
+	fcbPtr.S2 |= 0x80 // not modified
+	fcbPtr.RC = 0x00
+
+	// Get file size, in bytes
+	fi, err := cpm.file.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to get file size of %s: %s", fileName, err)
+	}
+
+	// Get file size, in bytes
+	fileSize := fi.Size()
+
+	// Get file size, in blocks
+	fLen := uint8(fileSize / blkSize)
+
+	// Set record-count
+	if fLen > maxRC {
+		fcbPtr.RC = maxRC
+	} else {
+		fcbPtr.RC = fLen
+	}
+
+	// Update the FCB in memory.
+	cpm.Memory.PutRange(ptr, fcbPtr.AsBytes()...)
+
+	// Return success
+	cpm.CPU.States.AF.Hi = 0x00
+	cpm.CPU.States.BC.Hi = 0x00
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = 0x00
+	return nil
+}
+
+// SysCallFileClose closes the filename that matches the pattern on the FCB supplied in DE
+func SysCallFileClose(cpm *CPM) error {
+
+	// Close the handle, if we have one
+	if cpm.fileIsOpen {
+		cpm.fileIsOpen = false
+		cpm.file.Close()
+	}
+
+	// Record success
+	cpm.CPU.States.AF.Hi = 0x00
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = 0x00
+	cpm.CPU.States.BC.Hi = 0x00
+	return nil
+}
+
 // SysCallFindFirst finds the first filename, on disk, that matches the glob in the FCB supplied in DE.
 func SysCallFindFirst(cpm *CPM) error {
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
 	// Get the bytes which make up the FCB entry.
 	xxx := cpm.Memory.GetRange(ptr, 36)
+
+	// Previous results are now invalidated
+	cpm.findFirstResults = []string{}
+	cpm.findOffset = 0
 
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
@@ -166,7 +278,7 @@ func SysCallFindFirst(cpm *CPM) error {
 	// Create a new FCB and store it in the DMA entry
 	x := fcb.FromString(matches[0])
 	data := x.AsBytes()
-	cpm.Memory.PutRange(0x80, data...)
+	cpm.Memory.PutRange(dma, data...)
 
 	// Return 0x00 to point to the first entry in the DMA area.
 	cpm.CPU.States.AF.Hi = 0x00
@@ -199,7 +311,7 @@ func SysCallFindNext(cpm *CPM) error {
 	return nil
 }
 
-// SyscallDeleteFile deletes the filename specified by the FCB in DE.
+// SysCallDeleteFile deletes the filename specified by the FCB in DE.
 func SysCallDeleteFile(cpm *CPM) error {
 
 	// The pointer to the FCB
@@ -268,6 +380,7 @@ func SysCallDriveGet(cpm *CPM) error {
 	return nil
 }
 
+// SysCallGetDriveDPB returns the address of the DPB, which is faked.
 func SysCallGetDriveDPB(cpm *CPM) error {
 	cpm.CPU.States.HL.Hi = 0xCD
 	cpm.CPU.States.HL.Lo = 0xCD
@@ -290,7 +403,77 @@ func SysCallUserNumber(cpm *CPM) error {
 	return nil
 }
 
-// SysCallUnimplemented is a placeholder for functions we don't implement
-func SysCallUnimplemented(cpm *CPM) error {
+// SysCallReadRand reads a random block from the FCB pointed to by DE into the DMA area.
+func SysCallReadRand(cpm *CPM) error {
+	// Temporary area to read into
+	data := make([]byte, blkSize)
+
+	// sysRead reads from the given offset
+	//
+	// Return:
+	//  0 : read something successfully
+	//  1 : read nothing - error really
+	//
+	sysRead := func(offset int64) int {
+		_, err := cpm.file.Seek(offset, io.SeekStart)
+		if err != nil {
+			fmt.Printf("cannot seek to position %d: %s", offset, err)
+			return 1
+		}
+
+		for i := range data {
+			data[i] = 0x1a
+		}
+
+		_, err = cpm.file.Read(data)
+		if err != nil {
+			fmt.Printf("failed to read offset %d: %s", offset, err)
+			return 1
+		}
+
+		cpm.Memory.PutRange(0x80, data[:]...)
+		return 0
+	}
+
+	// The pointer to the FCB
+	ptr := cpm.CPU.States.DE.U16()
+
+	// Get the bytes which make up the FCB entry.
+	xxx := cpm.Memory.GetRange(ptr, 36)
+
+	// Create a structure with the contents
+	fcbPtr := fcb.FromBytes(xxx)
+
+	if !cpm.fileIsOpen {
+		return fmt.Errorf("ReadRand called against a non-open file")
+	}
+
+	// Get the record to read
+	record := int(int(fcbPtr.R2)<<16) | int(int(fcbPtr.R1)<<8) | int(fcbPtr.R0)
+
+	if record > 65535 {
+		cpm.CPU.States.AF.Hi = 0x06
+		//06	seek Past Physical end of disk
+		return nil
+	}
+
+	fpos := int64(record) * blkSize
+
+	res := sysRead(fpos)
+
+	// Update the FCB state
+
+	// fcbPtr.Cr = record & 0x7F
+	// fcbPtr.Ex = (record >> 7) & 0x1f
+	// 	if fcbPtr.S2&0x80 == 1 {
+	// 		fcbPtr.S2 = ((record >> 12) & MaxS2) | 0x80
+	// 	} else {
+	// 		fcbPtr.S2 = (record >> 12) & MaxS2
+	//	}
+
+	// Update the FCB in memory
+	cpm.Memory.PutRange(ptr, fcbPtr.AsBytes()...)
+
+	cpm.CPU.States.AF.Hi = uint8(res)
 	return nil
 }
