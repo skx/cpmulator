@@ -179,11 +179,8 @@ func SysCallFileOpen(cpm *CPM) error {
 	// handle in our CPM struct.  Record it
 	cpm.fileIsOpen = true
 
-	// No error, so we can proceed with the rest of the
-	// steps.
-	fcbPtr.S1 = 0x00
-	fcbPtr.S2 |= 0x80 // not modified
-	fcbPtr.RC = 0x00
+	// Reset the values
+	fcbPtr.Al[0] = 'S'
 
 	// Get file size, in bytes
 	fi, err := cpm.file.Stat()
@@ -217,6 +214,19 @@ func SysCallFileOpen(cpm *CPM) error {
 
 // SysCallFileClose closes the filename that matches the pattern on the FCB supplied in DE
 func SysCallFileClose(cpm *CPM) error {
+
+	// The pointer to the FCB
+	ptr := cpm.CPU.States.DE.U16()
+
+	// Get the bytes which make up the FCB entry.
+	xxx := cpm.Memory.GetRange(ptr, 36)
+
+	// Create a structure with the contents
+	fcbPtr := fcb.FromBytes(xxx)
+
+	if fcbPtr.Al[0] != 'S' {
+		return fmt.Errorf("S1 has not maintained state - in FileClose")
+	}
 
 	// Close the handle, if we have one
 	if cpm.fileIsOpen {
@@ -379,6 +389,10 @@ func SysCallRead(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
+	if fcbPtr.Al[0] != 'S' {
+		return fmt.Errorf("S1 has not maintained state - in SysCallRead")
+	}
+
 	// Get the next read position
 	offset := fcbPtr.GetSequentialOffset()
 
@@ -397,8 +411,8 @@ func SysCallRead(cpm *CPM) error {
 
 	// Read from the file, now we're in the right place
 	_, err = cpm.file.Read(data)
-	if err != nil {
-		return fmt.Errorf("error writing to file %s", err)
+	if err != nil && err != io.EOF {
+		return fmt.Errorf("error reading file %s", err)
 	}
 
 	// Copy the data to the DMA area
@@ -433,6 +447,10 @@ func SysCallWrite(cpm *CPM) error {
 
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
+
+	if fcbPtr.Al[0] != 'S' {
+		return fmt.Errorf("S1 has not maintained state - in SysCallWrite")
+	}
 
 	// Get the next write position
 	offset := fcbPtr.GetSequentialOffset()
@@ -565,6 +583,10 @@ func SysCallReadRand(cpm *CPM) error {
 
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
+
+	if fcbPtr.Al[0] != 'S' {
+		return fmt.Errorf("S1 has not maintained state - in SysCallReadRand")
+	}
 
 	if !cpm.fileIsOpen {
 		return fmt.Errorf("ReadRand called against a non-open file")
