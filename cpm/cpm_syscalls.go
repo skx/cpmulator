@@ -163,7 +163,7 @@ func SysCallFileOpen(cpm *CPM) error {
 
 	// Now we open..
 	var err error
-	cpm.file, err = os.OpenFile(fileName, os.O_RDWR, 0644)
+	cpm.file, err = os.OpenFile(fileName, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		return err
 	}
@@ -375,7 +375,7 @@ func SysCallMakeFile(cpm *CPM) error {
 	}
 
 	// Create the file
-	file, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE, 0644)
+	file, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		return err
 	}
