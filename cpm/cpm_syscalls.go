@@ -25,8 +25,6 @@ const maxRC = 128
 // dma holds the default DMA address
 const dma = 0x80
 
-const MaxS2 = 15
-
 // SysCallExit implements the Exit syscall
 func SysCallExit(cpm *CPM) error {
 	return ErrExit
@@ -372,12 +370,8 @@ func SysCallRead(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
-	// offset
-	BlkS2 := 4096
-	BlkEx := 128
-	offset := int(int(fcbPtr.S2)&MaxS2)*BlkS2*blkSize +
-		int(fcbPtr.Ex)*BlkEx*blkSize +
-		int(fcbPtr.Cr)*blkSize
+	// Get the next read position
+	offset := fcbPtr.GetSequentialOffset()
 
 	_, err := cpm.file.Seek(int64(offset), io.SeekStart)
 	if err != nil {
@@ -401,20 +395,8 @@ func SysCallRead(cpm *CPM) error {
 	// Copy the data to the DMA area
 	cpm.Memory.PutRange(dma, data[:]...)
 
-	MaxCR := 128
-	MaxEX := 31
-
-	fcbPtr.S2 &= 0x7F // reset unmodified flag
-	fcbPtr.Cr++
-	if int(fcbPtr.Cr) > MaxCR {
-		fcbPtr.Cr = 1
-		fcbPtr.Ex++
-	}
-	if int(fcbPtr.Ex) > MaxEX {
-		fcbPtr.Ex = 0
-		fcbPtr.S2++
-	}
-	fcbPtr.RC++
+	// Update the next read position
+	fcbPtr.IncreaseSequentialOffset()
 
 	// Update the FCB in memory
 	cpm.Memory.PutRange(ptr, fcbPtr.AsBytes()...)
@@ -443,16 +425,13 @@ func SysCallWrite(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
+	// Get the next write position
+	offset := fcbPtr.GetSequentialOffset()
+
 	// Get the data range from the DMA area
 	data := cpm.Memory.GetRange(dma, 128)
 
-	// offset
-	BlkS2 := 4096
-	BlkEx := 128
-	offset := int(int(fcbPtr.S2)&MaxS2)*BlkS2*blkSize +
-		int(fcbPtr.Ex)*BlkEx*blkSize +
-		int(fcbPtr.Cr)*blkSize
-
+	// Move to the correct place
 	_, err := cpm.file.Seek(int64(offset), io.SeekStart)
 	if err != nil {
 		return fmt.Errorf("cannot seek to position %d: %s", offset, err)
@@ -464,20 +443,8 @@ func SysCallWrite(cpm *CPM) error {
 		return fmt.Errorf("error writing to file %s", err)
 	}
 
-	MaxCR := 128
-	MaxEX := 31
-
-	fcbPtr.S2 &= 0x7F // reset unmodified flag
-	fcbPtr.Cr++
-	if int(fcbPtr.Cr) > MaxCR {
-		fcbPtr.Cr = 1
-		fcbPtr.Ex++
-	}
-	if int(fcbPtr.Ex) > MaxEX {
-		fcbPtr.Ex = 0
-		fcbPtr.S2++
-	}
-	fcbPtr.RC++
+	// Update the next write position
+	fcbPtr.IncreaseSequentialOffset()
 
 	// Update the FCB in memory
 	cpm.Memory.PutRange(ptr, fcbPtr.AsBytes()...)

@@ -73,6 +73,46 @@ func (f *FCB) AsBytes() []uint8 {
 	return r
 }
 
+// GetSequentialOffset returns the offset the FCB contains for
+// the sequential read/write calls - as used by the BDOS functions
+// F_READ and F_WRITE.
+//
+// IncreaseSequentialOffset updates the value
+func (f *FCB) GetSequentialOffset() int64 {
+
+	// Helpers
+	BlkS2 := 4096
+	BlkEx := 128
+	MaxS2 := 15
+	blkSize := 128
+
+	offset := int64((int(f.S2)&MaxS2)*BlkS2*blkSize +
+		int(f.Ex)*BlkEx*blkSize +
+		int(f.Cr)*blkSize)
+	return offset
+}
+
+// IncreaseSequentialOffset updates the read/write offset which
+// would be used for the sequential read functions.
+func (f *FCB) IncreaseSequentialOffset() {
+
+	MaxCR := 128
+	MaxEX := 31
+
+	f.S2 &= 0x7F // reset unmodified flag
+	f.Cr++
+	if int(f.Cr) > MaxCR {
+		f.Cr = 1
+		f.Ex++
+	}
+	if int(f.Ex) > MaxEX {
+		f.Ex = 0
+		f.S2++
+	}
+	f.RC++
+
+}
+
 // FromString returns an FCB entry from the given string.
 //
 // This is currently just used for processing command-line arguments.
