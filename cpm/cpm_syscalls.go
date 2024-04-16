@@ -354,6 +354,69 @@ func SysCallDeleteFile(cpm *CPM) error {
 	return err
 }
 
+// SysCallWrite writes a record to the file named in the FCB given in DE
+func SysCallWrite(cpm *CPM) error {
+
+	// Don't have a file open?  That's a bug
+	if !cpm.fileIsOpen {
+		cpm.Logger.Error("attempting to write to a file that isn't open")
+		cpm.CPU.States.AF.Hi = 0xff
+		return nil
+	}
+
+	// The pointer to the FCB
+	ptr := cpm.CPU.States.DE.U16()
+	// Get the bytes which make up the FCB entry.
+	xxx := cpm.Memory.GetRange(ptr, 36)
+
+	// Create a structure with the contents
+	fcbPtr := fcb.FromBytes(xxx)
+
+	// Get the data range from the DMA area
+	data := cpm.Memory.GetRange(dma, 128)
+
+	// offset
+	BlkS2 := 4096
+	BlkEx := 128
+	offset := int(int(fcbPtr.S2)&MaxS2)*BlkS2*blkSize +
+		int(fcbPtr.Ex)*BlkEx*blkSize +
+		int(fcbPtr.Cr)*blkSize
+
+	_, err := cpm.file.Seek(int64(offset), io.SeekStart)
+	if err != nil {
+		return fmt.Errorf("cannot seek to position %d: %s", offset, err)
+	}
+
+	// Write to the open file
+	_, err = cpm.file.Write(data)
+	if err != nil {
+		return fmt.Errorf("error writing to file %s", err)
+	}
+
+	MaxCR := 128
+	MaxEX := 31
+
+	fcbPtr.S2 &= 0x7F // reset unmodified flag
+	fcbPtr.Cr++
+	if int(fcbPtr.Cr) > MaxCR {
+		fcbPtr.Cr = 1
+		fcbPtr.Ex++
+	}
+	if int(fcbPtr.Ex) > MaxEX {
+		fcbPtr.Ex = 0
+		fcbPtr.S2++
+	}
+	fcbPtr.RC++
+
+	// Update the FCB in memory
+	cpm.Memory.PutRange(ptr, fcbPtr.AsBytes()...)
+
+	// All done
+	cpm.CPU.States.AF.Hi = 0x00
+	return nil
+
+}
+
 // SysCallMakeFile creates the file named in the FCB given in DE
 func SysCallMakeFile(cpm *CPM) error {
 	// The pointer to the FCB
@@ -375,15 +438,13 @@ func SysCallMakeFile(cpm *CPM) error {
 	}
 
 	// Create the file
-	file, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		return err
-	}
-	err = file.Close()
+	var err error
+	cpm.file, err = os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		return err
 	}
 
+	cpm.fileIsOpen = true
 	return nil
 }
 
@@ -475,19 +536,8 @@ func SysCallReadRand(cpm *CPM) error {
 
 	res := sysRead(fpos)
 
-	// Update the FCB state
-
-	// fcbPtr.Cr = record & 0x7F
-	// fcbPtr.Ex = (record >> 7) & 0x1f
-	// 	if fcbPtr.S2&0x80 == 1 {
-	// 		fcbPtr.S2 = ((record >> 12) & MaxS2) | 0x80
-	// 	} else {
-	// 		fcbPtr.S2 = (record >> 12) & MaxS2
-	//	}
-
 	// Update the FCB in memory
 	cpm.Memory.PutRange(ptr, fcbPtr.AsBytes()...)
-
 	cpm.CPU.States.AF.Hi = uint8(res)
 	return nil
 }
