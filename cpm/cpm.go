@@ -173,6 +173,10 @@ func New(filename string, logger *slog.Logger) *CPM {
 		Desc:    "DRV_GET",
 		Handler: SysCallDriveGet,
 	}
+	sys[26] = CPMHandler{
+		Desc:    "F_DMAOFF",
+		Handler: SysCallSetDMA,
+	}
 	sys[31] = CPMHandler{
 		Desc:    "DRV_DPB",
 		Handler: SysCallGetDriveDPB,
