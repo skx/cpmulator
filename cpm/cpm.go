@@ -149,6 +149,10 @@ func New(filename string, logger *slog.Logger) *CPM {
 		Desc:    "F_DELETE",
 		Handler: SysCallDeleteFile,
 	}
+	sys[20] = CPMHandler{
+		Desc:    "F_READ",
+		Handler: SysCallRead,
+	}
 	sys[21] = CPMHandler{
 		Desc:    "F_WRITE",
 		Handler: SysCallWrite,
