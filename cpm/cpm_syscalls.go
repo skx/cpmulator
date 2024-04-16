@@ -22,9 +22,6 @@ const blkSize = 128
 // maxRC is the maximum read count
 const maxRC = 128
 
-// dma holds the default DMA address
-const dma = 0x80
-
 // SysCallExit implements the Exit syscall
 func SysCallExit(cpm *CPM) error {
 	return ErrExit
@@ -108,6 +105,18 @@ func SysCallReadString(cpm *CPM) error {
 		cpm.CPU.Memory.Set(uint16(addr+2+uint16(i)), text[i])
 		i++
 	}
+
+	return nil
+}
+
+// SysCallSetDMA updates the address of the DMA area, which is used for block I/O.
+func SysCallSetDMA(cpm *CPM) error {
+
+	// Get the address from BC
+	addr := cpm.CPU.States.BC.U16()
+
+	// Update the DMA value.
+	cpm.dma = addr
 
 	return nil
 }
@@ -290,7 +299,7 @@ func SysCallFindFirst(cpm *CPM) error {
 	// Create a new FCB and store it in the DMA entry
 	x := fcb.FromString(matches[0])
 	data := x.AsBytes()
-	cpm.Memory.PutRange(dma, data...)
+	cpm.Memory.PutRange(cpm.dma, data...)
 
 	// Return 0x00 to point to the first entry in the DMA area.
 	cpm.CPU.States.AF.Hi = 0x00
@@ -393,7 +402,7 @@ func SysCallRead(cpm *CPM) error {
 	}
 
 	// Copy the data to the DMA area
-	cpm.Memory.PutRange(dma, data[:]...)
+	cpm.Memory.PutRange(cpm.dma, data[:]...)
 
 	// Update the next read position
 	fcbPtr.IncreaseSequentialOffset()
@@ -429,7 +438,7 @@ func SysCallWrite(cpm *CPM) error {
 	offset := fcbPtr.GetSequentialOffset()
 
 	// Get the data range from the DMA area
-	data := cpm.Memory.GetRange(dma, 128)
+	data := cpm.Memory.GetRange(cpm.dma, 128)
 
 	// Move to the correct place
 	_, err := cpm.file.Seek(int64(offset), io.SeekStart)
@@ -544,7 +553,7 @@ func SysCallReadRand(cpm *CPM) error {
 			return 1
 		}
 
-		cpm.Memory.PutRange(dma, data[:]...)
+		cpm.Memory.PutRange(cpm.dma, data[:]...)
 		return 0
 	}
 

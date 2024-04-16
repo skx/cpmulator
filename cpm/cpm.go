@@ -43,6 +43,10 @@ type CPMHandler struct {
 // CPM is the object that holds our emulator state
 type CPM struct {
 
+	// dma contains the offset of the DMA area which is used
+	// for block I/O.
+	dma uint16
+
 	// Syscalls contains the syscalls we know how to emulate.
 	Syscalls map[uint8]CPMHandler
 
@@ -121,6 +125,10 @@ func New(filename string, logger *slog.Logger) *CPM {
 		Desc:    "C_READSTRING",
 		Handler: SysCallReadString,
 	}
+	sys[11] = CPMHandler{
+		Desc:    "SETDMA",
+		Handler: SysCallSetDMA,
+	}
 	sys[13] = CPMHandler{
 		Desc:    "DRV_ALLRESET",
 		Handler: SysCallDriveAllReset,
@@ -184,6 +192,7 @@ func New(filename string, logger *slog.Logger) *CPM {
 		Logger:   logger,
 		Reader:   bufio.NewReader(os.Stdin),
 		Syscalls: sys,
+		dma:      0x0080,
 	}
 	return tmp
 }
