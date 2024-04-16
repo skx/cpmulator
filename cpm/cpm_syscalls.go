@@ -354,6 +354,77 @@ func SysCallDeleteFile(cpm *CPM) error {
 	return err
 }
 
+// SysCallRead writes a record to the file named in the FCB given in DE
+func SysCallRead(cpm *CPM) error {
+
+	// Don't have a file open?  That's a bug
+	if !cpm.fileIsOpen {
+		cpm.Logger.Error("attempting to write to a file that isn't open")
+		cpm.CPU.States.AF.Hi = 0xff
+		return nil
+	}
+
+	// The pointer to the FCB
+	ptr := cpm.CPU.States.DE.U16()
+	// Get the bytes which make up the FCB entry.
+	xxx := cpm.Memory.GetRange(ptr, 36)
+
+	// Create a structure with the contents
+	fcbPtr := fcb.FromBytes(xxx)
+
+	// offset
+	BlkS2 := 4096
+	BlkEx := 128
+	offset := int(int(fcbPtr.S2)&MaxS2)*BlkS2*blkSize +
+		int(fcbPtr.Ex)*BlkEx*blkSize +
+		int(fcbPtr.Cr)*blkSize
+
+	_, err := cpm.file.Seek(int64(offset), io.SeekStart)
+	if err != nil {
+		return fmt.Errorf("cannot seek to position %d: %s", offset, err)
+	}
+
+	// Temporary area to read into
+	data := make([]byte, blkSize)
+
+	// Fill the area with data
+	for i := range data {
+		data[i] = 0x1a
+	}
+
+	// Read from the file, now we're in the right place
+	_, err = cpm.file.Read(data)
+	if err != nil {
+		return fmt.Errorf("error writing to file %s", err)
+	}
+
+	// Copy the data to the DMA area
+	cpm.Memory.PutRange(dma, data[:]...)
+
+	MaxCR := 128
+	MaxEX := 31
+
+	fcbPtr.S2 &= 0x7F // reset unmodified flag
+	fcbPtr.Cr++
+	if int(fcbPtr.Cr) > MaxCR {
+		fcbPtr.Cr = 1
+		fcbPtr.Ex++
+	}
+	if int(fcbPtr.Ex) > MaxEX {
+		fcbPtr.Ex = 0
+		fcbPtr.S2++
+	}
+	fcbPtr.RC++
+
+	// Update the FCB in memory
+	cpm.Memory.PutRange(ptr, fcbPtr.AsBytes()...)
+
+	// All done
+	cpm.CPU.States.AF.Hi = 0x00
+	return nil
+
+}
+
 // SysCallWrite writes a record to the file named in the FCB given in DE
 func SysCallWrite(cpm *CPM) error {
 
@@ -506,7 +577,7 @@ func SysCallReadRand(cpm *CPM) error {
 			return 1
 		}
 
-		cpm.Memory.PutRange(0x80, data[:]...)
+		cpm.Memory.PutRange(dma, data[:]...)
 		return 0
 	}
 
