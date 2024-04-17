@@ -123,14 +123,8 @@ func SysCallSetDMA(cpm *CPM) error {
 
 // SysCallDriveAllReset resets the drives
 func SysCallDriveAllReset(cpm *CPM) error {
-	if cpm.fileIsOpen {
-		cpm.fileIsOpen = false
-		cpm.file.Close()
-	}
-
 	cpm.currentDrive = 1
 	cpm.userNumber = 0
-
 	cpm.CPU.States.AF.Hi = 0x00
 	return nil
 }
@@ -169,21 +163,16 @@ func SysCallFileOpen(cpm *CPM) error {
 	}
 
 	// Now we open..
-	var err error
-	cpm.file, err = os.OpenFile(fileName, os.O_CREATE|os.O_RDWR, 0644)
+	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		return err
 	}
 
-	// OK so we've opened a file, and we've cached the
-	// handle in our CPM struct.  Record it
-	cpm.fileIsOpen = true
-
-	// Reset the values
-	fcbPtr.Al[0] = 'S'
+	// Save the file-handle
+	fcbPtr.Al[0] = uint8(file.Fd())
 
 	// Get file size, in bytes
-	fi, err := cpm.file.Stat()
+	fi, err := file.Stat()
 	if err != nil {
 		return fmt.Errorf("failed to get file size of %s: %s", fileName, err)
 	}
@@ -224,21 +213,24 @@ func SysCallFileClose(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
-	if fcbPtr.Al[0] != 'S' {
-		return fmt.Errorf("S1 has not maintained state - in FileClose")
+	// Get the file-handle
+	hn := fcbPtr.Al[0]
+	if hn != 0 {
+
+		file := os.NewFile(uintptr(hn), "blah")
+
+		err := file.Close()
+		if err != nil {
+			return fmt.Errorf("failed to close file %d:%s", hn, err)
+		}
+		fcbPtr.Al[0] = 0x0
 	}
 
-	// Close the handle, if we have one
-	if cpm.fileIsOpen {
-		cpm.fileIsOpen = false
-		cpm.file.Close()
-	}
+	// Update the FCB in memory.
+	cpm.Memory.PutRange(ptr, fcbPtr.AsBytes()...)
 
 	// Record success
 	cpm.CPU.States.AF.Hi = 0x00
-	cpm.CPU.States.HL.Hi = 0x00
-	cpm.CPU.States.HL.Lo = 0x00
-	cpm.CPU.States.BC.Hi = 0x00
 	return nil
 }
 
@@ -374,13 +366,6 @@ func SysCallDeleteFile(cpm *CPM) error {
 // SysCallRead writes a record to the file named in the FCB given in DE
 func SysCallRead(cpm *CPM) error {
 
-	// Don't have a file open?  That's a bug
-	if !cpm.fileIsOpen {
-		cpm.Logger.Error("attempting to write to a file that isn't open")
-		cpm.CPU.States.AF.Hi = 0xff
-		return nil
-	}
-
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
 	// Get the bytes which make up the FCB entry.
@@ -389,14 +374,21 @@ func SysCallRead(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
-	if fcbPtr.Al[0] != 'S' {
-		return fmt.Errorf("S1 has not maintained state - in SysCallRead")
+	// get the file-handle
+	hn := fcbPtr.Al[0]
+	if hn == 0 {
+		cpm.Logger.Error("attempting to read from a file that isn't open")
+		cpm.CPU.States.AF.Hi = 0xff
+		return nil
 	}
+
+	// Get the file-handle
+	file := os.NewFile(uintptr(hn), "blah")
 
 	// Get the next read position
 	offset := fcbPtr.GetSequentialOffset()
 
-	_, err := cpm.file.Seek(int64(offset), io.SeekStart)
+	_, err := file.Seek(int64(offset), io.SeekStart)
 	if err != nil {
 		return fmt.Errorf("cannot seek to position %d: %s", offset, err)
 	}
@@ -410,7 +402,7 @@ func SysCallRead(cpm *CPM) error {
 	}
 
 	// Read from the file, now we're in the right place
-	_, err = cpm.file.Read(data)
+	_, err = file.Read(data)
 	if err != nil && err != io.EOF {
 		return fmt.Errorf("error reading file %s", err)
 	}
@@ -433,13 +425,6 @@ func SysCallRead(cpm *CPM) error {
 // SysCallWrite writes a record to the file named in the FCB given in DE
 func SysCallWrite(cpm *CPM) error {
 
-	// Don't have a file open?  That's a bug
-	if !cpm.fileIsOpen {
-		cpm.Logger.Error("attempting to write to a file that isn't open")
-		cpm.CPU.States.AF.Hi = 0xff
-		return nil
-	}
-
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
 	// Get the bytes which make up the FCB entry.
@@ -448,9 +433,16 @@ func SysCallWrite(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
-	if fcbPtr.Al[0] != 'S' {
-		return fmt.Errorf("S1 has not maintained state - in SysCallWrite")
+	// Get the file handle
+	hn := fcbPtr.Al[0]
+	if hn == 0 {
+		cpm.Logger.Error("attempting to write to a file that isn't open")
+		cpm.CPU.States.AF.Hi = 0xff
+		return nil
 	}
+
+	// Get the file
+	file := os.NewFile(uintptr(hn), "blah")
 
 	// Get the next write position
 	offset := fcbPtr.GetSequentialOffset()
@@ -459,13 +451,13 @@ func SysCallWrite(cpm *CPM) error {
 	data := cpm.Memory.GetRange(cpm.dma, 128)
 
 	// Move to the correct place
-	_, err := cpm.file.Seek(int64(offset), io.SeekStart)
+	_, err := file.Seek(int64(offset), io.SeekStart)
 	if err != nil {
 		return fmt.Errorf("cannot seek to position %d: %s", offset, err)
 	}
 
 	// Write to the open file
-	_, err = cpm.file.Write(data)
+	_, err = file.Write(data)
 	if err != nil {
 		return fmt.Errorf("error writing to file %s", err)
 	}
@@ -484,6 +476,7 @@ func SysCallWrite(cpm *CPM) error {
 
 // SysCallMakeFile creates the file named in the FCB given in DE
 func SysCallMakeFile(cpm *CPM) error {
+
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
 	// Get the bytes which make up the FCB entry.
@@ -503,13 +496,17 @@ func SysCallMakeFile(cpm *CPM) error {
 	}
 
 	// Create the file
-	var err error
-	cpm.file, err = os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0644)
+	file, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		return err
 	}
 
-	cpm.fileIsOpen = true
+	// Save the file-handle
+	fcbPtr.Al[0] = uint8(file.Fd())
+
+	// Update the FCB in memory
+	cpm.Memory.PutRange(ptr, fcbPtr.AsBytes()...)
+
 	return nil
 }
 
@@ -554,8 +551,8 @@ func SysCallReadRand(cpm *CPM) error {
 	//  0 : read something successfully
 	//  1 : read nothing - error really
 	//
-	sysRead := func(offset int64) int {
-		_, err := cpm.file.Seek(offset, io.SeekStart)
+	sysRead := func(f *os.File, offset int64) int {
+		_, err := f.Seek(offset, io.SeekStart)
 		if err != nil {
 			fmt.Printf("cannot seek to position %d: %s", offset, err)
 			return 1
@@ -565,7 +562,7 @@ func SysCallReadRand(cpm *CPM) error {
 			data[i] = 0x1a
 		}
 
-		_, err = cpm.file.Read(data)
+		_, err = f.Read(data)
 		if err != nil {
 			fmt.Printf("failed to read offset %d: %s", offset, err)
 			return 1
@@ -584,13 +581,16 @@ func SysCallReadRand(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
-	if fcbPtr.Al[0] != 'S' {
-		return fmt.Errorf("S1 has not maintained state - in SysCallReadRand")
+	// Get the file handle
+	hn := fcbPtr.Al[0]
+	if hn == 0 {
+		cpm.Logger.Error("attempting to read from a file that isn't open")
+		cpm.CPU.States.AF.Hi = 0xff
+		return nil
 	}
 
-	if !cpm.fileIsOpen {
-		return fmt.Errorf("ReadRand called against a non-open file")
-	}
+	// Get the file
+	file := os.NewFile(uintptr(hn), "blah")
 
 	// Get the record to read
 	record := int(int(fcbPtr.R2)<<16) | int(int(fcbPtr.R1)<<8) | int(fcbPtr.R0)
@@ -603,7 +603,7 @@ func SysCallReadRand(cpm *CPM) error {
 
 	fpos := int64(record) * blkSize
 
-	res := sysRead(fpos)
+	res := sysRead(file, fpos)
 
 	// Update the FCB in memory
 	cpm.Memory.PutRange(ptr, fcbPtr.AsBytes()...)
