@@ -68,12 +68,6 @@ type CPM struct {
 	// Valid values are 00-15
 	userNumber uint8
 
-	// fileIsOpen records whether we have an open file.
-	fileIsOpen bool
-
-	// file has the handle to the open file, if fileIsOpen is true.
-	file *os.File
-
 	// findFirstResults is a sneaky cache of files that match a glob.
 	//
 	// For finding files CP/M uses "find first" to find the first result
