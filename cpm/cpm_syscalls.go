@@ -113,7 +113,7 @@ func SysCallReadString(cpm *CPM) error {
 func SysCallSetDMA(cpm *CPM) error {
 
 	// Get the address from BC
-	addr := cpm.CPU.States.BC.U16()
+	addr := cpm.CPU.States.DE.U16()
 
 	// Update the DMA value.
 	cpm.dma = addr
@@ -510,6 +510,13 @@ func SysCallMakeFile(cpm *CPM) error {
 	return nil
 }
 
+// SysCallLoginVec returns the list of logged in drives.
+func SysCallLoginVec(cpm *CPM) error {
+	cpm.CPU.States.HL.Hi = 0xFF
+	cpm.CPU.States.HL.Lo = 0xFF
+	return nil
+}
+
 // SysCallDriveGet returns the number of the active drive.
 func SysCallDriveGet(cpm *CPM) error {
 	cpm.CPU.States.AF.Hi = cpm.currentDrive
@@ -552,7 +559,21 @@ func SysCallReadRand(cpm *CPM) error {
 	//  1 : read nothing - error really
 	//
 	sysRead := func(f *os.File, offset int64) int {
-		_, err := f.Seek(offset, io.SeekStart)
+
+		// Get file size, in bytes
+		fi, err := f.Stat()
+		if err != nil {
+			fmt.Printf("ReadRand:failed to get file size of: %s", err)
+		}
+		fileSize := fi.Size()
+
+		// If the offset we're writing to is bigger than the file size then
+		// pad it up
+		if (fileSize - offset) > 0 {
+			return 06
+		}
+
+		_, err = f.Seek(offset, io.SeekStart)
 		if err != nil {
 			fmt.Printf("cannot seek to position %d: %s", offset, err)
 			return 1
@@ -608,5 +629,74 @@ func SysCallReadRand(cpm *CPM) error {
 	// Update the FCB in memory
 	cpm.Memory.PutRange(ptr, fcbPtr.AsBytes()...)
 	cpm.CPU.States.AF.Hi = uint8(res)
+	return nil
+}
+
+// SysCallWriteRand writes a random block from DMA area to the FCB pointed to by DE.
+func SysCallWriteRand(cpm *CPM) error {
+
+	// The pointer to the FCB
+	ptr := cpm.CPU.States.DE.U16()
+
+	// Get the bytes which make up the FCB entry.
+	xxx := cpm.Memory.GetRange(ptr, 36)
+
+	// Create a structure with the contents
+	fcbPtr := fcb.FromBytes(xxx)
+
+	// Get the file handle
+	hn := fcbPtr.Al[0]
+	if hn == 0 {
+		cpm.Logger.Error("attempting to read from a file that isn't open")
+		cpm.CPU.States.AF.Hi = 0xff
+		return nil
+	}
+
+	// Get the file
+	file := os.NewFile(uintptr(hn), "blah")
+
+	// Get the data range from the DMA area
+	data := cpm.Memory.GetRange(cpm.dma, 128)
+
+	// Get the record to write
+	record := int(int(fcbPtr.R2)<<16) | int(int(fcbPtr.R1)<<8) | int(fcbPtr.R0)
+
+	// Get the file position that translates to
+	fpos := int64(record) * blkSize
+
+	// Get file size, in bytes
+	fi, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("WriteRand:failed to get file size of: %s", err)
+	}
+	fileSize := fi.Size()
+
+	// If the offset we're writing to is bigger than the file size then
+	// pad it up
+	padding := fileSize - fpos
+
+	for padding > 0 {
+		_, er := file.Write([]byte{0x00})
+		if er != nil {
+			return fmt.Errorf("WriteRand: error adding padding: %s", er)
+		}
+		padding--
+	}
+
+	_, err = file.Seek(fpos, io.SeekStart)
+	if err != nil {
+		return fmt.Errorf("SysCallWriteRandcannot seek to position %d: %s\n", fpos, err)
+	}
+
+	_, err = file.Write(data)
+	if err != nil {
+		return fmt.Errorf("SysCalLWriteRand: failed to write to offset %d: %s\n", fpos, err)
+	}
+
+	fcbPtr.IncreaseSequentialOffset()
+
+	// Update the FCB in memory
+	cpm.Memory.PutRange(ptr, fcbPtr.AsBytes()...)
+	cpm.CPU.States.AF.Hi = 0x00
 	return nil
 }

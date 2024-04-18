@@ -163,6 +163,10 @@ func New(filename string, logger *slog.Logger) *CPM {
 		Desc:    "F_MAKE",
 		Handler: SysCallMakeFile,
 	}
+	sys[24] = CPMHandler{
+		Desc:    "DRV_LOGINVEC",
+		Handler: SysCallLoginVec,
+	}
 	sys[25] = CPMHandler{
 		Desc:    "DRV_GET",
 		Handler: SysCallDriveGet,
@@ -182,6 +186,10 @@ func New(filename string, logger *slog.Logger) *CPM {
 	sys[33] = CPMHandler{
 		Desc:    "F_READRAND",
 		Handler: SysCallReadRand,
+	}
+	sys[34] = CPMHandler{
+		Desc:    "F_WRITERAND",
+		Handler: SysCallWriteRand,
 	}
 
 	// Create the object
