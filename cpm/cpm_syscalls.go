@@ -145,6 +145,7 @@ func SysCallFileOpen(cpm *CPM) error {
 
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
+
 	// Get the bytes which make up the FCB entry.
 	xxx := cpm.Memory.GetRange(ptr, 36)
 
@@ -168,8 +169,8 @@ func SysCallFileOpen(cpm *CPM) error {
 		return err
 	}
 
-	// Save the file-handle
-	fcbPtr.Al[0] = uint8(file.Fd())
+	// Save the file handle in our cache.
+	cpm.files[ptr] = FileCache{name: fileName, handle: file}
 
 	// Get file size, in bytes
 	fi, err := file.Stat()
@@ -195,9 +196,7 @@ func SysCallFileOpen(cpm *CPM) error {
 
 	// Return success
 	cpm.CPU.States.AF.Hi = 0x00
-	cpm.CPU.States.BC.Hi = 0x00
-	cpm.CPU.States.HL.Hi = 0x00
-	cpm.CPU.States.HL.Lo = 0x00
+
 	return nil
 }
 
@@ -207,27 +206,17 @@ func SysCallFileClose(cpm *CPM) error {
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
 
-	// Get the bytes which make up the FCB entry.
-	xxx := cpm.Memory.GetRange(ptr, 36)
-
-	// Create a structure with the contents
-	fcbPtr := fcb.FromBytes(xxx)
-
-	// Get the file-handle
-	hn := fcbPtr.Al[0]
-	if hn != 0 {
-
-		file := os.NewFile(uintptr(hn), "blah")
-
-		err := file.Close()
-		if err != nil {
-			return fmt.Errorf("failed to close file %d:%s", hn, err)
-		}
-		fcbPtr.Al[0] = 0x0
+	// Get the file handle from our cache.
+	obj, ok := cpm.files[ptr]
+	if !ok {
+		return fmt.Errorf("SysCallFileClose: Tried to close a file that wasn't open")
 	}
 
-	// Update the FCB in memory.
-	cpm.Memory.PutRange(ptr, fcbPtr.AsBytes()...)
+	err := obj.handle.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close file %04X:%s", ptr, err)
+	}
+	delete(cpm.files, ptr)
 
 	// Record success
 	cpm.CPU.States.AF.Hi = 0x00
@@ -363,32 +352,30 @@ func SysCallDeleteFile(cpm *CPM) error {
 	return err
 }
 
-// SysCallRead writes a record to the file named in the FCB given in DE
+// SysCallRead reads a record from the file named in the FCB given in DE
 func SysCallRead(cpm *CPM) error {
 
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
+
 	// Get the bytes which make up the FCB entry.
 	xxx := cpm.Memory.GetRange(ptr, 36)
 
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
-	// get the file-handle
-	hn := fcbPtr.Al[0]
-	if hn == 0 {
-		cpm.Logger.Error("attempting to read from a file that isn't open")
+	// Get the file handle in our cache.
+	obj, ok := cpm.files[ptr]
+	if !ok {
+		cpm.Logger.Error("SysCallRead: Attempting to read from a file that isn't open")
 		cpm.CPU.States.AF.Hi = 0xff
 		return nil
 	}
 
-	// Get the file-handle
-	file := os.NewFile(uintptr(hn), "blah")
-
 	// Get the next read position
 	offset := fcbPtr.GetSequentialOffset()
 
-	_, err := file.Seek(int64(offset), io.SeekStart)
+	_, err := obj.handle.Seek(int64(offset), io.SeekStart)
 	if err != nil {
 		return fmt.Errorf("cannot seek to position %d: %s", offset, err)
 	}
@@ -402,7 +389,7 @@ func SysCallRead(cpm *CPM) error {
 	}
 
 	// Read from the file, now we're in the right place
-	_, err = file.Read(data)
+	_, err = obj.handle.Read(data)
 	if err != nil && err != io.EOF {
 		return fmt.Errorf("error reading file %s", err)
 	}
@@ -417,7 +404,11 @@ func SysCallRead(cpm *CPM) error {
 	cpm.Memory.PutRange(ptr, fcbPtr.AsBytes()...)
 
 	// All done
-	cpm.CPU.States.AF.Hi = 0x00
+	if err == io.EOF {
+		cpm.CPU.States.AF.Hi = 0x01
+	} else {
+		cpm.CPU.States.AF.Hi = 0x00
+	}
 	return nil
 
 }
@@ -433,16 +424,13 @@ func SysCallWrite(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
-	// Get the file handle
-	hn := fcbPtr.Al[0]
-	if hn == 0 {
-		cpm.Logger.Error("attempting to write to a file that isn't open")
+	// Get the file handle in our cache.
+	obj, ok := cpm.files[ptr]
+	if !ok {
+		cpm.Logger.Error("SysCallWrite: Attempting to write to a file that isn't open")
 		cpm.CPU.States.AF.Hi = 0xff
 		return nil
 	}
-
-	// Get the file
-	file := os.NewFile(uintptr(hn), "blah")
 
 	// Get the next write position
 	offset := fcbPtr.GetSequentialOffset()
@@ -451,13 +439,13 @@ func SysCallWrite(cpm *CPM) error {
 	data := cpm.Memory.GetRange(cpm.dma, 128)
 
 	// Move to the correct place
-	_, err := file.Seek(int64(offset), io.SeekStart)
+	_, err := obj.handle.Seek(int64(offset), io.SeekStart)
 	if err != nil {
 		return fmt.Errorf("cannot seek to position %d: %s", offset, err)
 	}
 
 	// Write to the open file
-	_, err = file.Write(data)
+	_, err = obj.handle.Write(data)
 	if err != nil {
 		return fmt.Errorf("error writing to file %s", err)
 	}
@@ -501,12 +489,32 @@ func SysCallMakeFile(cpm *CPM) error {
 		return err
 	}
 
+	// Get file size, in bytes
+	fi, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to get file size of %s: %s", fileName, err)
+	}
+
+	// Get file size, in bytes
+	fileSize := fi.Size()
+
+	// Get file size, in blocks
+	fLen := uint8(fileSize / blkSize)
+
+	// Set record-count
+	if fLen > maxRC {
+		fcbPtr.RC = maxRC
+	} else {
+		fcbPtr.RC = fLen
+	}
+
 	// Save the file-handle
-	fcbPtr.Al[0] = uint8(file.Fd())
+	cpm.files[ptr] = FileCache{name: fileName, handle: file}
 
 	// Update the FCB in memory
 	cpm.Memory.PutRange(ptr, fcbPtr.AsBytes()...)
 
+	cpm.CPU.States.AF.Hi = 0x00
 	return nil
 }
 
@@ -567,16 +575,16 @@ func SysCallReadRand(cpm *CPM) error {
 		}
 		fileSize := fi.Size()
 
-		// If the offset we're writing to is bigger than the file size then
+		// If the offset we're reading from is bigger than the file size then
 		// pad it up
-		if (fileSize - offset) > 0 {
+		if offset > fileSize {
 			return 06
 		}
 
 		_, err = f.Seek(offset, io.SeekStart)
 		if err != nil {
 			fmt.Printf("cannot seek to position %d: %s", offset, err)
-			return 1
+			return 0xff
 		}
 
 		for i := range data {
@@ -585,8 +593,10 @@ func SysCallReadRand(cpm *CPM) error {
 
 		_, err = f.Read(data)
 		if err != nil {
-			fmt.Printf("failed to read offset %d: %s", offset, err)
-			return 1
+			if err != io.EOF {
+				fmt.Printf("failed to read offset %d: %s", offset, err)
+				return 0xff
+			}
 		}
 
 		cpm.Memory.PutRange(cpm.dma, data[:]...)
@@ -602,29 +612,22 @@ func SysCallReadRand(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
-	// Get the file handle
-	hn := fcbPtr.Al[0]
-	if hn == 0 {
-		cpm.Logger.Error("attempting to read from a file that isn't open")
+	// Get the file handle in our cache.
+	obj, ok := cpm.files[ptr]
+	if !ok {
+		cpm.Logger.Error("SysCallReadRand: Attempting to read from a file that isn't open")
 		cpm.CPU.States.AF.Hi = 0xff
 		return nil
 	}
 
-	// Get the file
-	file := os.NewFile(uintptr(hn), "blah")
-
 	// Get the record to read
 	record := int(int(fcbPtr.R2)<<16) | int(int(fcbPtr.R1)<<8) | int(fcbPtr.R0)
 
-	if record > 65535 {
-		cpm.CPU.States.AF.Hi = 0x06
-		//06	seek Past Physical end of disk
-		return nil
-	}
-
+	// Translate the record to a byte-offset
 	fpos := int64(record) * blkSize
 
-	res := sysRead(file, fpos)
+	// Read the data
+	res := sysRead(obj.handle, fpos)
 
 	// Update the FCB in memory
 	cpm.Memory.PutRange(ptr, fcbPtr.AsBytes()...)
@@ -644,16 +647,13 @@ func SysCallWriteRand(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
-	// Get the file handle
-	hn := fcbPtr.Al[0]
-	if hn == 0 {
-		cpm.Logger.Error("attempting to read from a file that isn't open")
+	// Get the file handle in our cache.
+	obj, ok := cpm.files[ptr]
+	if !ok {
+		cpm.Logger.Error("SysCallWriteRand: Attempting to write to a file that isn't open")
 		cpm.CPU.States.AF.Hi = 0xff
 		return nil
 	}
-
-	// Get the file
-	file := os.NewFile(uintptr(hn), "blah")
 
 	// Get the data range from the DMA area
 	data := cpm.Memory.GetRange(cpm.dma, 128)
@@ -665,7 +665,7 @@ func SysCallWriteRand(cpm *CPM) error {
 	fpos := int64(record) * blkSize
 
 	// Get file size, in bytes
-	fi, err := file.Stat()
+	fi, err := obj.handle.Stat()
 	if err != nil {
 		return fmt.Errorf("WriteRand:failed to get file size of: %s", err)
 	}
@@ -676,19 +676,19 @@ func SysCallWriteRand(cpm *CPM) error {
 	padding := fileSize - fpos
 
 	for padding > 0 {
-		_, er := file.Write([]byte{0x00})
+		_, er := obj.handle.Write([]byte{0x00})
 		if er != nil {
 			return fmt.Errorf("WriteRand: error adding padding: %s", er)
 		}
 		padding--
 	}
 
-	_, err = file.Seek(fpos, io.SeekStart)
+	_, err = obj.handle.Seek(fpos, io.SeekStart)
 	if err != nil {
 		return fmt.Errorf("SysCallWriteRandcannot seek to position %d: %s\n", fpos, err)
 	}
 
-	_, err = file.Write(data)
+	_, err = obj.handle.Write(data)
 	if err != nil {
 		return fmt.Errorf("SysCalLWriteRand: failed to write to offset %d: %s\n", fpos, err)
 	}
