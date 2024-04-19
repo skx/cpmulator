@@ -40,8 +40,23 @@ type CPMHandler struct {
 	Handler CPMHandlerType
 }
 
+// FileCache is used to cache filehandles, against FCB addresses.
+//
+// This is primarily done as a speed optimization.
+
+type FileCache struct {
+	// name holds the name file, when it was opened/created.
+	name string
+
+	// handle has the file object.
+	handle *os.File
+}
+
 // CPM is the object that holds our emulator state
 type CPM struct {
+
+	// files is the cache we use for File handles
+	files map[uint16]FileCache
 
 	// dma contains the offset of the DMA area which is used
 	// for block I/O.
@@ -199,6 +214,7 @@ func New(filename string, logger *slog.Logger) *CPM {
 		Reader:   bufio.NewReader(os.Stdin),
 		Syscalls: sys,
 		dma:      0x0080,
+		files:    make(map[uint16]FileCache),
 	}
 	return tmp
 }
