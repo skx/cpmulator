@@ -54,6 +54,7 @@ You can terminate the CCP by pressing Ctrl-C, otherwise interact with it as usua
 
 <details>
 <summary>Show the CCP built-in commands:</summary>
+
 * `DIR`
   * List files, by default this uses "`*.*`", so files without suffixes will be hidden.
     * Prefer "`DIR *`" if you want to see _everything_.
@@ -65,6 +66,7 @@ You can terminate the CCP by pressing Ctrl-C, otherwise interact with it as usua
   * View the contents of the named file - wildcards are not permitted.
 * `REN`
   * Rename files, so "`REN NEW = OLD`" - again wildcards are not permitted, nor is cross-drive renaming.  This will fail until I've implemented F_RENAME.
+
 </details>
 
 
@@ -116,7 +118,7 @@ Now if you launch the emulator you'll see only the files which _should_ be visib
 
 
 ```sh
-$ cpmulator -drives
+$ cpmulator -directories
 A>DIR A:
 A: FOO     .COM | LS      .COM
 

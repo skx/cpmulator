@@ -16,6 +16,7 @@ func main() {
 	//
 	// Parse the command-line flags for this driver-application
 	//
+	cd := flag.String("cd", "", "Change to this directory before launching")
 	useDirectories := flag.Bool("directories", false, "Use subdirectories on the host computer for CP/M drives.")
 	createDirectories := flag.Bool("create", false, "Create subdirectories on the host computer for each CP/M drive.")
 	flag.Parse()
@@ -48,6 +49,10 @@ func main() {
 	// Create a new emulator.
 	cpm := cpm.New(log)
 
+	// change directory?
+	if *cd != "" {
+		os.Chdir(*cd)
+	}
 	// Should we create child-directories?  If so, do so.
 	if *createDirectories {
 		for _, d := range []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P"} {
