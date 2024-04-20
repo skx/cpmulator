@@ -8,6 +8,7 @@ package cpm
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -121,6 +122,16 @@ func SysCallSetDMA(cpm *CPM) error {
 	return nil
 }
 
+// SysCallBDOSVersion returns version details
+func SysCallBDOSVersion(cpm *CPM) error {
+	cpm.CPU.States.AF.Hi = 0x20
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = 0x20
+	cpm.CPU.States.BC.Hi = 0x00
+
+	return nil
+}
+
 // SysCallDriveAllReset resets the drives
 func SysCallDriveAllReset(cpm *CPM) error {
 	cpm.currentDrive = 1
@@ -163,9 +174,57 @@ func SysCallFileOpen(cpm *CPM) error {
 		fileName += ext
 	}
 
+	// Should we remap drives?
+	path := "."
+	if cpm.Drives {
+		path = string(cpm.currentDrive + 'A')
+	}
+
+	//
+	// Ok we have a filename, but we probably have an upper-case
+	// filename.
+	//
+	// Run a glob, and if there's an existing file with the same
+	// name then replace with the mixed/lower cased version.
+	//
+	files, err2 := os.ReadDir(path)
+	if err2 == nil {
+		for _, n := range files {
+			if strings.ToUpper(n.Name()) == fileName {
+				fileName = n.Name()
+			}
+		}
+	}
+
+	// Should we remap drives?
+	if cpm.Drives {
+		fileName = string(cpm.currentDrive+'A') + "/" + fileName
+	}
+
+	// child logger with more details.
+	l := cpm.Logger.With(
+		slog.String("function", "SysCallFileOpen"),
+		slog.String("name", name),
+		slog.String("ext", ext),
+		slog.String("drive", string(cpm.currentDrive+'A')),
+		slog.String("result", fileName))
+
 	// Now we open..
-	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_RDWR, 0644)
+	file, err := os.OpenFile(fileName, os.O_RDWR, 0644)
 	if err != nil {
+
+		// We might fail to open a file because it doesn't
+		// exist.
+		if os.IsNotExist(err) {
+
+			l.Debug("failed to open, file does not exist")
+
+			cpm.CPU.States.AF.Hi = 0xff
+			return nil
+		}
+
+		// Ok a different error
+		l.Debug("failed to open", slog.String("error", err.Error()))
 		return err
 	}
 
@@ -191,8 +250,14 @@ func SysCallFileOpen(cpm *CPM) error {
 		fcbPtr.RC = fLen
 	}
 
+	l.Debug("result:OK",
+		slog.Int("fcb", int(ptr)),
+		slog.Int("handle", int(file.Fd())),
+		slog.Int("record_count", int(fcbPtr.RC)),
+		slog.Int64("file_size", fileSize))
+
 	// Update the FCB in memory.
-	cpm.Memory.PutRange(ptr, fcbPtr.AsBytes()...)
+	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
 
 	// Return success
 	cpm.CPU.States.AF.Hi = 0x00
@@ -209,7 +274,7 @@ func SysCallFileClose(cpm *CPM) error {
 	// Get the file handle from our cache.
 	obj, ok := cpm.files[ptr]
 	if !ok {
-		return fmt.Errorf("SysCallFileClose: Tried to close a file that wasn't open")
+		return fmt.Errorf("tried to close a file that wasn't open")
 	}
 
 	err := obj.handle.Close()
@@ -266,6 +331,11 @@ func SysCallFindFirst(cpm *CPM) error {
 		pattern += string(c)
 	}
 
+	// Should we remap drives?
+	if cpm.Drives {
+		pattern = string(cpm.currentDrive+'A') + "/" + pattern
+	}
+
 	// Run the glob.
 	matches, err := filepath.Glob(pattern)
 	if err != nil {
@@ -282,15 +352,21 @@ func SysCallFindFirst(cpm *CPM) error {
 		return nil
 	}
 
+	// We need to strip the directory-name.
+	tmp := []string{}
+	for _, match := range matches {
+		tmp = append(tmp, filepath.Base(match))
+	}
+
 	// Here we save the results in our cache,
 	// dropping the first
-	cpm.findFirstResults = matches[1:]
+	cpm.findFirstResults = tmp[1:]
 	cpm.findOffset = 0
 
 	// Create a new FCB and store it in the DMA entry
-	x := fcb.FromString(matches[0])
+	x := fcb.FromString(tmp[0])
 	data := x.AsBytes()
-	cpm.Memory.PutRange(cpm.dma, data...)
+	cpm.Memory.SetRange(cpm.dma, data...)
 
 	// Return 0x00 to point to the first entry in the DMA area.
 	cpm.CPU.States.AF.Hi = 0x00
@@ -315,7 +391,7 @@ func SysCallFindNext(cpm *CPM) error {
 	// Create a new FCB and store it in the DMA entry
 	x := fcb.FromString(res)
 	data := x.AsBytes()
-	cpm.Memory.PutRange(0x80, data...)
+	cpm.Memory.SetRange(0x80, data...)
 
 	// Return 0x00 to point to the first entry in the DMA area.
 	cpm.CPU.States.AF.Hi = 0x00
@@ -324,6 +400,8 @@ func SysCallFindNext(cpm *CPM) error {
 }
 
 // SysCallDeleteFile deletes the filename specified by the FCB in DE.
+//
+// TODO This should support globs ..
 func SysCallDeleteFile(cpm *CPM) error {
 
 	// The pointer to the FCB
@@ -342,6 +420,33 @@ func SysCallDeleteFile(cpm *CPM) error {
 	if ext != "" && ext != "   " {
 		fileName += "."
 		fileName += ext
+	}
+
+	// Should we remap drives?
+	path := "."
+	if cpm.Drives {
+		path = string(cpm.currentDrive + 'A')
+	}
+
+	//
+	// Ok we have a filename, but we probably have an upper-case
+	// filename.
+	//
+	// Run a glob, and if there's an existing file with the same
+	// name then replace with the mixed/lower cased version.
+	//
+	files, err2 := os.ReadDir(path)
+	if err2 == nil {
+		for _, n := range files {
+			if strings.ToUpper(n.Name()) == fileName {
+				fileName = n.Name()
+			}
+		}
+	}
+
+	// Should we remap drives?
+	if cpm.Drives {
+		fileName = string(cpm.currentDrive+'A') + "/" + fileName
 	}
 
 	// Delete the named file
@@ -395,13 +500,13 @@ func SysCallRead(cpm *CPM) error {
 	}
 
 	// Copy the data to the DMA area
-	cpm.Memory.PutRange(cpm.dma, data[:]...)
+	cpm.Memory.SetRange(cpm.dma, data[:]...)
 
 	// Update the next read position
 	fcbPtr.IncreaseSequentialOffset()
 
 	// Update the FCB in memory
-	cpm.Memory.PutRange(ptr, fcbPtr.AsBytes()...)
+	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
 
 	// All done
 	if err == io.EOF {
@@ -409,6 +514,7 @@ func SysCallRead(cpm *CPM) error {
 	} else {
 		cpm.CPU.States.AF.Hi = 0x00
 	}
+
 	return nil
 
 }
@@ -454,7 +560,7 @@ func SysCallWrite(cpm *CPM) error {
 	fcbPtr.IncreaseSequentialOffset()
 
 	// Update the FCB in memory
-	cpm.Memory.PutRange(ptr, fcbPtr.AsBytes()...)
+	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
 
 	// All done
 	cpm.CPU.States.AF.Hi = 0x00
@@ -483,9 +589,46 @@ func SysCallMakeFile(cpm *CPM) error {
 		fileName += ext
 	}
 
+	// Should we remap drives?
+	path := "."
+	if cpm.Drives {
+		path = string(cpm.currentDrive + 'A')
+	}
+
+	//
+	// Ok we have a filename, but we probably have an upper-case
+	// filename.
+	//
+	// Run a glob, and if there's an existing file with the same
+	// name then replace with the mixed/lower cased version.
+	//
+	files, err2 := os.ReadDir(path)
+	if err2 == nil {
+		for _, n := range files {
+			if strings.ToUpper(n.Name()) == fileName {
+				fileName = n.Name()
+			}
+		}
+	}
+
+	// Should we remap drives?
+	if cpm.Drives {
+		fileName = string(cpm.currentDrive+'A') + "/" + fileName
+	}
+
+	// child logger with more details.
+	l := cpm.Logger.With(
+		slog.String("function", "SysCallMakeFile"),
+		slog.String("name", name),
+		slog.String("ext", ext),
+		slog.String("drive", string(cpm.currentDrive+'A')),
+		slog.String("result", fileName))
+
 	// Create the file
-	file, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0644)
+	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
+
+		l.Debug("failed to open", slog.String("error", err.Error()))
 		return err
 	}
 
@@ -511,8 +654,14 @@ func SysCallMakeFile(cpm *CPM) error {
 	// Save the file-handle
 	cpm.files[ptr] = FileCache{name: fileName, handle: file}
 
+	l.Debug("result:OK",
+		slog.Int("fcb", int(ptr)),
+		slog.Int("handle", int(file.Fd())),
+		slog.Int("record_count", int(fcbPtr.RC)),
+		slog.Int64("file_size", fileSize))
+
 	// Update the FCB in memory
-	cpm.Memory.PutRange(ptr, fcbPtr.AsBytes()...)
+	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
 
 	cpm.CPU.States.AF.Hi = 0x00
 	return nil
@@ -599,7 +748,7 @@ func SysCallReadRand(cpm *CPM) error {
 			}
 		}
 
-		cpm.Memory.PutRange(cpm.dma, data[:]...)
+		cpm.Memory.SetRange(cpm.dma, data[:]...)
 		return 0
 	}
 
@@ -630,7 +779,7 @@ func SysCallReadRand(cpm *CPM) error {
 	res := sysRead(obj.handle, fpos)
 
 	// Update the FCB in memory
-	cpm.Memory.PutRange(ptr, fcbPtr.AsBytes()...)
+	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
 	cpm.CPU.States.AF.Hi = uint8(res)
 	return nil
 }
@@ -667,36 +816,36 @@ func SysCallWriteRand(cpm *CPM) error {
 	// Get file size, in bytes
 	fi, err := obj.handle.Stat()
 	if err != nil {
-		return fmt.Errorf("WriteRand:failed to get file size of: %s", err)
+		return fmt.Errorf("failed to get file size of: %s", err)
 	}
 	fileSize := fi.Size()
 
 	// If the offset we're writing to is bigger than the file size then
-	// pad it up
+	// we need to add an appropriate amount of padding.
 	padding := fileSize - fpos
 
 	for padding > 0 {
 		_, er := obj.handle.Write([]byte{0x00})
 		if er != nil {
-			return fmt.Errorf("WriteRand: error adding padding: %s", er)
+			return fmt.Errorf("error adding padding: %s", er)
 		}
 		padding--
 	}
 
 	_, err = obj.handle.Seek(fpos, io.SeekStart)
 	if err != nil {
-		return fmt.Errorf("SysCallWriteRandcannot seek to position %d: %s\n", fpos, err)
+		return fmt.Errorf("cannot seek to position %d: %s", fpos, err)
 	}
 
 	_, err = obj.handle.Write(data)
 	if err != nil {
-		return fmt.Errorf("SysCalLWriteRand: failed to write to offset %d: %s\n", fpos, err)
+		return fmt.Errorf("failed to write to offset %d: %s", fpos, err)
 	}
 
 	fcbPtr.IncreaseSequentialOffset()
 
 	// Update the FCB in memory
-	cpm.Memory.PutRange(ptr, fcbPtr.AsBytes()...)
+	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
 	cpm.CPU.States.AF.Hi = 0x00
 	return nil
 }

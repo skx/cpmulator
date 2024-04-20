@@ -1,5 +1,9 @@
 // Package cpm is the main package for our emulator, it uses memory to
-// emulate execution of things at the bios level
+// emulate execution of things at the bios level.
+//
+// The package mostly contains the implementation of the syscalls that
+// CP/M programs would expect - along with a little machinery to wire up
+// the Z80 emulator we're using and deal with FCB structures.
 package cpm
 
 import (
@@ -12,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/koron-go/z80"
+	"github.com/skx/cpmulator/ccp"
 	"github.com/skx/cpmulator/fcb"
 	"github.com/skx/cpmulator/memory"
 )
@@ -28,10 +33,17 @@ var (
 	ErrUnimplemented = errors.New("UNIMPLEMENTED")
 )
 
-// CPMHandlerType contains the signature of a CP/M bios function
+// CPMHandlerType contains the signature of a CP/M bios function.
+//
+// It is not expected that outside packages will want to add custom BIOS
+// functions, or syscalls, but this is public so that it could be done if
+// it was necessary.
 type CPMHandlerType func(cpm *CPM) error
 
 // CPMHandler contains details of a specific call we implement.
+//
+// While we mostly need a "number to handler", mapping having a name
+// is useful for the logs we produce.
 type CPMHandler struct {
 	// Desc contain the human-readable description of the given CP/M syscall.
 	Desc string
@@ -43,7 +55,6 @@ type CPMHandler struct {
 // FileCache is used to cache filehandles, against FCB addresses.
 //
 // This is primarily done as a speed optimization.
-
 type FileCache struct {
 	// name holds the name file, when it was opened/created.
 	name string
@@ -62,14 +73,28 @@ type CPM struct {
 	// for block I/O.
 	dma uint16
 
-	// Syscalls contains the syscalls we know how to emulate.
+	// start contains the location to which we load our binaries,
+	// and execute them from.  This is specifically a variable because
+	// while all CP/M binaries are loaded at 0x0100 the CCP we can
+	// launch uses a higher location - so that it isn't overwritten by
+	// the programs it launches.
+	start uint16
+
+	// Syscalls contains the syscalls we know how to emulate, indexed
+	// by their ID.
 	Syscalls map[uint8]CPMHandler
 
 	// Memory contains the memory the system runs with.
 	Memory *memory.Memory
 
-	// CPU contains our emulated CPU
+	// CPU contains a pointer to the virtual CPU we use to execute
+	// code.  The CP/M we're implementing is Z80-based, so we need to
+	// be able to emulate that.
 	CPU z80.CPU
+
+	// Drives specifies whether we use sub-directories for the
+	// CP/M drives we emulate, instead of the current working directory.
+	Drives bool
 
 	// currentDrive contains the currently selected drive.
 	// Valid values are 00-15, where
@@ -93,18 +118,17 @@ type CPM struct {
 	findFirstResults []string
 	findOffset       int
 
-	// Reader is where we get our STDIN from
+	// Reader is where we get our STDIN from.
+	//
+	// TODO: We should have something similar for STDOUT.
 	Reader *bufio.Reader
 
-	// Filename holds the binary we're executing
-	Filename string
-
-	// Logger holds a logger, if null then no logs will be kept
+	// Logger holds a logger which we use for debugging and diagnostics.
 	Logger *slog.Logger
 }
 
 // New returns a new emulation object
-func New(filename string, logger *slog.Logger) *CPM {
+func New(logger *slog.Logger) *CPM {
 
 	//
 	// Create and populate our syscall table
@@ -137,6 +161,10 @@ func New(filename string, logger *slog.Logger) *CPM {
 	sys[11] = CPMHandler{
 		Desc:    "SETDMA",
 		Handler: SysCallSetDMA,
+	}
+	sys[12] = CPMHandler{
+		Desc:    "S_BDOSVER",
+		Handler: SysCallBDOSVersion,
 	}
 	sys[13] = CPMHandler{
 		Desc:    "DRV_ALLRESET",
@@ -209,38 +237,32 @@ func New(filename string, logger *slog.Logger) *CPM {
 
 	// Create the object
 	tmp := &CPM{
-		Filename: filename,
 		Logger:   logger,
 		Reader:   bufio.NewReader(os.Stdin),
 		Syscalls: sys,
 		dma:      0x0080,
+		start:    0x0100,
 		files:    make(map[uint16]FileCache),
 	}
 	return tmp
 }
 
-// Execute executes our named binary, with the specified arguments.
-//
-// The function will not return until the process being executed terminates,
-// and any error will be returned.
-func (cpm *CPM) Execute(args []string) error {
+// LoadBinary loads the given CP/M binary at the default address of 0x0100,
+// where it can then be launched by Execute.
+func (cpm *CPM) LoadBinary(filename string) error {
 
 	// Create 64K of memory, full of NOPs
 	cpm.Memory = new(memory.Memory)
 
-	// Load our binary into it
-	err := cpm.Memory.LoadFile(cpm.Filename)
+	// Load our binary into the memory
+	err := cpm.Memory.LoadFile(cpm.start, filename)
 	if err != nil {
-		return (fmt.Errorf("failed to load %s: %s", cpm.Filename, err))
+		return (fmt.Errorf("failed to load %s: %s", filename, err))
 	}
 
-	// Convert our array of CLI arguments to a string.
-	cli := strings.Join(args, " ")
-	cli = strings.TrimSpace(strings.ToUpper(cli))
-
 	//
-	// By default any command-line arguments need to be copied
-	// to 0x0080 - as a pascal-prefixed string.
+	// Any command-line arguments need to be copied to the DMA area,
+	// which defaults to 0x0080, as a pascal-prefixed string.
 	//
 	// If there are arguments the default FCBs need to be updated
 	// appropriately too.
@@ -259,16 +281,78 @@ func (cpm *CPM) Execute(args []string) error {
 	cpm.Memory.Set(0x006C, 0x00)
 	cpm.Memory.FillRange(0x006C+1, 11, ' ')
 
-	// Now setup FCB1 if we have a first argument
-	if len(args) > 0 {
-		x := fcb.FromString(args[0])
-		cpm.Memory.PutRange(0x005C, x.AsBytes()[:]...)
+	return nil
+}
+
+// LoadCCP loads the CCP into RAM, to be executed instead of an external binary.
+//
+// This function modifies the "start" attribute, to ensure the CCP is loaded
+// and executed at a higher address than the default of 0x0100.
+func (cpm *CPM) LoadCCP() {
+
+	// Create 64K of memory, full of NOPs
+	cpm.Memory = new(memory.Memory)
+
+	// Get our embedded CCP
+	data := ccp.CCPBinary
+
+	// The location in RAM of the binary
+	var ccpEntrypoint uint16 = 0xDE00
+
+	// Load it into memory
+	cpm.Memory.SetRange(ccpEntrypoint, data[:]...)
+
+	// DMA area / CLI Args are going to be unset.
+	cpm.Memory.Set(0x0080, 0x00)
+	cpm.Memory.FillRange(0x0081, 31, 0x00)
+
+	// FCB1: Default drive, spaces for filenames.
+	cpm.Memory.Set(0x005C, 0x00)
+	cpm.Memory.FillRange(0x005C+1, 11, ' ')
+
+	// FCB2: Default drive, spaces for filenames.
+	cpm.Memory.Set(0x006C, 0x00)
+	cpm.Memory.FillRange(0x006C+1, 11, ' ')
+
+	// Ensure our starting point is what we expect
+	cpm.start = ccpEntrypoint
+}
+
+// Execute executes our named binary, with the specified arguments.
+//
+// The function will not return until the process being executed terminates,
+// and any error will be returned.
+func (cpm *CPM) Execute(args []string) error {
+
+	// Create the CPU, pointing to our memory
+	// starting point for PC will be the binary entry-point
+	cpm.CPU = z80.CPU{
+		States: z80.States{
+			SPR: z80.SPR{
+				PC: cpm.start,
+			},
+		},
+		Memory: cpm.Memory,
 	}
 
-	// Now setup FCB2 if we have a second argument
+	// Setup a breakpoint on 0x0005 - the BIOS entrypoint.
+	cpm.CPU.BreakPoints = map[uint16]struct{}{}
+	cpm.CPU.BreakPoints[0x05] = struct{}{}
+
+	// Convert our array of CLI arguments to a string.
+	cli := strings.Join(args, " ")
+	cli = strings.TrimSpace(strings.ToUpper(cli))
+
+	// Setup FCB1 if we have a first argument
+	if len(args) > 0 {
+		x := fcb.FromString(args[0])
+		cpm.Memory.SetRange(0x005C, x.AsBytes()[:]...)
+	}
+
+	// Setup FCB2 if we have a second argument
 	if len(args) > 1 {
 		x := fcb.FromString(args[1])
-		cpm.Memory.PutRange(0x006C, x.AsBytes()[:]...)
+		cpm.Memory.SetRange(0x006C, x.AsBytes()[:]...)
 	}
 
 	// Poke in the CLI argument as a Pascal string.
@@ -279,21 +363,9 @@ func (cpm *CPM) Execute(args []string) error {
 		// (i.e. first byte is the length, then the data follows).
 		cpm.Memory.Set(0x0080, uint8(len(cli)))
 		for i, c := range cli {
-			cpm.Memory.PutRange(0x0081+uint16(i), uint8(c))
+			cpm.Memory.SetRange(0x0081+uint16(i), uint8(c))
 		}
 	}
-
-	// Create the CPU, pointing to our memory
-	// starting point for PC will be the binary entry-point
-	cpm.CPU = z80.CPU{
-		States: z80.States{SPR: z80.SPR{PC: 0x100}},
-		Memory: cpm.Memory,
-	}
-
-	// Setup a breakpoint on 0x0005
-	// That's the BIOS entrypoint
-	cpm.CPU.BreakPoints = map[uint16]struct{}{}
-	cpm.CPU.BreakPoints[0x05] = struct{}{}
 
 	// Run forever :)
 	for {
@@ -313,8 +385,8 @@ func (cpm *CPM) Execute(args []string) error {
 
 		// OK we have a breakpoint error to handle.
 		//
-		// That means we have a CP/M BIOS function to emulate, the syscall
-		// identifier is stored in the C-register.  Get it.
+		// That means we have a CP/M BIOS function to emulate,
+		// the syscall identifier is stored in the C-register.
 		syscall := cpm.CPU.States.BC.Lo
 
 		//
@@ -322,34 +394,67 @@ func (cpm *CPM) Execute(args []string) error {
 		//
 		handler, exists := cpm.Syscalls[syscall]
 
-		if exists {
-			cpm.Logger.Info("Calling BIOS emulation",
-				slog.String("name", handler.Desc),
+		//
+		// Nope: That will stop execution with a fatal log
+		//
+		if !exists {
+
+			cpm.Logger.Error("Unimplemented SysCall",
 				slog.Int("syscall", int(syscall)),
-				slog.String("syscallHex", fmt.Sprintf("0x%02X", syscall)),
-			)
-
-			err := handler.Handler(cpm)
-			if err == ErrExit {
-				return nil
-			}
-			if err != nil {
-				return err
-			}
-
-			// Return from call
-			cpm.CPU.PC = cpm.Memory.GetU16(cpm.CPU.SP)
-			// pop stack back.  Fun
-			cpm.CPU.SP += 2
-
-		} else {
-
-			// Unknown opcode
-			cpm.Logger.Error("Unimplemented syscall",
-				slog.Int("syscall", int(syscall)),
-				slog.String("syscallHex", fmt.Sprintf("0x%02X", syscall)),
+				slog.String("syscallHex",
+					fmt.Sprintf("0x%02X", syscall)),
 			)
 			return ErrUnimplemented
 		}
+
+		// Log the call we're going to make
+		cpm.Logger.Info("SysCall",
+			slog.String("name", handler.Desc),
+			slog.Int("syscall", int(syscall)),
+			slog.String("syscallHex",
+				fmt.Sprintf("0x%02X", syscall)),
+		)
+
+		// Invoke the handler
+		err = handler.Handler(cpm)
+
+		// Are we being asked to terminate CP/M?  If so return
+		if err == ErrExit {
+			return nil
+		}
+		// Any other error is fatal.
+		if err != nil {
+			return err
+		}
+
+		// Return from call by getting the return address
+		// from the stack, and updating the instruction pointer
+		// to continue executing from there.
+		cpm.CPU.PC = cpm.Memory.GetU16(cpm.CPU.SP)
+
+		// We need to remove the entry from the stack to cleanup
+		cpm.CPU.SP += 2
 	}
+}
+
+// SetDrives enables/disables the use of subdirectories upon the host system
+// to represent CP/M drives
+func (cpm *CPM) SetDrives(enabled bool) {
+	cpm.Drives = true
+}
+
+// GetCurrentDrive retrieves the value of the current user-drive.
+//
+// We use this to maintain state when re-launching our CCP, after any child-process
+// has terminated.
+func (cpm *CPM) GetCurrentDrive() uint8 {
+	return cpm.currentDrive
+}
+
+// SetCurrentDrive changes the default user-drive to the given value.
+//
+// We use this to maintain state when re-launching our CCP, after any child-process
+// has terminated.
+func (cpm *CPM) SetCurrentDrive(d uint8) {
+	cpm.currentDrive = d
 }

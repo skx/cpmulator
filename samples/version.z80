@@ -1,0 +1,59 @@
+;; version.z80 - Show our version
+
+;
+; Simple macro to push all (important) registers.
+;
+MACRO PUSH_ALL
+        push af
+        push bc
+        push de
+        push hl
+      ENDM
+
+
+;
+; Simple macro to pop all (important) registers.
+;
+MACRO POP_ALL
+        pop hl
+        pop de
+        pop bc
+        pop af
+      ENDM
+; }}
+
+
+   ORG 0x0100
+
+   ; Get the version
+   ld c, 12
+   call DispHL
+
+   ; Terminate
+   ld c, 0x00
+   call 0x0005
+
+
+
+
+DispHL:
+	ld	bc,-10000
+	call	Num1
+	ld	bc,-1000
+	call	Num1
+	ld	bc,-100
+	call	Num1
+	ld	c,-10
+	call	Num1
+	ld	c,-1
+Num1:	ld	a,'0'-1
+Num2:	inc	a
+	add	hl,bc
+	jr	c,Num2
+	sbc	hl,bc
+        PUSH_ALL
+        ld e, a
+        ld c, 0x02
+        call 0x0005
+        POP_ALL
+	ret
