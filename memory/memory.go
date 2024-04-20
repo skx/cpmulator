@@ -6,32 +6,10 @@ import (
 	"os"
 )
 
-// Memory provides 64K bytes array memory.
+// Memory is our structure for representing the 64k of RAM
+// that we run our programs within.
 type Memory struct {
 	buf [65536]uint8
-}
-
-// Set sets a byte at addr of memory.
-func (m *Memory) Set(addr uint16, value uint8) {
-	m.buf[addr] = value
-}
-
-// Get returns a byte at addr of memory.
-func (m *Memory) Get(addr uint16) uint8 {
-	return m.buf[addr]
-}
-
-// GetU16 returns a word from the given address of memory.
-func (m *Memory) GetU16(addr uint16) uint16 {
-	l := m.Get(addr)
-	h := m.Get(addr + 1)
-	return (uint16(h) << 8) | uint16(l)
-}
-
-// PutRange copies bytes from the given data to the specified
-// starting address in RAM.
-func (m *Memory) PutRange(addr uint16, data ...uint8) {
-	copy(m.buf[int(addr):int(addr)+len(data)], data)
 }
 
 // FillRange fills an area of memory with the given byte
@@ -41,6 +19,11 @@ func (m *Memory) FillRange(addr uint16, size int, char uint8) {
 		addr++
 		size--
 	}
+}
+
+// Get returns a byte at addr of memory.
+func (m *Memory) Get(addr uint16) uint8 {
+	return m.buf[addr]
 }
 
 // GetRange returns the contents of a given range
@@ -54,8 +37,17 @@ func (m *Memory) GetRange(addr uint16, size int) []uint8 {
 	return ret
 }
 
-// LoadFile loads a file from "Start" (0x0100) as program.
-func (m *Memory) LoadFile(name string) error {
+// GetU16 returns a word from the given address of memory.
+func (m *Memory) GetU16(addr uint16) uint16 {
+	l := m.Get(addr)
+	h := m.Get(addr + 1)
+	return (uint16(h) << 8) | uint16(l)
+}
+
+// LoadFile loads a file into the RAM, at the specified offset.
+//
+// Before loading the file all memory is filled with 0x00 (NOP).
+func (m *Memory) LoadFile(offset uint16, name string) error {
 
 	// Fill the 64k with NOP instructions
 	for i := range m.buf {
@@ -68,8 +60,19 @@ func (m *Memory) LoadFile(name string) error {
 		return err
 	}
 
-	// Put it into the starting location, 0x0100
-	m.PutRange(0x0100, prog...)
+	// Put it into the starting locatioe.
+	m.SetRange(offset, prog...)
 
 	return nil
+}
+
+// Set sets a byte at addr of memory.
+func (m *Memory) Set(addr uint16, value uint8) {
+	m.buf[addr] = value
+}
+
+// SetRange copies bytes from the given data to the specified
+// starting address in RAM.
+func (m *Memory) SetRange(addr uint16, data ...uint8) {
+	copy(m.buf[int(addr):int(addr)+len(data)], data)
 }
