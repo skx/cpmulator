@@ -51,8 +51,13 @@ func main() {
 
 	// change directory?
 	if *cd != "" {
-		os.Chdir(*cd)
+		err := os.Chdir(*cd)
+		if err != nil {
+			fmt.Printf("failed to change to %s:%s\n", *cd, err)
+			return
+		}
 	}
+
 	// Should we create child-directories?  If so, do so.
 	if *createDirectories {
 		for _, d := range []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P"} {
