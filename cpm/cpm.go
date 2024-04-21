@@ -258,7 +258,9 @@ func New(logger *slog.Logger) *CPM {
 func (cpm *CPM) LoadBinary(filename string) error {
 
 	// Create 64K of memory, full of NOPs
-	cpm.Memory = new(memory.Memory)
+	if cpm.Memory == nil {
+		cpm.Memory = new(memory.Memory)
+	}
 
 	// Load our binary into the memory
 	err := cpm.Memory.LoadFile(cpm.start, filename)
@@ -297,7 +299,9 @@ func (cpm *CPM) LoadBinary(filename string) error {
 func (cpm *CPM) LoadCCP() {
 
 	// Create 64K of memory, full of NOPs
-	cpm.Memory = new(memory.Memory)
+	if cpm.Memory == nil {
+		cpm.Memory = new(memory.Memory)
+	}
 
 	// Get our embedded CCP
 	data := ccp.CCPBinary
@@ -330,8 +334,19 @@ func (cpm *CPM) LoadCCP() {
 // and any error will be returned.
 func (cpm *CPM) Execute(args []string) error {
 
-	// Create the CPU, pointing to our memory
-	// starting point for PC will be the binary entry-point
+	// Reset any cached filehandles.
+	//
+	// This is only required when running the CCP, as there we're persistent.
+	for fcb, obj := range cpm.files {
+		cpm.Logger.Debug("Closing handle in FileCache",
+			slog.String("path", obj.name),
+			slog.Int("fcb", int(fcb)))
+		obj.handle.Close()
+	}
+	cpm.files = make(map[uint16]FileCache)
+
+	// Create the CPU, pointing to our memory, and setting the initial program counter
+	// to point to our expected entry-point.
 	cpm.CPU = z80.CPU{
 		States: z80.States{
 			SPR: z80.SPR{
@@ -340,6 +355,18 @@ func (cpm *CPM) Execute(args []string) error {
 		},
 		Memory: cpm.Memory,
 	}
+
+	//
+	// This is a bit of a cheat, but the CCP we're using
+	// assumes that the C register contains the user-number
+	// and drive number to run from when it is launched.
+	//
+	// If we set this to the currentDrive (which will default
+	// to A) we'll maintain state despite restarts, as we reuse
+	// this processing object - so drive-changes will update that
+	// value from the default when it is changed.
+	//
+	cpm.CPU.States.BC.Lo = cpm.currentDrive
 
 	// Setup a breakpoint on 0x0005 - the BIOS entrypoint.
 	cpm.CPU.BreakPoints = map[uint16]struct{}{}
@@ -447,20 +474,4 @@ func (cpm *CPM) Execute(args []string) error {
 // to represent CP/M drives
 func (cpm *CPM) SetDrives(enabled bool) {
 	cpm.Drives = true
-}
-
-// GetCurrentDrive retrieves the value of the current user-drive.
-//
-// We use this to maintain state when re-launching our CCP, after any child-process
-// has terminated.
-func (cpm *CPM) GetCurrentDrive() uint8 {
-	return cpm.currentDrive
-}
-
-// SetCurrentDrive changes the default user-drive to the given value.
-//
-// We use this to maintain state when re-launching our CCP, after any child-process
-// has terminated.
-func (cpm *CPM) SetCurrentDrive(d uint8) {
-	cpm.currentDrive = d
 }
