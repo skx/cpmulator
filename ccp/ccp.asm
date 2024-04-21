@@ -558,7 +558,10 @@ CMDTBL:	DEFB	'DIR '
 	DEFB	'SAVE'
 	DEFB	'REN '
 	DEFB	'USER'
-        DEFB    'CLS '          ; Steve's CLS command
+        DEFB    'CLS '          ; Steve's addition.
+        DEFB    'EXIT'          ; Steve's addition.
+        DEFB    'HALT'          ; Steve's addition.
+        DEFB    'QUIT'          ; Steve's addition.
 CMDEND:
 ;
 ;
@@ -671,7 +674,9 @@ CMMND2:	LD	DE,TBUFF
 ;   CP/M command address table.
 ;
 CMDADR:	DEFW	DIRECT,ERASE,TYPE,SAVE
-	DEFW	RENAME,USER,CLS_COMMAND,UNKNOWN
+	DEFW	RENAME,USER
+        DEFW    CLS_COMMAND,EXIT_COMMAND,HALT_COMMAND, QUIT_COMMAND
+        DEFW    UNKNOWN
 ;
 ;   Halt the system. Reason for this is unknown at present.
 ;
@@ -1106,6 +1111,19 @@ CLEAR_SCREEN_ANSI:
         db 27, "[2J"            ; "clear"
         db 27, "[H"             ; "home"
         db 0
+
+
+
+;**************************************************************
+;
+;	Terminate execution, via a HALT opcode
+;
+;**************************************************************
+
+EXIT_COMMAND:
+HALT_COMMAND:
+QUIT_COMMAND:
+        HALT
 
 ;
 ;**************************************************************
