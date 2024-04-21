@@ -190,8 +190,7 @@ In case you don't I've added ensured I also commit the generated binaries to the
 
 * Much of the functionality of this repository comes from the [excellent Z80 emulator library](https://github.com/koron-go/z80) it is using, written by @koron-go.
 * The CCP comes from [my fork](https://github.com/skx/z80-playground-cpm-fat/) of the origianl [cpm-fat](https://github.com/z80playground/cpm-fat/)
-  * However this is largely unchanged from the [original CCP](http://www.cpm.z80.de/source.html) from Digital Research.
-  * I've not looked at the differences in-depth, but I don't think there are any significant changes.
+  * However this is largely unchanged from the [original CCP](http://www.cpm.z80.de/source.html) from Digital Research, although I did add the `CLS`, `EXIT`, `HALT` & `QUIT` commands.
 
 
 
