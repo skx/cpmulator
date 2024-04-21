@@ -194,6 +194,15 @@ In case you don't I've added ensured I also commit the generated binaries to the
 
 
 
+## References
+
+* [Digital Research - CP/M Operating System Manual](http://www.gaby.de/cpm/manuals/archive/cpm22htm/)
+  * Particularly the syscall reference in [Section 5: CP/M 2 System Interface](http://www.gaby.de/cpm/manuals/archive/cpm22htm/ch5.htm).
+* Sample code
+  * https://github.com/Laci1953/RC2014-CPM/tree/main
+
+
+
 ## Bugs?
 
 Let me know by filing an issue.  If your program is "real" then it is highly likely it will try to invoke an unimplemented BIOS function.
