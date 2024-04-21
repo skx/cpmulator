@@ -116,6 +116,7 @@ func main() {
 			if err == cpm.ErrHalt {
 				return
 			}
+
 			// Deliberate stop of execution.
 			if err == cpm.ErrExit {
 				return
@@ -123,47 +124,35 @@ func main() {
 
 			fmt.Printf("Error running %s [%s]: %s\n",
 				program, strings.Join(args, ","), err)
-			return
 		}
-	} else {
-		// The drive will default to A:, or 0.
-		var drive uint8
+		return
 
-		// We load and re-run eternally - because many binaries the CCP
-		// would launch would end with "exit" which would otherwise cause
-		// our emulation to terminate
-		//
-		//
-		for {
-			// Load the CCP binary - reseting RAM
-			obj.LoadCCP()
+	}
 
-			// Set the current drive.
-			obj.SetCurrentDrive(drive)
+	// We load and re-run eternally - because many binaries the CCP
+	// would launch would end with "exit" which would otherwise cause
+	// our emulation to terminate
+	//
+	// Large binaries would also overwrite the CCP in RAM, so we can't
+	// just jump back to the entry-point for that.
+	//
+	for {
+		// Load the CCP binary - reseting RAM
+		obj.LoadCCP()
 
-			// Run the CCP, which will often load a child-binary.
-			// The child-binary will call "P_TERMCPM" which will cause
-			// the CCP to terminate.
-			err := obj.Execute(args)
-			if err != nil {
+		// Run the CCP, which will often load a child-binary.
+		// The child-binary will call "P_TERMCPM" which will cause
+		// the CCP to terminate.
+		err := obj.Execute(args)
+		if err != nil {
 
-				// Deliberate stop of execution.
-				if err == cpm.ErrHalt {
-					return
-				}
-
-				fmt.Printf("\nError running CCP: %s\n", err)
+			// Deliberate stop of execution.
+			if err == cpm.ErrHalt {
 				return
 			}
 
-			// Get the drive, so that if the user changed it and we
-			// secretly restart the execution afresh after the child has
-			// terminated their drive persists.
-			//
-			// NOTE: UserNumber will reset to zero, but we don't use that..
-			drive = obj.GetCurrentDrive()
-
+			fmt.Printf("\nError running CCP: %s\n", err)
+			return
 		}
 	}
-
 }
