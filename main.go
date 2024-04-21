@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/skx/cpmulator/cpm"
 )
@@ -21,12 +22,16 @@ func main() {
 	createDirectories := flag.Bool("create", false, "Create subdirectories on the host computer for each CP/M drive.")
 	flag.Parse()
 
-	// Default arguments
+	// Default program to execute, and arguments to pass to program
+	program := ""
 	args := []string{}
 
-	// If we got a binary and more then we have args
-	if len(flag.Args()) > 2 {
-		args = flag.Args()[2:]
+	// If we have a program
+	if len(flag.Args()) > 0 {
+		program = flag.Args()[0]
+		if len(flag.Args()) > 1 {
+			args = flag.Args()[1:]
+		}
 	}
 
 	// Setup our logging level - default to warnings or higher.
@@ -47,7 +52,7 @@ func main() {
 			}))
 
 	// Create a new emulator.
-	cpm := cpm.New(log)
+	obj := cpm.New(log)
 
 	// change directory?
 	if *cd != "" {
@@ -71,7 +76,7 @@ func main() {
 	if *useDirectories {
 
 		// Enable drives
-		cpm.SetDrives(true)
+		obj.SetDrives(true)
 
 		// Count how many drives exist - if zero show a warning
 		found := 0
@@ -96,17 +101,29 @@ func main() {
 	}
 
 	// Load the binary, if we were given one.
-	if len(flag.Args()) > 1 {
+	if program != "" {
 
-		err := cpm.LoadBinary(flag.Args()[1])
+		err := obj.LoadBinary(program)
 		if err != nil {
-			fmt.Printf("%s\n", err)
+			fmt.Printf("Error loading program %s:%s\n", program, err)
 			return
 		}
 
-		err = cpm.Execute(args)
+		err = obj.Execute(args)
 		if err != nil {
-			fmt.Printf("Error running %s: %s\n", flag.Args()[1], err)
+
+			// Deliberate stop of execution
+			if err == cpm.ErrHalt {
+				return
+			}
+			// Deliberate stop of execution.
+			if err == cpm.ErrExit {
+				return
+			}
+
+			fmt.Printf("Error running %s [%s]: %s\n",
+				program, strings.Join(args, ","), err)
+			return
 		}
 	} else {
 		// The drive will default to A:, or 0.
@@ -119,16 +136,22 @@ func main() {
 		//
 		for {
 			// Load the CCP binary - reseting RAM
-			cpm.LoadCCP()
+			obj.LoadCCP()
 
 			// Set the current drive.
-			cpm.SetCurrentDrive(drive)
+			obj.SetCurrentDrive(drive)
 
 			// Run the CCP, which will often load a child-binary.
 			// The child-binary will call "P_TERMCPM" which will cause
 			// the CCP to terminate.
-			err := cpm.Execute(args)
+			err := obj.Execute(args)
 			if err != nil {
+
+				// Deliberate stop of execution.
+				if err == cpm.ErrHalt {
+					return
+				}
+
 				fmt.Printf("\nError running CCP: %s\n", err)
 				return
 			}
@@ -138,7 +161,7 @@ func main() {
 			// terminated their drive persists.
 			//
 			// NOTE: UserNumber will reset to zero, but we don't use that..
-			drive = cpm.GetCurrentDrive()
+			drive = obj.GetCurrentDrive()
 
 		}
 	}

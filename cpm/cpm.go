@@ -27,6 +27,12 @@ var (
 	// It should be handled and expected by callers.
 	ErrExit = errors.New("EXIT")
 
+	// ErrHalt will be used to note that the Z80 emulator executed a HALT
+	// operation, and that terminated the execution of code.
+	//
+	// It should be handled and expected by callers.
+	ErrHalt = errors.New("HALT")
+
 	// ErrUnimplemented will be used to handle a CP/M binary calling an unimplemented syscall.
 	//
 	// It should be handled and expected by callers.
@@ -375,7 +381,7 @@ func (cpm *CPM) Execute(args []string) error {
 
 		// No error?  Then end - the CPU hit a HALT.
 		if err == nil {
-			return nil
+			return ErrHalt
 		}
 
 		// An error which wasn't a breakpoint?  Give up
