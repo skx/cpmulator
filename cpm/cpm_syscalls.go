@@ -10,7 +10,6 @@ import (
 	"io"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/skx/cpmulator/fcb"
@@ -302,69 +301,35 @@ func SysCallFindFirst(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
-	pattern := ""
-	name := fcbPtr.GetName()
-	ext := fcbPtr.GetType()
-
-	for _, c := range name {
-		if c == '?' {
-			pattern += "*"
-			break
-		}
-		if c == ' ' {
-			continue
-		}
-		pattern += string(c)
-	}
-	if ext != "" && ext != "   " {
-		pattern += "."
-	}
-
-	for _, c := range ext {
-		if c == '?' {
-			pattern += "*"
-			break
-		}
-		if c == ' ' {
-			continue
-		}
-		pattern += string(c)
-	}
-
-	// Should we remap drives?
+	dir := "."
 	if cpm.Drives {
-		pattern = string(cpm.currentDrive+'A') + "/" + pattern
+		dir = string(cpm.currentDrive+'A') + "/"
 	}
 
-	// Run the glob.
-	matches, err := filepath.Glob(pattern)
+	// Find files in the FCB.
+	res, err := fcbPtr.GetMatches(dir)
 	if err != nil {
-		// error in pattern?
-		fmt.Printf("glob error %s\n", err)
-		cpm.CPU.States.AF.Hi = 0xFF
+		cpm.Logger.Debug("fcbPtr.GetMatches returned error",
+			slog.String("path", dir),
+			slog.String("error", err.Error()))
+
+		cpm.CPU.States.AF.Hi = 0xff
 		return nil
 	}
 
-	// No matches on the glob-search
-	if len(matches) == 0 {
-		// Return 0xFF for failure
-		cpm.CPU.States.AF.Hi = 0xFF
+	// No matches?  Return an error
+	if len(res) < 1 {
+		cpm.CPU.States.AF.Hi = 0xff
 		return nil
-	}
-
-	// We need to strip the directory-name.
-	tmp := []string{}
-	for _, match := range matches {
-		tmp = append(tmp, filepath.Base(match))
 	}
 
 	// Here we save the results in our cache,
 	// dropping the first
-	cpm.findFirstResults = tmp[1:]
+	cpm.findFirstResults = res[1:]
 	cpm.findOffset = 0
 
 	// Create a new FCB and store it in the DMA entry
-	x := fcb.FromString(tmp[0])
+	x := fcb.FromString(res[0])
 	data := x.AsBytes()
 	cpm.Memory.SetRange(cpm.dma, data...)
 
@@ -409,57 +374,34 @@ func SysCallDeleteFile(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
-	pattern := ""
-	name := fcbPtr.GetName()
-	ext := fcbPtr.GetType()
-
-	for _, c := range name {
-		if c == '?' {
-			pattern += "*"
-			break
-		}
-		if c == ' ' {
-			continue
-		}
-		pattern += string(c)
-	}
-	if ext != "" && ext != "   " {
-		pattern += "."
-	}
-
-	for _, c := range ext {
-		if c == '?' {
-			pattern += "*"
-			break
-		}
-		if c == ' ' {
-			continue
-		}
-		pattern += string(c)
-	}
-
-	// Should we remap drives?
+	dir := "."
 	if cpm.Drives {
-		pattern = string(cpm.currentDrive+'A') + "/" + pattern
+		dir = string(cpm.currentDrive+'A') + "/"
 	}
 
-	// Run the glob.
-	matches, err := filepath.Glob(pattern)
+	// Find files in the FCB.
+	res, err := fcbPtr.GetMatches(dir)
 	if err != nil {
-		// error in pattern?
-		fmt.Printf("glob error %s\n", err)
-		cpm.CPU.States.AF.Hi = 0xFF
+		cpm.Logger.Debug("fcbPtr.GetMatches returned error",
+			slog.String("path", dir),
+			slog.String("error", err.Error()))
+
+		cpm.CPU.States.AF.Hi = 0xff
 		return nil
 	}
 
 	// No matches on the glob-search
-	if len(matches) == 0 {
+	if len(res) == 0 {
 		// Return 0xFF for failure
 		cpm.CPU.States.AF.Hi = 0xFF
 		return nil
 	}
 
-	for _, path := range matches {
+	for _, path := range res {
+		if cpm.Drives {
+			path = string(cpm.currentDrive+'A') + "/" + path
+		}
+
 		cpm.Logger.Debug("SysCallDeleteFile: deleting file",
 			slog.String("path", path))
 
