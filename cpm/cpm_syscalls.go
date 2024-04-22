@@ -399,11 +399,8 @@ func SysCallFindNext(cpm *CPM) error {
 	return nil
 }
 
-// SysCallDeleteFile deletes the filename specified by the FCB in DE.
-//
-// TODO This should support globs ..
+// SysCallDeleteFile deletes the filename(s) matching the pattern specified by the FCB in DE.
 func SysCallDeleteFile(cpm *CPM) error {
-
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
 	// Get the bytes which make up the FCB entry.
@@ -412,48 +409,72 @@ func SysCallDeleteFile(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
-	// Get the name
+	pattern := ""
 	name := fcbPtr.GetName()
 	ext := fcbPtr.GetType()
 
-	fileName := name
-	if ext != "" && ext != "   " {
-		fileName += "."
-		fileName += ext
-	}
-
-	// Should we remap drives?
-	path := "."
-	if cpm.Drives {
-		path = string(cpm.currentDrive + 'A')
-	}
-
-	//
-	// Ok we have a filename, but we probably have an upper-case
-	// filename.
-	//
-	// Run a glob, and if there's an existing file with the same
-	// name then replace with the mixed/lower cased version.
-	//
-	files, err2 := os.ReadDir(path)
-	if err2 == nil {
-		for _, n := range files {
-			if strings.ToUpper(n.Name()) == fileName {
-				fileName = n.Name()
-			}
+	for _, c := range name {
+		if c == '?' {
+			pattern += "*"
+			break
 		}
+		if c == ' ' {
+			continue
+		}
+		pattern += string(c)
+	}
+	if ext != "" && ext != "   " {
+		pattern += "."
+	}
+
+	for _, c := range ext {
+		if c == '?' {
+			pattern += "*"
+			break
+		}
+		if c == ' ' {
+			continue
+		}
+		pattern += string(c)
 	}
 
 	// Should we remap drives?
 	if cpm.Drives {
-		fileName = string(cpm.currentDrive+'A') + "/" + fileName
+		pattern = string(cpm.currentDrive+'A') + "/" + pattern
 	}
 
-	// Delete the named file
-	err := os.Remove(fileName)
-	if os.IsNotExist(err) {
+	// Run the glob.
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		// error in pattern?
+		fmt.Printf("glob error %s\n", err)
+		cpm.CPU.States.AF.Hi = 0xFF
 		return nil
 	}
+
+	// No matches on the glob-search
+	if len(matches) == 0 {
+		// Return 0xFF for failure
+		cpm.CPU.States.AF.Hi = 0xFF
+		return nil
+	}
+
+	for _, path := range matches {
+		cpm.Logger.Debug("SysCallDeleteFile: deleting file",
+			slog.String("path", path))
+
+		err := os.Remove(path)
+		if err != nil {
+
+			cpm.Logger.Debug("SysCallDeleteFile: failed to delete file",
+				slog.String("path", path),
+				slog.String("error", err.Error()))
+
+			cpm.CPU.States.AF.Hi = 0xff
+			return nil
+		}
+	}
+	cpm.CPU.States.AF.Hi = 0x00
 	return err
 }
 
