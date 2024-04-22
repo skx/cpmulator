@@ -50,7 +50,7 @@ The MIT License (MIT)
 A>
 ```
 
-You can terminate the CCP by pressing Ctrl-C, or typing `EXIT`.  The following built-in commands are available - but note that file-renaming is not yet supported, this is noted in #37.
+You can terminate the CCP by pressing Ctrl-C, or typing `EXIT`.  The following built-in commands are available:
 
 <details>
 <summary>Show the CCP built-in commands:</summary>
@@ -67,7 +67,7 @@ You can terminate the CCP by pressing Ctrl-C, or typing `EXIT`.  The following b
 * `TYPE`
   * View the contents of the named file - wildcards are not permitted.
 * `REN`
-  * Rename files, so "`REN NEW = OLD`" - again wildcards are not permitted, nor is cross-drive renaming.  This will fail until I've implemented F_RENAME, as tracked in #37.
+  * Rename files, so "`REN NEW=OLD`" - again note that wildcards are not permitted, nor is cross-drive renaming.
 
 </details>
 

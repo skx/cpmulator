@@ -212,6 +212,10 @@ func New(logger *slog.Logger) *CPM {
 		Desc:    "F_MAKE",
 		Handler: SysCallMakeFile,
 	}
+	sys[23] = CPMHandler{
+		Desc:    "F_RENAME",
+		Handler: SysCallRenameFile,
+	}
 	sys[24] = CPMHandler{
 		Desc:    "DRV_LOGINVEC",
 		Handler: SysCallLoginVec,
