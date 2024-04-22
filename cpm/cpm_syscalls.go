@@ -62,7 +62,7 @@ func SysCallWriteChar(cpm *CPM) error {
 }
 
 func SysCallRawIO(cpm *CPM) error {
-	if cpm.CPU.States.DE.Lo != 0xff {
+	if cpm.CPU.States.DE.Lo != 0xFF {
 		fmt.Printf("%c", cpm.CPU.States.DE.Lo)
 	} else {
 		return SysCallReadChar(cpm)
@@ -219,7 +219,7 @@ func SysCallFileOpen(cpm *CPM) error {
 
 			l.Debug("failed to open, file does not exist")
 
-			cpm.CPU.States.AF.Hi = 0xff
+			cpm.CPU.States.AF.Hi = 0xFF
 			return nil
 		}
 
@@ -473,7 +473,7 @@ func SysCallRead(cpm *CPM) error {
 	obj, ok := cpm.files[ptr]
 	if !ok {
 		cpm.Logger.Error("SysCallRead: Attempting to read from a file that isn't open")
-		cpm.CPU.States.AF.Hi = 0xff
+		cpm.CPU.States.AF.Hi = 0xFF
 		return nil
 	}
 
@@ -534,7 +534,7 @@ func SysCallWrite(cpm *CPM) error {
 	obj, ok := cpm.files[ptr]
 	if !ok {
 		cpm.Logger.Error("SysCallWrite: Attempting to write to a file that isn't open")
-		cpm.CPU.States.AF.Hi = 0xff
+		cpm.CPU.States.AF.Hi = 0xFF
 		return nil
 	}
 
@@ -667,6 +667,96 @@ func SysCallMakeFile(cpm *CPM) error {
 	return nil
 }
 
+// SysCallRenameFile will handle a rename operation.
+// Note that this will not handle cross-directory renames (i.e. file moving).
+func SysCallRenameFile(cpm *CPM) error {
+
+	// 1. SRC
+
+	// The pointer to the FCB
+	ptr := cpm.CPU.States.DE.U16()
+	// Get the bytes which make up the FCB entry.
+	xxx := cpm.Memory.GetRange(ptr, 36)
+
+	// Create a structure with the contents
+	fcbPtr := fcb.FromBytes(xxx)
+
+	// Get the name
+	name := fcbPtr.GetName()
+	ext := fcbPtr.GetType()
+
+	fileName := name
+	if ext != "" && ext != "   " {
+		fileName += "."
+		fileName += ext
+	}
+
+	// Should we remap drives?
+	path := "."
+	if cpm.Drives {
+		path = string(cpm.currentDrive + 'A')
+	}
+
+	//
+	// Ok we have a filename, but we probably have an upper-case
+	// filename.
+	//
+	// Run a glob, and if there's an existing file with the same
+	// name then replace with the mixed/lower cased version.
+	//
+	files, err2 := os.ReadDir(path)
+	if err2 == nil {
+		for _, n := range files {
+			if strings.ToUpper(n.Name()) == fileName {
+				fileName = n.Name()
+			}
+		}
+	}
+
+	// Should we remap drives?
+	if cpm.Drives {
+		fileName = string(cpm.currentDrive+'A') + "/" + fileName
+	}
+
+	// 2. DEST
+	// The pointer to the FCB
+	xxx2 := cpm.Memory.GetRange(ptr+16, 36)
+
+	// Create a structure with the contents
+	dstPtr := fcb.FromBytes(xxx2)
+
+	// Get the name
+	dName := dstPtr.GetName()
+	dExt := dstPtr.GetType()
+
+	dstName := dName
+	if dExt != "" && dExt != "   " {
+		dstName += "."
+		dstName += dExt
+	}
+
+	// Should we remap drives?
+	if cpm.Drives {
+		dstName = string(cpm.currentDrive+'A') + "/" + dstName
+	}
+
+	cpm.Logger.Debug("Renaming file",
+		slog.String("src", fileName),
+		slog.String("dst", dstName))
+
+	err := os.Rename(fileName, dstName)
+	if err != nil {
+		cpm.Logger.Debug("Renaming file failed",
+			slog.String("error", err.Error()))
+		cpm.CPU.States.AF.Hi = 0xFF
+
+		return nil
+	}
+
+	cpm.CPU.States.AF.Hi = 0x00
+	return nil
+}
+
 // SysCallLoginVec returns the list of logged in drives.
 func SysCallLoginVec(cpm *CPM) error {
 	cpm.CPU.States.HL.Hi = 0xFF
@@ -733,7 +823,7 @@ func SysCallReadRand(cpm *CPM) error {
 		_, err = f.Seek(offset, io.SeekStart)
 		if err != nil {
 			fmt.Printf("cannot seek to position %d: %s", offset, err)
-			return 0xff
+			return 0xFF
 		}
 
 		for i := range data {
@@ -744,7 +834,7 @@ func SysCallReadRand(cpm *CPM) error {
 		if err != nil {
 			if err != io.EOF {
 				fmt.Printf("failed to read offset %d: %s", offset, err)
-				return 0xff
+				return 0xFF
 			}
 		}
 
@@ -765,7 +855,7 @@ func SysCallReadRand(cpm *CPM) error {
 	obj, ok := cpm.files[ptr]
 	if !ok {
 		cpm.Logger.Error("SysCallReadRand: Attempting to read from a file that isn't open")
-		cpm.CPU.States.AF.Hi = 0xff
+		cpm.CPU.States.AF.Hi = 0xFF
 		return nil
 	}
 
@@ -800,7 +890,7 @@ func SysCallWriteRand(cpm *CPM) error {
 	obj, ok := cpm.files[ptr]
 	if !ok {
 		cpm.Logger.Error("SysCallWriteRand: Attempting to write to a file that isn't open")
-		cpm.CPU.States.AF.Hi = 0xff
+		cpm.CPU.States.AF.Hi = 0xFF
 		return nil
 	}
 
