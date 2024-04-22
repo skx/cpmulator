@@ -2,6 +2,7 @@
 package fcb
 
 import (
+	"os"
 	"strings"
 )
 
@@ -228,4 +229,77 @@ func FromBytes(bytes []uint8) FCB {
 	tmp.R2 = bytes[35]
 
 	return tmp
+}
+
+// GetMatches returns the files matching the pattern in the given FCB record.
+//
+// We try to do this by converting the entries of the named directory into FCBs
+// after ignoring those with impossible formats - i.e. not FILENAME.EXT length.
+func (f *FCB) GetMatches(prefix string) ([]string, error) {
+	var ret []string
+
+	t := string(f.Type[0]) + string(f.Type[1]) + string(f.Type[2])
+	if t == "" || t == "   " {
+		t = "???"
+	}
+
+	// Find files in the directory
+	files, err := os.ReadDir(prefix)
+	if err != nil {
+		return ret, err
+	}
+
+	// For each file
+	for _, file := range files {
+
+		orig := file.Name()
+
+		// Ignore directories
+		if file.IsDir() {
+			continue
+		}
+
+		// Name needs to be upper-cased
+		name := strings.ToUpper(file.Name())
+
+		// is the name too long?
+		if len(name) > 8+3 {
+			continue
+		}
+
+		// Having a .extension is fine, but if the
+		// suffix is longer than three characters we're
+		// not going to use it.
+		parts := strings.Split(name, ".")
+		if len(parts) == 2 {
+			// filename is over 8 characters
+			if len(parts[0]) > 8 {
+				continue
+			}
+			// suffix is over 3 characters
+			if len(parts[1]) > 3 {
+				continue
+			}
+		}
+
+		include := true
+		// OK make an fcb
+		tmp := FromString(name)
+		for i, c := range tmp.Name {
+			if (f.Name[i] != c) && (f.Name[i] != '?') {
+				include = false
+			}
+		}
+		for i, c := range tmp.Type {
+			if (t[i] != c) && (t[i] != '?') {
+				include = false
+			}
+		}
+		// Does it match? Then add the original name
+		if include {
+			ret = append(ret, orig)
+		}
+	}
+	// Find files in the current directory.
+	return ret, nil
 }
