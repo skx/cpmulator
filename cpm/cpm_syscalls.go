@@ -405,7 +405,7 @@ func SysCallDeleteFile(cpm *CPM) error {
 		cpm.Logger.Debug("SysCallDeleteFile: deleting file",
 			slog.String("path", path))
 
-		err := os.Remove(path)
+		err = os.Remove(path)
 		if err != nil {
 
 			cpm.Logger.Debug("SysCallDeleteFile: failed to delete file",

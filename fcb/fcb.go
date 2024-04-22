@@ -2,8 +2,7 @@
 package fcb
 
 import (
-	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 )
 
@@ -245,9 +244,8 @@ func (f *FCB) GetMatches(prefix string) ([]string, error) {
 	}
 
 	// Find files in the directory
-	files, err := ioutil.ReadDir(prefix)
+	files, err := os.ReadDir(prefix)
 	if err != nil {
-		fmt.Printf("RROR:%s\n", err)
 		return ret, err
 	}
 
@@ -269,7 +267,7 @@ func (f *FCB) GetMatches(prefix string) ([]string, error) {
 			continue
 		}
 
-		// Having a .extesnion is fine, but if the
+		// Having a .extension is fine, but if the
 		// suffix is longer than three characters we're
 		// not going to use it.
 		parts := strings.Split(name, ".")
