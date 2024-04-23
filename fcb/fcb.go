@@ -6,7 +6,11 @@ import (
 	"strings"
 )
 
-// FCB is a placeholder struct which is slowly in the process of being used.
+// FCB is a structure which is used to hold details about file entries, although
+// later versions of CP/M support directories we do not.
+//
+// We largely focus upon Name, Type, and the various read/write offsets.  Most of
+// the other fields are maintained but ignored.
 type FCB struct {
 	// Drive holds the drive letter for this entry.
 	Drive uint8
@@ -17,14 +21,32 @@ type FCB struct {
 	// Type holds the suffix.
 	Type [3]uint8
 
+	// Ex holds the logical extent.
 	Ex uint8
+
+	// S1 is reserved, and ignored.
 	S1 uint8
+
+	// S2 is reserved, and ignored.
 	S2 uint8
+
+	// RC holds the record count.
+	// (i.e. The size of the file in 128-byte records.)
 	RC uint8
+
+	// Allocation map, ignored.
 	Al [16]uint8
-	Cr uint8 // FCB_CURRENT_RECORD_OFFSET
-	R0 uint8 // FCB_RANDOM_RECORD_OFFSET
+
+	// Cr holds the current record offset.
+	Cr uint8
+
+	// R0, holds part of the random-record offset.
+	R0 uint8
+
+	// R1 holds part of the random-record offset.
 	R1 uint8
+
+	// R2 holds part of the random-record offset.
 	R2 uint8
 }
 
@@ -41,6 +63,8 @@ func (f *FCB) GetName() string {
 }
 
 // GetType returns the type/extension component of an FCB entry.
+//
+// If the extension is null, or empty, we return the empty string.
 func (f *FCB) GetType() string {
 	t := ""
 
@@ -78,7 +102,7 @@ func (f *FCB) AsBytes() []uint8 {
 // the sequential read/write calls - as used by the BDOS functions
 // F_READ and F_WRITE.
 //
-// IncreaseSequentialOffset updates the value
+// IncreaseSequentialOffset updates the value.
 func (f *FCB) GetSequentialOffset() int64 {
 
 	// Helpers
