@@ -6,6 +6,9 @@ import (
 	"strings"
 )
 
+// SIZE contains the size of the FCB structure
+var SIZE = 36
+
 // FCB is a structure which is used to hold details about file entries, although
 // later versions of CP/M support directories we do not.
 //

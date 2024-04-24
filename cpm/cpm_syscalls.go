@@ -230,7 +230,7 @@ func SysCallFileOpen(cpm *CPM) error {
 	ptr := cpm.CPU.States.DE.U16()
 
 	// Get the bytes which make up the FCB entry.
-	xxx := cpm.Memory.GetRange(ptr, 36)
+	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
 
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
@@ -365,7 +365,7 @@ func SysCallFindFirst(cpm *CPM) error {
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
 	// Get the bytes which make up the FCB entry.
-	xxx := cpm.Memory.GetRange(ptr, 36)
+	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
 
 	// Previous results are now invalidated
 	cpm.findFirstResults = []string{}
@@ -407,6 +407,9 @@ func SysCallFindFirst(cpm *CPM) error {
 	cpm.Memory.SetRange(cpm.dma, data...)
 
 	// Return 0x00 to point to the first entry in the DMA area.
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = 0x00
+	cpm.CPU.States.BC.Hi = 0x00
 	cpm.CPU.States.AF.Hi = 0x00
 
 	return nil
@@ -429,9 +432,12 @@ func SysCallFindNext(cpm *CPM) error {
 	// Create a new FCB and store it in the DMA entry
 	x := fcb.FromString(res)
 	data := x.AsBytes()
-	cpm.Memory.SetRange(0x80, data...)
+	cpm.Memory.SetRange(cpm.dma, data...)
 
 	// Return 0x00 to point to the first entry in the DMA area.
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = 0x00
+	cpm.CPU.States.BC.Hi = 0x00
 	cpm.CPU.States.AF.Hi = 0x00
 
 	return nil
@@ -442,7 +448,7 @@ func SysCallDeleteFile(cpm *CPM) error {
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
 	// Get the bytes which make up the FCB entry.
-	xxx := cpm.Memory.GetRange(ptr, 36)
+	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
 
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
@@ -506,7 +512,7 @@ func SysCallRead(cpm *CPM) error {
 	ptr := cpm.CPU.States.DE.U16()
 
 	// Get the bytes which make up the FCB entry.
-	xxx := cpm.Memory.GetRange(ptr, 36)
+	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
 
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
@@ -541,8 +547,15 @@ func SysCallRead(cpm *CPM) error {
 		return fmt.Errorf("error reading file %s", err)
 	}
 
+	// Add logging of the result and details.
+	cpm.Logger.Debug("SysCallRead",
+		slog.Int("dma", int(cpm.dma)),
+		slog.Int("fcb", int(ptr)),
+		slog.Int("handle", int(obj.handle.Fd())),
+		slog.Int("offset", int(offset)))
+
 	// Copy the data to the DMA area
-	cpm.Memory.SetRange(cpm.dma, data[:]...)
+	cpm.Memory.SetRange(cpm.dma, data...)
 
 	// Update the next read position
 	fcbPtr.IncreaseSequentialOffset()
@@ -567,7 +580,7 @@ func SysCallWrite(cpm *CPM) error {
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
 	// Get the bytes which make up the FCB entry.
-	xxx := cpm.Memory.GetRange(ptr, 36)
+	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
 
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
@@ -582,6 +595,13 @@ func SysCallWrite(cpm *CPM) error {
 
 	// Get the next write position
 	offset := fcbPtr.GetSequentialOffset()
+
+	// Add logging of the result and details.
+	cpm.Logger.Debug("SysCallWrite",
+		slog.Int("dma", int(cpm.dma)),
+		slog.Int("fcb", int(ptr)),
+		slog.Int("handle", int(obj.handle.Fd())),
+		slog.Int("offset", int(offset)))
 
 	// Get the data range from the DMA area
 	data := cpm.Memory.GetRange(cpm.dma, 128)
@@ -616,7 +636,7 @@ func SysCallMakeFile(cpm *CPM) error {
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
 	// Get the bytes which make up the FCB entry.
-	xxx := cpm.Memory.GetRange(ptr, 36)
+	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
 
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
@@ -718,7 +738,7 @@ func SysCallRenameFile(cpm *CPM) error {
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
 	// Get the bytes which make up the FCB entry.
-	xxx := cpm.Memory.GetRange(ptr, 36)
+	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
 
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
@@ -762,7 +782,7 @@ func SysCallRenameFile(cpm *CPM) error {
 
 	// 2. DEST
 	// The pointer to the FCB
-	xxx2 := cpm.Memory.GetRange(ptr+16, 36)
+	xxx2 := cpm.Memory.GetRange(ptr+16, fcb.SIZE)
 
 	// Create a structure with the contents
 	dstPtr := fcb.FromBytes(xxx2)
@@ -891,7 +911,7 @@ func SysCallReadRand(cpm *CPM) error {
 			}
 		}
 
-		cpm.Memory.SetRange(cpm.dma, data[:]...)
+		cpm.Memory.SetRange(cpm.dma, data...)
 		return 0
 	}
 
@@ -899,7 +919,7 @@ func SysCallReadRand(cpm *CPM) error {
 	ptr := cpm.CPU.States.DE.U16()
 
 	// Get the bytes which make up the FCB entry.
-	xxx := cpm.Memory.GetRange(ptr, 36)
+	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
 
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
@@ -921,6 +941,16 @@ func SysCallReadRand(cpm *CPM) error {
 	// Read the data
 	res := sysRead(obj.handle, fpos)
 
+	// Add logging of the result and details.
+	cpm.Logger.Debug("SysCallReadRand",
+		slog.Int("dma", int(cpm.dma)),
+		slog.Int("fcb", int(ptr)),
+		slog.Int("handle", int(obj.handle.Fd())),
+		slog.Int("record_count", int(fcbPtr.RC)),
+		slog.Int("record", record),
+		slog.Int64("fpos", fpos),
+		slog.Int("result", res))
+
 	// Update the FCB in memory
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
 	cpm.CPU.States.AF.Hi = uint8(res)
@@ -934,7 +964,7 @@ func SysCallWriteRand(cpm *CPM) error {
 	ptr := cpm.CPU.States.DE.U16()
 
 	// Get the bytes which make up the FCB entry.
-	xxx := cpm.Memory.GetRange(ptr, 36)
+	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
 
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
@@ -965,7 +995,17 @@ func SysCallWriteRand(cpm *CPM) error {
 
 	// If the offset we're writing to is bigger than the file size then
 	// we need to add an appropriate amount of padding.
-	padding := fileSize - fpos
+	padding := fpos - fileSize
+
+	// Add logging of the result and details.
+	cpm.Logger.Debug("SysCallWriteRand",
+		slog.Int("dma", int(cpm.dma)),
+		slog.Int("fcb", int(ptr)),
+		slog.Int("padding", int(padding)),
+		slog.Int("handle", int(obj.handle.Fd())),
+		slog.Int("record_count", int(fcbPtr.RC)),
+		slog.Int("record", record),
+		slog.Int64("fpos", fpos))
 
 	for padding > 0 {
 		_, er := obj.handle.Write([]byte{0x00})

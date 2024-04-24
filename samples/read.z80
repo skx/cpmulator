@@ -1,0 +1,176 @@
+;; Read sequential records from a file.
+;;
+;; Given a filename open it, and read 256 records to it - testing that the contents
+;; match what we expect.
+;;
+;;  A record of 0x00
+;;  A record of 0x01
+;; ..
+;;  A record of 0xFF
+;;
+;;
+
+FCB1:                EQU 0x5C
+DMA:                 EQU 0x80
+DMA_LEN:             EQU 128
+BDOS_ENTRY_POINT:    EQU 5
+BDOS_OUTPUT_STRING:  EQU 9
+BDOS_READ_FILE:      EQU 20
+BDOS_OPEN_FILE:      EQU 15
+BDOS_CLOSE_FILE:     EQU 16
+
+; Simple macro to push all (important) registers.
+;
+MACRO PUSH_ALL
+        push af
+        push bc
+        push de
+        push hl
+      ENDM
+
+
+;
+; Simple macro to pop all (important) registers.
+;
+MACRO POP_ALL
+        pop hl
+        pop de
+        pop bc
+        pop af
+      ENDM
+; }}
+
+
+       ORG 0x0100
+
+       ;; The FCB will be populated with the pattern/first argument,
+       ;; if the first character of that region is a space-character
+       ;; then we've got nothing to search for.
+       ld a, (FCB1 + 1)
+       cp 0x20             ; 0x20 = 32 == SPACE
+       jp nz, got_argument ; Not a space, so we can proceed
+
+        ;;
+        ;; No argument, so show the error and exit
+        ;;
+        ld de, usage_message
+        ld c,  BDOS_OUTPUT_STRING
+        call   BDOS_ENTRY_POINT
+
+exit_fn:
+        LD      C,0x00
+        CALL    BDOS_ENTRY_POINT
+
+
+got_argument:
+        ;; Open the file
+        LD DE, FCB1
+        LD C, BDOS_OPEN_FILE
+        CALL BDOS_ENTRY_POINT
+
+        ;; Did that succeed?
+        cp 00
+        jr z, open_ok
+
+        LD DE, OPEN_FAILED
+        ld c,  BDOS_OUTPUT_STRING
+        call   BDOS_ENTRY_POINT
+        jr exit_fn
+
+open_ok:
+        ;; Right here we loop from 0x00 - 0xFF starting at 0x00
+        ld a, 0x00
+read_record:
+        PUSH AF
+             ; read a record
+             LD C, BDOS_READ_FILE
+             LD DE, FCB1
+             CALL BDOS_ENTRY_POINT
+
+        POP AF
+
+        ; Does this record contain the current record number?
+        LD HL, DMA
+        LD b,(HL)
+        CP B
+        JR NZ, RECORD_FAILED
+
+        INC A
+        cp 0
+        jr nz, read_record
+
+        ;; Close the file
+        LD DE,FCB1
+        LD C, BDOS_CLOSE_FILE
+        CALL BDOS_ENTRY_POINT
+
+        ;; Exit
+        jr exit_fn
+
+RECORD_FAILED:
+        push af
+        ld de, FAILURE
+        ld c,  BDOS_OUTPUT_STRING
+        call   BDOS_ENTRY_POINT
+
+        pop af
+        call show_a_register
+
+           ld c, 0x02
+           ld e, 0x0a
+           call 0x0005
+           ld c, 0x02
+           ld e, 0x0d
+           call 0x0005
+
+        ; now dump the memory
+        ld b, 128
+        ld hl, DMA
+show_mem:
+        push bc
+        ld a,(hl)
+           call show_a_register
+           ld c, 0x02
+           ld e, " "
+           call 0x0005
+        pop bc
+        djnz show_mem
+        jr exit_fn
+
+
+DispHL:
+        ld      c,-10
+        call    Num1
+        ld      c,-1
+Num1:   ld      a,'0'-1
+Num2:   inc     a
+        add     hl,bc
+        jr      c,Num2
+        sbc     hl,bc
+        PUSH_ALL
+        ld e, a
+        ld c, 0x02
+        call 0x0005
+        POP_ALL
+        ret
+
+show_a_register:
+        ld h,0
+        ld l,a
+        call DispHL
+        ret
+
+usage_message:
+        db "Usage: READ FILENAME.EXT"
+        ;; note fall-through here :)
+newline:
+        db 0xa, 0xd, "$"
+FAILURE:
+        db "Unexpected value reading file at record $"
+
+OPEN_FAILED:
+        db "opening the file failed.", 0x0a, 0x0d, "$"
+
+RECORD:
+        DB 0x00
+END

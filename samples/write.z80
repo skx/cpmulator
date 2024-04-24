@@ -1,0 +1,88 @@
+;; Write random records to a file.
+;;
+;; Given a filename open it, and write 256 records to it:
+;;
+;;  A record of 0x00
+;;  A record of 0x01
+;; ..
+;;  A record of 0xFF
+;;
+;; Then close the file.
+;;
+;; The end result should be a file of size 32768 bytes (256 * 128)
+;;
+
+FCB1:                EQU 0x5C
+DMA:                 EQU 0x80
+DMA_LEN:             EQU 128
+BDOS_ENTRY_POINT:    EQU 5
+BDOS_OUTPUT_STRING:  EQU 9
+BDOS_WRITE_FILE:     EQU 21
+BDOS_MAKE_FILE:      EQU 22
+BDOS_CLOSE_FILE:     EQU 16
+
+       ORG 0x0100
+
+       ;; The FCB will be populated with the pattern/first argument,
+       ;; if the first character of that region is a space-character
+       ;; then we've got nothing to search for.
+       ld a, (FCB1 + 1)
+       cp 0x20             ; 0x20 = 32 == SPACE
+       jp nz, got_argument ; Not a space, so we can proceed
+
+        ;;
+        ;; No argument, so show the error and exit
+        ;;
+        ld de, usage_message
+        ld c,  BDOS_OUTPUT_STRING
+        call   BDOS_ENTRY_POINT
+
+exit_fn:
+        LD      C,0x00
+        CALL    BDOS_ENTRY_POINT
+
+
+got_argument:
+        ;; Create the file
+        LD DE, FCB1
+        LD C, BDOS_MAKE_FILE
+        CALL BDOS_ENTRY_POINT
+
+        ;; Right here we loop from 0x00 - 0xFF starting at 0x00
+        ld a, 0x00
+write_record:
+        PUSH AF
+             LD B, DMA_LEN
+             LD HL,DMA
+FILL_DMA:
+             LD (HL),A
+             INC HL
+             DJNZ FILL_DMA
+
+             ; write record
+             LD C, BDOS_WRITE_FILE
+             LD DE, FCB1
+             CALL BDOS_ENTRY_POINT
+
+        POP AF
+        INC A
+        cp 0
+        jr nz, write_record
+
+        ;; Close the file
+        LD DE,FCB1
+        LD C, BDOS_CLOSE_FILE
+        CALL BDOS_ENTRY_POINT
+
+        ;; Exit
+        jr exit_fn
+
+usage_message:
+        db "Usage: WRITE FILENAME.EXT"
+        ;; note fall-through here :)
+newline:
+        db 0xa, 0xd, "$"
+
+RECORD:
+        DB 0x00
+END
