@@ -25,6 +25,7 @@ func TestCopy(t *testing.T) {
 	f1.R0 = 'R'
 	f1.R1 = '0'
 	f1.R2 = '1'
+	f1.Cr = '*'
 	b := f1.AsBytes()
 
 	f2 := FromBytes(b)
@@ -35,6 +36,9 @@ func TestCopy(t *testing.T) {
 		t.Fatalf("copy failed")
 	}
 	if f2.S1 != 'S' {
+		t.Fatalf("copy failed")
+	}
+	if f2.Cr != '*' {
 		t.Fatalf("copy failed")
 	}
 	if f2.S2 != '?' {

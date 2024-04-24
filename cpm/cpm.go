@@ -314,7 +314,7 @@ func (cpm *CPM) LoadCCP() {
 	var ccpEntrypoint uint16 = 0xDE00
 
 	// Load it into memory
-	cpm.Memory.SetRange(ccpEntrypoint, data[:]...)
+	cpm.Memory.SetRange(ccpEntrypoint, data...)
 
 	// DMA area / CLI Args are going to be unset.
 	cpm.Memory.Set(0x0080, 0x00)
@@ -383,13 +383,13 @@ func (cpm *CPM) Execute(args []string) error {
 	// Setup FCB1 if we have a first argument
 	if len(args) > 0 {
 		x := fcb.FromString(args[0])
-		cpm.Memory.SetRange(0x005C, x.AsBytes()[:]...)
+		cpm.Memory.SetRange(0x005C, x.AsBytes()...)
 	}
 
 	// Setup FCB2 if we have a second argument
 	if len(args) > 1 {
 		x := fcb.FromString(args[1])
-		cpm.Memory.SetRange(0x006C, x.AsBytes()[:]...)
+		cpm.Memory.SetRange(0x006C, x.AsBytes()...)
 	}
 
 	// Poke in the CLI argument as a Pascal string.
