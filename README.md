@@ -9,6 +9,10 @@ This repository contains a CP/M emulator, with integrated CCP, which is primaril
 
 I've implemented enough of the BIOS functions to run simple well-behaved utilities, but I've not implemented any notion of disk access - only file-based I/O.
 
+A companion repository contains a collection of vintage CP/M software you can use with this emulator:
+
+* [https://github.com/skx/cpm-dist](https://github.com/skx/cpm-dist)
+
 
 
 
@@ -36,13 +40,10 @@ If neither of these options sufficed you may download the latest binary from [ou
 If you launch `cpmulator` with no arguments then the integrated CCP ("console command processor") will be launched, dropping you into a familiar shell - note here the filenames are presented in the old-school way, as per the later note on filesystems and filenames:
 
 ```sh
-$ cpmulator
-A>
-A>DIR *
-A:         .GIT |         .GIT |         .GIT | LICENSE
-A: README  .MD  | CCP     .    | CPM     .    | CPMULATO.
-A: FCB     .    | GO      .MOD | GO      .SUM | MAIN    .GO
-A: MEMORY  .    | SAMPLES .
+A>dir
+
+A: LICENSE .    | README  .MD  | CPMULATO.    | GO      .MOD
+A: GO      .SUM | MAIN    .GO  | RET     .COM
 
 A>TYPE LICENSE
 The MIT License (MIT)
@@ -72,7 +73,7 @@ You can terminate the CCP by pressing Ctrl-C, or typing `EXIT`.  The following b
 </details>
 
 
-You can also launch a binary directly, by specifying it's path upon the command-line, followed by any optional arguments:
+You can also launch a binary directly by specifying it's path upon the command-line, followed by any optional arguments:
 
 ```
 $ cpmulator /path/to/binary [optional-args]
@@ -96,8 +97,9 @@ There is a small mailbox here.
 
 >
 ```
+A companion repository contains a larger collection of vintage CP/M software you can use with this emulator:
 
-Note that the Infocom games are distributed as two files; an executable and a data-file.  When you launch the game you'll need to be in the same directory as both the game and the data-file.
+* [https://github.com/skx/cpm-dist](https://github.com/skx/cpm-dist)
 
 
 
@@ -134,7 +136,13 @@ A>DIR E:
 No file
 ```
 
-It isn't currently possibly to point different drives to arbitrary paths on your computer, but that might be considered if you have a use-case for it.
+A companion repository contains a larger collection of vintage CP/M software you can use with this emulator:
+
+* [https://github.com/skx/cpm-dist](https://github.com/skx/cpm-dist)
+
+This is arranged into subdirectories, on the assumption you'll run with the `-directories` flag, and the drives are thus used as a means of organization.
+
+Note that it isn't currently possibly to point different drives to arbitrary paths on your computer, but that might be considered if you have a use-case for it.
 
 
 
@@ -152,27 +160,14 @@ $ ./cpmulator FOO.COM
 Error running FOO.COM: UNIMPLEMENTED
 ```
 
-You can see a log of the functions it did successfully emulate and handle by setting the environmental variable DEBUG to a non-empty value, this will generate a log to STDERR where you can save it:
+You can see a log of the functions it did successfully emulate and handle by setting the environmental variable DEBUG to a non-empty value, this will generate a log to STDERR where you can save it.
 
 ```
 $ DEBUG=1 ./cpmulator ZORK1.COM  2>log.log
 ..
 $ cat log.log
 {"time":"2024-04-14T15:41:20.62879931+03:00",
- "level":"INFO",
- "msg":"Calling BIOS emulation",
- "name":"DRV_GET",
- "syscall":25,
- "syscallHex":"0x19"
-}
-{"time":"2024-04-14T15:41:20.628908173+03:00",
- "level":"INFO",
- "msg":"Calling BIOS emulation",
- "name":"DRV_SET",
- "syscall":14,
- "syscallHex":"0x0E"
-}
-
+  ..
 ```
 
 
@@ -189,7 +184,7 @@ In case you don't I've added ensured I also commit the generated binaries to the
 # Credits
 
 * Much of the functionality of this repository comes from the [excellent Z80 emulator library](https://github.com/koron-go/z80) it is using, written by @koron-go.
-* The CCP comes from [my fork](https://github.com/skx/z80-playground-cpm-fat/) of the origianl [cpm-fat](https://github.com/z80playground/cpm-fat/)
+* The CCP comes from [my fork](https://github.com/skx/z80-playground-cpm-fat/) of the original [cpm-fat](https://github.com/z80playground/cpm-fat/)
   * However this is largely unchanged from the [original CCP](http://www.cpm.z80.de/source.html) from Digital Research, although I did add the `CLS`, `EXIT`, `HALT` & `QUIT` commands.
 
 
@@ -214,8 +209,5 @@ Outstanding issues I'm aware of:
 * I don't implement some of the basic BIOS calls that might be useful
   * Get free RAM, etc, etc.
   * These will be added over time as their absence causes program-failures.
-* PIP.COM doesn't work for file copying; `PIP A:NEW.COM=B:ORIG.COM`.
-   * This should copy "ORIG.COM" to "NEW.COM", but aborts due to lack of `F_RANDREC` (and probably more syscalls).
-   * You can [read about PIP](https://www.shaels.net/index.php/cpm80-22-documents/using-cpm/6-pip-utility) if you're interested.  It is a useful tool!
 
 Steve
