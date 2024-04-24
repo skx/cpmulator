@@ -191,8 +191,13 @@ func SysCallConsoleStatus(cpm *CPM) error {
 // TODO: If there is a file named "$..." then we need to return 0xFF in A,
 // which will be read by the CCP - as created by SUBMIT.COM
 func SysCallDriveAllReset(cpm *CPM) error {
+
+	// Reset disk and user-number
 	cpm.currentDrive = 1
 	cpm.userNumber = 0
+
+	// Reset our DMA address to the default
+	cpm.dma = 0x80
 
 	// Return values:
 	// HL = 0, B=0, A=0
