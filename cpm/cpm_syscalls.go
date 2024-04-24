@@ -48,7 +48,11 @@ func SysCallReadChar(cpm *CPM) error {
 		return fmt.Errorf("error restoring terminal state %s", err)
 	}
 
-	// Return the character
+	// Return values:
+	// HL = 0, B=0, A=Char
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = 0x00
+	cpm.CPU.States.BC.Hi = 0x00
 	cpm.CPU.States.AF.Hi = b[0]
 
 	return nil
@@ -57,12 +61,28 @@ func SysCallReadChar(cpm *CPM) error {
 // SysCallWriteChar writes the single character in the A register to STDOUT.
 func SysCallWriteChar(cpm *CPM) error {
 	fmt.Printf("%c", (cpm.CPU.States.DE.Lo))
+
+	// Return values:
+	// HL = 0, B=0, A=0
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = 0x00
+	cpm.CPU.States.BC.Hi = 0x00
+	cpm.CPU.States.AF.Hi = 0x00
+
 	return nil
 }
 
 func SysCallRawIO(cpm *CPM) error {
 	if cpm.CPU.States.DE.Lo != 0xFF {
 		fmt.Printf("%c", cpm.CPU.States.DE.Lo)
+
+		// Return values:
+		// HL = 0, B=0, A=0
+		cpm.CPU.States.HL.Hi = 0x00
+		cpm.CPU.States.HL.Lo = 0x00
+		cpm.CPU.States.BC.Hi = 0x00
+		cpm.CPU.States.AF.Hi = 0x00
+
 	} else {
 		return SysCallReadChar(cpm)
 	}
@@ -80,6 +100,14 @@ func SysCallWriteString(cpm *CPM) error {
 		addr++
 		c = cpm.Memory.Get(addr)
 	}
+
+	// Return values:
+	// HL = 0, B=0, A=0
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = 0x00
+	cpm.CPU.States.BC.Hi = 0x00
+	cpm.CPU.States.AF.Hi = 0x00
+
 	return nil
 }
 
@@ -106,6 +134,28 @@ func SysCallReadString(cpm *CPM) error {
 		i++
 	}
 
+	// Return values:
+	// HL = 0, B=0, A=0
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = 0x00
+	cpm.CPU.States.BC.Hi = 0x00
+	cpm.CPU.States.AF.Hi = 0x00
+
+	return nil
+}
+
+// SysCallBDOSVersion returns version details
+func SysCallBDOSVersion(cpm *CPM) error {
+
+	// HL = 0x0022 -CP/M 2.2
+	// B = 0x00
+	// A = 0x22
+	cpm.CPU.States.AF.Hi = 0x22
+	cpm.CPU.States.AF.Lo = 0x00
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = 0x22
+	cpm.CPU.States.BC.Hi = 0x00
+
 	return nil
 }
 
@@ -118,23 +168,37 @@ func SysCallSetDMA(cpm *CPM) error {
 	// Update the DMA value.
 	cpm.dma = addr
 
-	return nil
-}
-
-// SysCallBDOSVersion returns version details
-func SysCallBDOSVersion(cpm *CPM) error {
-	cpm.CPU.States.AF.Hi = 0x20
+	// Return values:
+	// HL = 0, B=0, A=0
 	cpm.CPU.States.HL.Hi = 0x00
-	cpm.CPU.States.HL.Lo = 0x20
+	cpm.CPU.States.HL.Lo = 0x00
 	cpm.CPU.States.BC.Hi = 0x00
+	cpm.CPU.States.AF.Hi = 0x00
 
 	return nil
 }
 
-// SysCallDriveAllReset resets the drives
+// SysCallConsoleStatus fakes a test for pending console (character) input.
+//
+// As this is fake it always returns "no character pending".
+func SysCallConsoleStatus(cpm *CPM) error {
+	cpm.CPU.States.AF.Hi = 0x00
+	return nil
+}
+
+// SysCallDriveAllReset resets the drives.
+//
+// TODO: If there is a file named "$..." then we need to return 0xFF in A,
+// which will be read by the CCP - as created by SUBMIT.COM
 func SysCallDriveAllReset(cpm *CPM) error {
 	cpm.currentDrive = 1
 	cpm.userNumber = 0
+
+	// Return values:
+	// HL = 0, B=0, A=0
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = 0x00
+	cpm.CPU.States.BC.Hi = 0x00
 	cpm.CPU.States.AF.Hi = 0x00
 	return nil
 }
@@ -144,7 +208,11 @@ func SysCallDriveSet(cpm *CPM) error {
 	// The drive number passed to this routine is 0 for A:, 1 for B: up to 15 for P:.
 	cpm.currentDrive = (cpm.CPU.States.AF.Hi & 0x0F)
 
-	// Success means we return 0x00 in A
+	// Return values:
+	// HL = 0, B=0, A=0
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = 0x00
+	cpm.CPU.States.BC.Hi = 0x00
 	cpm.CPU.States.AF.Hi = 0x00
 
 	return nil
@@ -416,6 +484,12 @@ func SysCallDeleteFile(cpm *CPM) error {
 			return nil
 		}
 	}
+
+	// Return values:
+	// HL = 0, B=0, A=0
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = 0x00
+	cpm.CPU.States.BC.Hi = 0x00
 	cpm.CPU.States.AF.Hi = 0x00
 	return err
 }
@@ -716,6 +790,11 @@ func SysCallRenameFile(cpm *CPM) error {
 		return nil
 	}
 
+	// Return values:
+	// HL = 0, B=0, A=0
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = 0x00
+	cpm.CPU.States.BC.Hi = 0x00
 	cpm.CPU.States.AF.Hi = 0x00
 	return nil
 }
@@ -752,8 +831,14 @@ func SysCallUserNumber(cpm *CPM) error {
 		cpm.userNumber = (cpm.CPU.States.DE.Lo & 0x0F)
 	}
 
-	// Return the current number, which might have changed
+	// Return values:
+	// HL = user, B=0, A=user
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = cpm.userNumber
+	cpm.CPU.States.BC.Hi = 0x00
 	cpm.CPU.States.AF.Hi = cpm.userNumber
+	cpm.CPU.States.AF.Lo = 0x00
+
 	return nil
 }
 
