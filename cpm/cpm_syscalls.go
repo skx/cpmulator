@@ -995,7 +995,7 @@ func SysCallWriteRand(cpm *CPM) error {
 
 	// If the offset we're writing to is bigger than the file size then
 	// we need to add an appropriate amount of padding.
-	padding := fileSize - fpos
+	padding := fpos - fileSize
 
 	// Add logging of the result and details.
 	cpm.Logger.Debug("SysCallWriteRand",
