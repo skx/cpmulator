@@ -165,8 +165,8 @@ func New(logger *slog.Logger) *CPM {
 		Handler: SysCallReadString,
 	}
 	sys[11] = CPMHandler{
-		Desc:    "SETDMA",
-		Handler: SysCallSetDMA,
+		Desc:    "C_STAT",
+		Handler: SysCallConsoleStatus,
 	}
 	sys[12] = CPMHandler{
 		Desc:    "S_BDOSVER",
