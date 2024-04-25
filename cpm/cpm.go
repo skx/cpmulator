@@ -358,6 +358,7 @@ func (cpm *CPM) Execute(args []string) error {
 			},
 		},
 		Memory: cpm.Memory,
+		IO:     cpm,
 	}
 
 	//
@@ -478,4 +479,25 @@ func (cpm *CPM) Execute(args []string) error {
 // to represent CP/M drives
 func (cpm *CPM) SetDrives(enabled bool) {
 	cpm.Drives = true
+}
+
+// In is called to handle the I/O reading of a Z80 port.
+//
+// This is called by our embedded Z80 emulator.
+func (cpm *CPM) In(addr uint8) uint8 {
+	cpm.Logger.Debug("I/O IN",
+		slog.Int("port", int(addr)))
+
+	return 0
+}
+
+// Out is called to handle the I/O writing to a Z80 port.
+//
+// This is called by our embedded Z80 emulator.
+func (cpm *CPM) Out(addr uint8, val uint8) {
+
+	cpm.Logger.Debug("I/O OUT",
+		slog.Int("port", int(addr)),
+		slog.Int("value", int(val)))
+
 }
