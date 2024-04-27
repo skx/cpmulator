@@ -82,7 +82,7 @@ func (io *IO) IsPending() (bool, error) {
 
 	// NOTE: This doesn't work without the non-blocking mode having been
 	// set previously.
-	os.Stdin.SetDeadline(time.Now().Add(time.Millisecond * 1))
+	_ = os.Stdin.SetDeadline(time.Now().Add(time.Millisecond * 1))
 
 	// Try the read
 	n, err := os.Stdin.Read(b)
