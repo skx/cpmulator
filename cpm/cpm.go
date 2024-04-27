@@ -90,8 +90,14 @@ type CPM struct {
 	// device.  This is used by MBASIC amongst other things, and we use it
 	// to basically keep track of multibyte output
 	auxStatus int
-	x         uint8
-	y         uint8
+
+	// x holds the character X position, when using AUX I/O.
+	// It is set/used by escape sequences.
+	x uint8
+
+	// y holds the character Y position, when using AUX I/O.
+	// It is set/used by escape sequences.
+	y uint8
 
 	// Syscalls contains the syscalls we know how to emulate, indexed
 	// by their ID.
@@ -327,8 +333,7 @@ func (cpm *CPM) LoadBinary(filename string) error {
 // we don't overlap with our CCP, or "large programs" loaded at 0x0100
 func (cpm *CPM) fixupRAM() {
 	i := 0
-	var CBIOS int
-	CBIOS = 0xFE00
+	CBIOS := 0xFE00
 	NENTRY := 30
 
 	SETMEM := func(a int, v int) {

@@ -104,36 +104,26 @@ func SysCallAuxWrite(cpm *CPM) error {
 		switch c {
 		case 0x07: /* BEL: flash screen */
 			fmt.Printf("\033[?5h\033[?5l")
-			break
 		case 0x7f: /* DEL: echo BS, space, BS */
 			fmt.Printf("\b \b")
-			break
 		case 0x1a: /* adm3a clear screen */
 			fmt.Printf("\033[H\033[2J")
-			break
 		case 0x0c: /* vt52 clear screen */
 			fmt.Printf("\033[H\033[2J")
-			break
 		case 0x1e: /* adm3a cursor home */
 			fmt.Printf("\033[H")
-			break
 		case 0x1b:
 			cpm.auxStatus = 1 /* esc-prefix */
-			break
 		case 1:
 			cpm.auxStatus = 2 /* cursor motion prefix */
-			break
 		case 2: /* insert line */
 			fmt.Printf("\033[L")
-			break
 		case 3: /* delete line */
 			fmt.Printf("\033[M")
-			break
 		case 0x18, 5: /* clear to eol */
 			fmt.Printf("\033[K")
-			break
 		case 0x12, 0x13:
-			break
+			// nop
 		default:
 			fmt.Printf("%c", c)
 		}
@@ -141,113 +131,84 @@ func SysCallAuxWrite(cpm *CPM) error {
 		switch c {
 		case 0x1b:
 			fmt.Printf("%c", c)
-			break
 		case '=', 'Y':
 			cpm.auxStatus = 2
-			break
 		case 'E': /* insert line */
 			fmt.Printf("\033[L")
-			break
 		case 'R': /* delete line */
 			fmt.Printf("\033[M")
-			break
 		case 'B': /* enable attribute */
 			cpm.auxStatus = 4
-			break
 		case 'C': /* disable attribute */
 			cpm.auxStatus = 5
-			break
 		case 'L', 'D': /* set line */ /* delete line */
 			cpm.auxStatus = 6
-			break
 		case '*', ' ': /* set pixel */ /* clear pixel */
 			cpm.auxStatus = 8
-			break
 		default: /* some true ANSI sequence? */
 			cpm.auxStatus = 0
 			fmt.Printf("%c%c", 0x1b, c)
-			break
 		}
 	case 2:
 		cpm.y = c - ' ' + 1
 		cpm.auxStatus = 3
-		break
 	case 3:
 		cpm.x = c - ' ' + 1
 		cpm.auxStatus = 0
 		fmt.Printf("\033[%d;%dH", cpm.y, cpm.x)
-		break
 	case 4: /* <ESC>+B prefix */
 		cpm.auxStatus = 0
 		switch c {
 		case '0': /* start reverse video */
 			fmt.Printf("\033[7m")
-			break
 		case '1': /* start half intensity */
 			fmt.Printf("\033[1m")
-			break
 		case '2': /* start blinking */
 			fmt.Printf("\033[5m")
-			break
 		case '3': /* start underlining */
 			fmt.Printf("\033[4m")
-			break
 		case '4': /* cursor on */
 			fmt.Printf("\033[?25h")
-			break
 		case '5': /* video mode on */
-			break
+			// nop
 		case '6': /* remember cursor position */
 			fmt.Printf("\033[s")
-			break
 		case '7': /* preserve status line */
-			break
+			// nop
 		default:
 			fmt.Printf("%cB%c", 0x1b, c)
 		}
-		break
 	case 5: /* <ESC>+C prefix */
 		cpm.auxStatus = 0
 		switch c {
 		case '0': /* stop reverse video */
 			fmt.Printf("\033[27m")
-			break
 		case '1': /* stop half intensity */
 			fmt.Printf("\033[m")
-			break
 		case '2': /* stop blinking */
 			fmt.Printf("\033[25m")
-			break
 		case '3': /* stop underlining */
 			fmt.Printf("\033[24m")
-			break
 		case '4': /* cursor off */
 			fmt.Printf("\033[?25l")
-			break
 		case '6': /* restore cursor position */
 			fmt.Printf("\033[u")
-			break
 		case '5': /* video mode off */
-			break
+			// nop
 		case '7': /* don't preserve status line */
-			break
+			// nop
 		default:
 			fmt.Printf("%cC%c", 0x1b, c)
 		}
-		break
 		/* set/clear line/point */
 	case 6:
 		cpm.auxStatus++
-		break
 	case 7:
 		cpm.auxStatus++
-		break
 	case 8:
 		cpm.auxStatus++
-		break
 	case 9:
 		cpm.auxStatus = 0
-		break
 	}
 
 	return nil
