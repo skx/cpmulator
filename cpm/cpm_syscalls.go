@@ -1,6 +1,6 @@
 // This file contains the implementations for the CP/M calls we emulate.
 //
-// NOTE: They are added to the syscalls map in cpm.go
+// NOTE: They are added to the syscalls map in cpm.go.
 //
 
 package cpm
@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/skx/cpmulator/fcb"
+	cpmio "github.com/skx/cpmulator/io"
 	"golang.org/x/term"
 )
 
@@ -32,84 +33,61 @@ func SysCallExit(cpm *CPM) error {
 // SysCallReadChar reads a single character from the console.
 func SysCallReadChar(cpm *CPM) error {
 
-	// Pending input from a call to SysCallConsoleStatus?
-	if cpm.pending != 0x00 {
-		cpm.CPU.States.AF.Hi = cpm.pending
-		cpm.pending = 0x00
-		return nil
-	}
+	// Use our I/O package
+	obj := cpmio.New()
 
-	// switch stdin into 'raw' mode
-	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+	// Block for input
+	c, err := obj.BlockForCharacter()
 	if err != nil {
-		return fmt.Errorf("error making raw terminal %s", err)
-	}
-
-	// read only a single byte
-	b := make([]byte, 1)
-	_, err = os.Stdin.Read(b)
-	if err != nil {
-		return fmt.Errorf("error reading a byte from stdin %s", err)
-	}
-
-	// restore the state of the terminal to avoid mixing RAW/Cooked
-	err = term.Restore(int(os.Stdin.Fd()), oldState)
-	if err != nil {
-		return fmt.Errorf("error restoring terminal state %s", err)
+		return fmt.Errorf("error in call to BlockForCharacter: %s", err)
 	}
 
 	// Return values:
-	// HL = 0, B=0, A=Char
+	// HL = Char, A=Char
 	cpm.CPU.States.HL.Hi = 0x00
-	cpm.CPU.States.HL.Lo = b[0]
-	cpm.CPU.States.AF.Hi = b[0]
+	cpm.CPU.States.HL.Lo = c
+	cpm.CPU.States.AF.Hi = c
+	cpm.CPU.States.AF.Lo = 0x00
 
 	return nil
 }
 
 // SysCallWriteChar writes the single character in the E register to STDOUT.
 func SysCallWriteChar(cpm *CPM) error {
-	fmt.Printf("%c", 0b01111111&cpm.CPU.States.DE.Lo)
+	//	fmt.Printf("%c", 0b01111111&cpm.CPU.States.DE.Lo)
+	cpm.outC(cpm.CPU.States.DE.Lo)
+
 	return nil
 }
 
-// SysCallAuxRead reads a single character from the auxillary input
+// SysCallAuxRead reads a single character from the auxillary input.
+//
+// NOTE: Documentation implies this is blocking, but it seems like
+// tastybasic and mbasic prefer it like this
 func SysCallAuxRead(cpm *CPM) error {
 
-	// Pending input from a call to SysCallConsoleStatus?
-	if cpm.pending != 0x00 {
+	// Use our I/O package
+	obj := cpmio.New()
+
+	// Is something waiting for us?
+	p, err := obj.IsPending()
+	if err != nil {
+		return fmt.Errorf("error calling IsPending:%s", err)
+	}
+
+	// If yes, return it
+	if p {
+		c := obj.GetAvailableChar()
+
 		cpm.CPU.States.HL.Hi = 0x00
-		cpm.CPU.States.HL.Lo = cpm.pending
-		cpm.CPU.States.AF.Hi = cpm.pending
-		cpm.pending = 0x00
+		cpm.CPU.States.HL.Lo = c
+		cpm.CPU.States.AF.Hi = c
+		cpm.CPU.States.AF.Lo = 0x00
 		return nil
 	}
 
-	// switch stdin into 'raw' mode
-	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
-	if err != nil {
-		return fmt.Errorf("error making raw terminal %s", err)
-	}
-
-	// read only a single byte
-	b := make([]byte, 1)
-	_, err = os.Stdin.Read(b)
-	if err != nil {
-		return fmt.Errorf("error reading a byte from stdin %s", err)
-	}
-
-	// restore the state of the terminal to avoid mixing RAW/Cooked
-	err = term.Restore(int(os.Stdin.Fd()), oldState)
-	if err != nil {
-		return fmt.Errorf("error restoring terminal state %s", err)
-	}
-
-	// Return values:
-	// HL = Char, B=0, A=Char
-	cpm.CPU.States.HL.Hi = 0x00
-	cpm.CPU.States.HL.Lo = b[0]
-	cpm.CPU.States.AF.Hi = b[0]
-
+	// Return nothing
+	cpm.CPU.States.AF.Hi = 0x00
 	return nil
 }
 
@@ -117,8 +95,12 @@ func SysCallAuxRead(cpm *CPM) error {
 func SysCallAuxWrite(cpm *CPM) error {
 
 	// The character we're going to write
-	c := (cpm.CPU.States.BC.Lo) // & 0x7F)
+	c := cpm.CPU.States.BC.Lo
+	cpm.outC(c)
+	return nil
+}
 
+func (cpm *CPM) outC(c uint8) {
 	switch cpm.auxStatus {
 	case 0:
 		switch c {
@@ -231,12 +213,14 @@ func SysCallAuxWrite(cpm *CPM) error {
 		cpm.auxStatus = 0
 	}
 
-	return nil
 }
 
+// SysCallRawIO handles both simple character output, and input.
 func SysCallRawIO(cpm *CPM) error {
+
+	// Are we printing a character?
 	if cpm.CPU.States.DE.Lo != 0xFF {
-		fmt.Printf("%c", (cpm.CPU.States.DE.Lo & 0x7F))
+		cpm.outC(cpm.CPU.States.DE.Lo)
 
 		// Return values:
 		// HL = 0, B=0, A=0
@@ -245,60 +229,41 @@ func SysCallRawIO(cpm *CPM) error {
 		cpm.CPU.States.BC.Hi = 0x00
 		cpm.CPU.States.AF.Hi = 0x00
 
-	} else {
-		//
-		// We should return a result in A:
-		//
-		// 0x00 if no character is pending
-		//
-		// C if the character C is read.
-		//
-
-		// Set non-blocking
-		if err1 := syscall.SetNonblock(0, true); err1 != nil {
-			return fmt.Errorf("failed to set non-blocking stdin %s", err1)
-		}
-
-		// switch stdin into 'raw' mode
-		oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
-		if err != nil {
-			return fmt.Errorf("error making raw terminal %s", err)
-		}
-
-		// read only a single byte
-		b := make([]byte, 1)
-
-		//
-		// NOTE: This doesn't work
-		//
-		os.Stdin.SetReadDeadline(time.Now().Add(time.Millisecond * 10))
-
-		// Try the read
-		_, err = os.Stdin.Read(b)
-
-		// restore the state of the terminal to avoid mixing RAW/Cooked
-		err2 := term.Restore(int(os.Stdin.Fd()), oldState)
-		if err2 != nil {
-			return fmt.Errorf("error restoring terminal state %s", err)
-		}
-
-		// restore the non-blocking
-		if err2 = syscall.SetNonblock(0, false); err2 != nil {
-			return fmt.Errorf("failed to restore non-blocking %s", err2)
-		}
-
-		// If we got a timeout, or some other error, then we assume
-		// there is no character pending
-		if err != nil {
-			cpm.CPU.States.AF.Hi = 0x00
-			return nil
-		}
-
-		// character pending - which we accidentally read
-		// return it
-		cpm.CPU.States.AF.Hi = b[0]
+		return nil
 	}
 
+	// Reading a character
+
+	//
+	// We should return a result in A:
+	//
+	// 0x00 if no character is pending
+	//
+	// C if the character C is read.
+	//
+
+	// Use our I/O package
+	obj := cpmio.New()
+
+	// Is something pending?
+	p, err := obj.IsPending()
+	if err != nil {
+		return fmt.Errorf("error calling IsPending:%s", err)
+	}
+
+	// Yes, return it
+	if p {
+		c := obj.GetAvailableChar()
+
+		cpm.CPU.States.HL.Hi = 0x00
+		cpm.CPU.States.HL.Lo = c
+		cpm.CPU.States.AF.Hi = c
+		cpm.CPU.States.AF.Lo = 0x00
+		return nil
+	}
+
+	// Nothing waiting for us.
+	cpm.CPU.States.AF.Hi = 0x00
 	return nil
 }
 
