@@ -51,30 +51,211 @@ func SysCallReadChar(cpm *CPM) error {
 	// Return values:
 	// HL = 0, B=0, A=Char
 	cpm.CPU.States.HL.Hi = 0x00
-	cpm.CPU.States.HL.Lo = 0x00
-	cpm.CPU.States.BC.Hi = 0x00
+	cpm.CPU.States.HL.Lo = b[0]
 	cpm.CPU.States.AF.Hi = b[0]
 
 	return nil
 }
 
-// SysCallWriteChar writes the single character in the A register to STDOUT.
+// SysCallWriteChar writes the single character in the E register to STDOUT.
 func SysCallWriteChar(cpm *CPM) error {
-	fmt.Printf("%c", (cpm.CPU.States.DE.Lo))
+	fmt.Printf("%c", 0b01111111&cpm.CPU.States.DE.Lo)
+	return nil
+}
+
+// SysCallAuxRead reads a single character from the auxillary input
+func SysCallAuxRead(cpm *CPM) error {
+	// switch stdin into 'raw' mode
+	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+	if err != nil {
+		return fmt.Errorf("error making raw terminal %s", err)
+	}
+
+	// read only a single byte
+	b := make([]byte, 1)
+	_, err = os.Stdin.Read(b)
+	if err != nil {
+		return fmt.Errorf("error reading a byte from stdin %s", err)
+	}
+
+	// restore the state of the terminal to avoid mixing RAW/Cooked
+	err = term.Restore(int(os.Stdin.Fd()), oldState)
+	if err != nil {
+		return fmt.Errorf("error restoring terminal state %s", err)
+	}
 
 	// Return values:
-	// HL = 0, B=0, A=0
+	// HL = Char, B=0, A=Char
 	cpm.CPU.States.HL.Hi = 0x00
-	cpm.CPU.States.HL.Lo = 0x00
-	cpm.CPU.States.BC.Hi = 0x00
-	cpm.CPU.States.AF.Hi = 0x00
+	cpm.CPU.States.HL.Lo = b[0]
+	cpm.CPU.States.AF.Hi = b[0]
+
+	return nil
+}
+
+// SysCallAuxWrite writes the single character in the C register auxillary / punch output
+func SysCallAuxWrite(cpm *CPM) error {
+
+	// The character we're going to write
+	c := (cpm.CPU.States.BC.Lo) // & 0x7F)
+
+	switch cpm.auxStatus {
+	case 0:
+		switch c {
+		case 0x07: /* BEL: flash screen */
+			fmt.Printf("\033[?5h\033[?5l")
+			break
+		case 0x7f: /* DEL: echo BS, space, BS */
+			fmt.Printf("\b \b")
+			break
+		case 0x1a: /* adm3a clear screen */
+			fmt.Printf("\033[H\033[2J")
+			break
+		case 0x0c: /* vt52 clear screen */
+			fmt.Printf("\033[H\033[2J")
+			break
+		case 0x1e: /* adm3a cursor home */
+			fmt.Printf("\033[H")
+			break
+		case 0x1b:
+			cpm.auxStatus = 1 /* esc-prefix */
+			break
+		case 1:
+			cpm.auxStatus = 2 /* cursor motion prefix */
+			break
+		case 2: /* insert line */
+			fmt.Printf("\033[L")
+			break
+		case 3: /* delete line */
+			fmt.Printf("\033[M")
+			break
+		case 0x18, 5: /* clear to eol */
+			fmt.Printf("\033[K")
+			break
+		case 0x12, 0x13:
+			break
+		default:
+			fmt.Printf("%c", c)
+		}
+	case 1: /* we had an esc-prefix */
+		switch c {
+		case 0x1b:
+			fmt.Printf("%c", c)
+			break
+		case '=', 'Y':
+			cpm.auxStatus = 2
+			break
+		case 'E': /* insert line */
+			fmt.Printf("\033[L")
+			break
+		case 'R': /* delete line */
+			fmt.Printf("\033[M")
+			break
+		case 'B': /* enable attribute */
+			cpm.auxStatus = 4
+			break
+		case 'C': /* disable attribute */
+			cpm.auxStatus = 5
+			break
+		case 'L', 'D': /* set line */ /* delete line */
+			cpm.auxStatus = 6
+			break
+		case '*', ' ': /* set pixel */ /* clear pixel */
+			cpm.auxStatus = 8
+			break
+		default: /* some true ANSI sequence? */
+			cpm.auxStatus = 0
+			fmt.Printf("%c%c", 0x1b, c)
+			break
+		}
+	case 2:
+		cpm.y = c - ' ' + 1
+		cpm.auxStatus = 3
+		break
+	case 3:
+		cpm.x = c - ' ' + 1
+		cpm.auxStatus = 0
+		fmt.Printf("\033[%d;%dH", cpm.y, cpm.x)
+		break
+	case 4: /* <ESC>+B prefix */
+		cpm.auxStatus = 0
+		switch c {
+		case '0': /* start reverse video */
+			fmt.Printf("\033[7m")
+			break
+		case '1': /* start half intensity */
+			fmt.Printf("\033[1m")
+			break
+		case '2': /* start blinking */
+			fmt.Printf("\033[5m")
+			break
+		case '3': /* start underlining */
+			fmt.Printf("\033[4m")
+			break
+		case '4': /* cursor on */
+			fmt.Printf("\033[?25h")
+			break
+		case '5': /* video mode on */
+			break
+		case '6': /* remember cursor position */
+			fmt.Printf("\033[s")
+			break
+		case '7': /* preserve status line */
+			break
+		default:
+			fmt.Printf("%cB%c", 0x1b, c)
+		}
+		break
+	case 5: /* <ESC>+C prefix */
+		cpm.auxStatus = 0
+		switch c {
+		case '0': /* stop reverse video */
+			fmt.Printf("\033[27m")
+			break
+		case '1': /* stop half intensity */
+			fmt.Printf("\033[m")
+			break
+		case '2': /* stop blinking */
+			fmt.Printf("\033[25m")
+			break
+		case '3': /* stop underlining */
+			fmt.Printf("\033[24m")
+			break
+		case '4': /* cursor off */
+			fmt.Printf("\033[?25l")
+			break
+		case '6': /* restore cursor position */
+			fmt.Printf("\033[u")
+			break
+		case '5': /* video mode off */
+			break
+		case '7': /* don't preserve status line */
+			break
+		default:
+			fmt.Printf("%cC%c", 0x1b, c)
+		}
+		break
+		/* set/clear line/point */
+	case 6:
+		cpm.auxStatus++
+		break
+	case 7:
+		cpm.auxStatus++
+		break
+	case 8:
+		cpm.auxStatus++
+		break
+	case 9:
+		cpm.auxStatus = 0
+		break
+	}
 
 	return nil
 }
 
 func SysCallRawIO(cpm *CPM) error {
 	if cpm.CPU.States.DE.Lo != 0xFF {
-		fmt.Printf("%c", cpm.CPU.States.DE.Lo)
+		fmt.Printf("%c", (cpm.CPU.States.DE.Lo & 0x7F))
 
 		// Return values:
 		// HL = 0, B=0, A=0
@@ -182,7 +363,7 @@ func SysCallSetDMA(cpm *CPM) error {
 //
 // As this is fake it always returns "no character pending".
 func SysCallConsoleStatus(cpm *CPM) error {
-	cpm.CPU.States.AF.Hi = 0x00
+	cpm.CPU.States.AF.Hi = 0xFF
 	return nil
 }
 
@@ -193,7 +374,7 @@ func SysCallConsoleStatus(cpm *CPM) error {
 func SysCallDriveAllReset(cpm *CPM) error {
 
 	// Reset disk and user-number
-	cpm.currentDrive = 1
+	cpm.currentDrive = 0
 	cpm.userNumber = 0
 
 	// Reset our DMA address to the default
@@ -212,6 +393,8 @@ func SysCallDriveAllReset(cpm *CPM) error {
 func SysCallDriveSet(cpm *CPM) error {
 	// The drive number passed to this routine is 0 for A:, 1 for B: up to 15 for P:.
 	cpm.currentDrive = (cpm.CPU.States.AF.Hi & 0x0F)
+
+	cpm.Memory.Set(0x0004, cpm.currentDrive)
 
 	// Return values:
 	// HL = 0, B=0, A=0

@@ -86,6 +86,13 @@ type CPM struct {
 	// the programs it launches.
 	start uint16
 
+	// auxStatus handles storing the state for the auxilary / punch output
+	// device.  This is used by MBASIC amongst other things, and we use it
+	// to basically keep track of multibyte output
+	auxStatus int
+	x         uint8
+	y         uint8
+
 	// Syscalls contains the syscalls we know how to emulate, indexed
 	// by their ID.
 	Syscalls map[uint8]CPMHandler
@@ -151,6 +158,14 @@ func New(logger *slog.Logger) *CPM {
 	sys[2] = CPMHandler{
 		Desc:    "C_WRITE",
 		Handler: SysCallWriteChar,
+	}
+	sys[3] = CPMHandler{
+		Desc:    "A_READ",
+		Handler: SysCallAuxRead,
+	}
+	sys[4] = CPMHandler{
+		Desc:    "A_WRITE",
+		Handler: SysCallAuxWrite,
 	}
 	sys[6] = CPMHandler{
 		Desc:    "C_RAWIO",
@@ -293,7 +308,65 @@ func (cpm *CPM) LoadBinary(filename string) error {
 	cpm.Memory.Set(0x006C, 0x00)
 	cpm.Memory.FillRange(0x006C+1, 11, ' ')
 
+	// patch low-memory so that RST instructions will
+	// ultimately invoke our CP/M syscalls, via our "Out"
+	// function.
+	cpm.fixupRAM()
+
 	return nil
+}
+
+// fixupRAM is misnamed - but it patches the RAM with Z80 code to
+// handle "badly behaved" programs that invoke CP/M functions via RST XX
+// instructions, rather than calls to 0x0005
+//
+// We put some code to call the handlers via faked OUT 0xFF,N - where N
+// is the syscall to run.
+//
+// The precise region we patch is unimportant, but we want to make sure
+// we don't overlap with our CCP, or "large programs" loaded at 0x0100
+func (cpm *CPM) fixupRAM() {
+	i := 0
+	var CBIOS int
+	CBIOS = 0xFE00
+	NENTRY := 30
+
+	SETMEM := func(a int, v int) {
+		cpm.Memory.Set(uint16(a), uint8(v))
+	}
+
+	// We _should_ add "JUMP TO CCP" here, but instead
+	// we terminate execution via a HALT (0x76) instruction.
+	//
+	// This works regardless of whether CCP is present or not
+	//
+	SETMEM(0x0000, 0x76) // 0xC3) /* JP CBIOS+3 */
+	SETMEM(0x0001, ((CBIOS + 3) & 0xFF))
+	SETMEM(0x0002, ((CBIOS + 3) >> 8))
+
+	SETMEM(0x0003, 0x00) // IO/byte
+	SETMEM(0x0004, 0x00) // Current drive
+
+	/* fake BIOS entry points */
+	for i < 30 {
+		/* JP <bios-entry> */
+		SETMEM(CBIOS+3*i, 0xC3)
+		SETMEM(CBIOS+3*i+1, (CBIOS+NENTRY*3+i*5)&0xFF)
+		SETMEM(CBIOS+3*i+2, (CBIOS+NENTRY*3+i*5)>>8)
+
+		/* LD A,<bios-call> - start of bios-entry */
+		SETMEM(CBIOS+NENTRY*3+i*5, 0x3E)
+		SETMEM(CBIOS+NENTRY*3+i*5+1, i)
+
+		/* OUT A,0FFH - we use port 0xFF to fake the BIOS call */
+		SETMEM(CBIOS+NENTRY*3+i*5+2, 0xD3)
+		SETMEM(CBIOS+NENTRY*3+i*5+3, 0xFF)
+
+		/* RET - end of bios-entry */
+		SETMEM(CBIOS+NENTRY*3+i*5+4, 0xC9)
+		i++
+	}
+
 }
 
 // LoadCCP loads the CCP into RAM, to be executed instead of an external binary.
@@ -330,6 +403,11 @@ func (cpm *CPM) LoadCCP() {
 
 	// Ensure our starting point is what we expect
 	cpm.start = ccpEntrypoint
+
+	// patch low-memory so that RST instructions will
+	// ultimately invoke our CP/M syscalls, via our "Out"
+	// function.
+	cpm.fixupRAM()
 }
 
 // Execute executes our named binary, with the specified arguments.
@@ -493,11 +571,45 @@ func (cpm *CPM) In(addr uint8) uint8 {
 
 // Out is called to handle the I/O writing to a Z80 port.
 //
-// This is called by our embedded Z80 emulator.
+// This is called by our embedded Z80 emulator, and this will be
+// used by any system which used RST instructions to invoke the
+// CP/M syscalls, rather than using "CALL 0x0005".  Notable offenders
+// include Microsoft's BASIC.
 func (cpm *CPM) Out(addr uint8, val uint8) {
 
-	cpm.Logger.Debug("I/O OUT",
-		slog.Int("port", int(addr)),
-		slog.Int("value", int(val)))
+	// We use port FF for CP/M calls - via
+	// the compatibility instructions we deployed
+	// in fixRAM.
+	if addr != 0xFF {
+		return
+	}
+
+	//
+	// Is there a syscall entry for this number?
+	//
+	handler, exists := cpm.Syscalls[val]
+
+	if !exists {
+		cpm.Logger.Error("Unimplemented SysCall - Via I/O",
+			slog.Int("syscall", int(val)),
+			slog.String("syscallHex",
+				fmt.Sprintf("0x%02X", val)),
+		)
+		return
+	}
+
+	// Log the call we're going to make
+	cpm.Logger.Info("SysCall via I/O",
+		slog.String("name", handler.Desc),
+		slog.Int("syscall", int(val)),
+		slog.String("syscallHex",
+			fmt.Sprintf("0x%02X", val)),
+	)
+
+	// Invoke the handler
+	err := handler.Handler(cpm)
+	if err != nil {
+		fmt.Printf("ERROR Via I/O Handler: %s\n", err)
+	}
 
 }
