@@ -91,10 +91,6 @@ type CPM struct {
 	// to basically keep track of multibyte output
 	auxStatus int
 
-	// pending contains any pending character "accidentally" read via the
-	// SysCallConsoleStatus function
-	pending uint8
-
 	// x holds the character X position, when using AUX I/O.
 	// It is set/used by escape sequences.
 	x uint8
