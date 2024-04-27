@@ -11,6 +11,8 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/skx/cpmulator/fcb"
 	"golang.org/x/term"
@@ -29,6 +31,14 @@ func SysCallExit(cpm *CPM) error {
 
 // SysCallReadChar reads a single character from the console.
 func SysCallReadChar(cpm *CPM) error {
+
+	// Pending input from a call to SysCallConsoleStatus?
+	if cpm.pending != 0x00 {
+		cpm.CPU.States.AF.Hi = cpm.pending
+		cpm.pending = 0x00
+		return nil
+	}
+
 	// switch stdin into 'raw' mode
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
@@ -65,6 +75,16 @@ func SysCallWriteChar(cpm *CPM) error {
 
 // SysCallAuxRead reads a single character from the auxillary input
 func SysCallAuxRead(cpm *CPM) error {
+
+	// Pending input from a call to SysCallConsoleStatus?
+	if cpm.pending != 0x00 {
+		cpm.CPU.States.HL.Hi = 0x00
+		cpm.CPU.States.HL.Lo = cpm.pending
+		cpm.CPU.States.AF.Hi = cpm.pending
+		cpm.pending = 0x00
+		return nil
+	}
+
 	// switch stdin into 'raw' mode
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
@@ -226,7 +246,57 @@ func SysCallRawIO(cpm *CPM) error {
 		cpm.CPU.States.AF.Hi = 0x00
 
 	} else {
-		return SysCallReadChar(cpm)
+		//
+		// We should return a result in A:
+		//
+		// 0x00 if no character is pending
+		//
+		// C if the character C is read.
+		//
+
+		// Set non-blocking
+		if err1 := syscall.SetNonblock(0, true); err1 != nil {
+			return fmt.Errorf("failed to set non-blocking stdin %s", err1)
+		}
+
+		// switch stdin into 'raw' mode
+		oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+		if err != nil {
+			return fmt.Errorf("error making raw terminal %s", err)
+		}
+
+		// read only a single byte
+		b := make([]byte, 1)
+
+		//
+		// NOTE: This doesn't work
+		//
+		os.Stdin.SetReadDeadline(time.Now().Add(time.Millisecond * 10))
+
+		// Try the read
+		_, err = os.Stdin.Read(b)
+
+		// restore the state of the terminal to avoid mixing RAW/Cooked
+		err2 := term.Restore(int(os.Stdin.Fd()), oldState)
+		if err2 != nil {
+			return fmt.Errorf("error restoring terminal state %s", err)
+		}
+
+		// restore the non-blocking
+		if err2 = syscall.SetNonblock(0, false); err2 != nil {
+			return fmt.Errorf("failed to restore non-blocking %s", err2)
+		}
+
+		// If we got a timeout, or some other error, then we assume
+		// there is no character pending
+		if err != nil {
+			cpm.CPU.States.AF.Hi = 0x00
+			return nil
+		}
+
+		// character pending - which we accidentally read
+		// return it
+		cpm.CPU.States.AF.Hi = b[0]
 	}
 
 	return nil
@@ -321,10 +391,60 @@ func SysCallSetDMA(cpm *CPM) error {
 }
 
 // SysCallConsoleStatus fakes a test for pending console (character) input.
-//
-// As this is fake it always returns "no character pending".
 func SysCallConsoleStatus(cpm *CPM) error {
+
+	// If we've already got a pending character, then return that
+	if cpm.pending != 0 {
+		cpm.CPU.States.AF.Hi = 0xFF
+		return nil
+	}
+
+	// Set non-blocking
+	if err1 := syscall.SetNonblock(0, true); err1 != nil {
+		return fmt.Errorf("failed to set non-blocking stdin %s", err1)
+	}
+
+	// switch stdin into 'raw' mode
+	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+	if err != nil {
+		return fmt.Errorf("error making raw terminal %s", err)
+	}
+
+	// read only a single byte
+	b := make([]byte, 1)
+
+	//
+	// NOTE: This doesn't work
+	//
+	os.Stdin.SetReadDeadline(time.Now().Add(time.Millisecond * 10))
+
+	// Try the read
+	_, err = os.Stdin.Read(b)
+
+	// restore the state of the terminal to avoid mixing RAW/Cooked
+	err2 := term.Restore(int(os.Stdin.Fd()), oldState)
+	if err2 != nil {
+		return fmt.Errorf("error restoring terminal state %s", err)
+	}
+
+	// restore the non-blocking
+	if err2 = syscall.SetNonblock(0, false); err2 != nil {
+		return fmt.Errorf("failed to restore non-blocking %s", err2)
+	}
+
+	// If we got a timeout, or some other error, then we assume
+	// there is no character pending
+	if err != nil {
+		cpm.CPU.States.AF.Hi = 0x00
+		return nil
+	}
+
+	// character pending - which we accidentally read
 	cpm.CPU.States.AF.Hi = 0xFF
+
+	// save the character so that the next read will return it
+	cpm.pending = b[0]
+
 	return nil
 }
 
