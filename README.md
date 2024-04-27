@@ -7,9 +7,9 @@ This repository contains a CP/M emulator, with integrated CCP, which is primaril
 * Over time it has become more functional:
   * It can now run ZORK 1, 2, & 3, as well as The Hitchhiker's guide to the galaxy and other similar games.
 
-I've implemented enough of the BIOS functions to run simple well-behaved utilities, but I've not implemented any notion of disk access - only file-based I/O.
+I've implemented enough of the BIOS functions to run simple binaries, including Microsoft BASIC, but I've not implemented any notion of disk-based access.  (i.e. Opening, Reading/Writing, Closing files is absolutely fine, but any API call that refers to tracks, sectors, or disks will fail.)
 
-A companion repository contains a collection of vintage CP/M software you can use with this emulator:
+A companion repository contains a collection of vintage CP/M software you can use with this, or any other, emulator:
 
 * [https://github.com/skx/cpm-dist](https://github.com/skx/cpm-dist)
 
@@ -37,9 +37,10 @@ If neither of these options sufficed you may download the latest binary from [ou
 
 # Usage
 
-If you launch `cpmulator` with no arguments then the integrated CCP ("console command processor") will be launched, dropping you into a familiar shell - note here the filenames are presented in the old-school way, as per the later note on filesystems and filenames:
+If you launch `cpmulator` with no arguments then the integrated CCP ("console command processor") will be launched, dropping you into a familiar shell:
 
 ```sh
+$ cpmulator
 A>dir
 
 A: LICENSE .    | README  .MD  | CPMULATO.    | GO      .MOD
@@ -59,8 +60,8 @@ You can terminate the CCP by pressing Ctrl-C, or typing `EXIT`.  The following b
 * `CLS`
   * Clear the screen.
 * `DIR`
-  * List files, by default this uses "`*.*`", so files without suffixes will be hidden.
-    * Prefer "`DIR *`" if you want to see _everything_.
+  * List files, by default this uses "`*.*`".
+    * Try "`DIR *.COM`" if you want to see something more specific, for example.
 * `EXIT` / `HALT` / `QUIT`
   * Terminate the CCP.
 * `ERA`
@@ -97,6 +98,7 @@ There is a small mailbox here.
 
 >
 ```
+
 A companion repository contains a larger collection of vintage CP/M software you can use with this emulator:
 
 * [https://github.com/skx/cpm-dist](https://github.com/skx/cpm-dist)
@@ -105,12 +107,12 @@ A companion repository contains a larger collection of vintage CP/M software you
 
 ## Drives vs. Directories
 
-By default when you launch `cpmulator` with no arguments you'll be presented with the CCP interface, with A: as the current drive and A:, B:, C:, and all other drives, will refer to the current-working directory where you launched the emulator from.  This is perhaps the most practical way to get started, but it means that files are unique across drives:
+By default when you launch `cpmulator` with no arguments you'll be presented with the CCP interface, with A: as the current drive.   In this mode A:, B:, C:, and all other drives, will refer to the current-working directory where you launched the emulator from (i.e. they have the same view of files).  This is perhaps the most practical way to get started, but it means that files are unique across drives:
 
-* i.e. "`A:FOO`" is the same as "`B:FOO`"
+* i.e. "`A:FOO`" is the same as "`B:FOO`", and if you delete "`C:FOO`" you'll find it has vanished from all drives.
   * In short "`FOO`" will exist on drives `A:` all the way through to `P:`.
 
-If you prefer you can configure drives to have their contents from sub-directories upon the host system (i.e. the machine you're running on).  This means you need to create subdirectories, and the contents of those directories will only be visible on the appropriate drives:
+If you prefer you may configure drives to be distinct, each drive referring to a distinct sub-directory upon the host system (i.e. the machine you're running on):
 
 ```sh
 $ mkdir A/  ; touch A/LS.COM ; touch A/FOO.COM
@@ -140,7 +142,21 @@ A companion repository contains a larger collection of vintage CP/M software you
 
 * [https://github.com/skx/cpm-dist](https://github.com/skx/cpm-dist)
 
-This is arranged into subdirectories, on the assumption you'll run with the `-directories` flag, and the drives are thus used as a means of organization.
+This is arranged into subdirectories, on the assumption you'll run with the `-directories` flag, and the drives are thus used as a means of organization.  For example you might want to look at games, on the `G:` drive, or the BASIC interpreters on the `B:` drive:
+
+```
+frodo ~/Repos/github.com/skx/cpm-dist $ cpmulator  -directories
+A>dir
+No file
+
+A>g:
+G>dir *.com
+G: HITCH   .COM | LEATHER .COM | LIHOUSE .COM | PLANET  .COM
+G: ZORK1   .COM | ZORK2   .COM | ZORK3   .COM
+
+G>dir b:*.com
+B: MBASIC  .COM | TBASIC  .COM
+```
 
 Note that it isn't currently possibly to point different drives to arbitrary paths on your computer, but that might be considered if you have a use-case for it.
 
@@ -186,6 +202,15 @@ In case you don't I've added ensured I also commit the generated binaries to the
 * Much of the functionality of this repository comes from the [excellent Z80 emulator library](https://github.com/koron-go/z80) it is using, written by @koron-go.
 * The CCP comes from [my fork](https://github.com/skx/z80-playground-cpm-fat/) of the original [cpm-fat](https://github.com/z80playground/cpm-fat/)
   * However this is largely unchanged from the [original CCP](http://www.cpm.z80.de/source.html) from Digital Research, although I did add the `CLS`, `EXIT`, `HALT` & `QUIT` commands.
+
+When I was uncertain of how to implement a specific system call the following two emulators were also useful:
+
+* [https://github.com/ivanizag/iz-cpm](https://github.com/ivanizag/iz-cpm)
+  * Portable CP/M emulation to run CP/M 2.2 binaries for Z80.
+  * Written in Rust.
+* [https://github.com/jhallen/cpm](https://github.com/jhallen/cpm)
+  * Run CP/M commands in Linux/Cygwin with this Z80 / BDOS / ADM-3A emulator.
+  * Written in C.
 
 
 
