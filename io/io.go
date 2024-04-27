@@ -20,7 +20,7 @@ import (
 
 // IO is used to hold our package state
 type IO struct {
-	// pending holds any pending byte
+	// pending holds any pending byte.
 	pending byte
 }
 
@@ -63,7 +63,7 @@ func (io *IO) BlockForCharacter() (byte, error) {
 	return b[0], nil
 }
 
-// IsPending returns true if there is pending input
+// IsPending returns true if there is pending input.
 func (io *IO) IsPending() (bool, error) {
 
 	// Set STDIN to be non-blocking.
@@ -82,7 +82,7 @@ func (io *IO) IsPending() (bool, error) {
 
 	// NOTE: This doesn't work without the non-blocking mode having been
 	// set previously.
-	_ = os.Stdin.SetDeadline(time.Now().Add(time.Millisecond * 1))
+	_ = os.Stdin.SetDeadline(time.Now().Add(time.Millisecond * 10))
 
 	// Try the read
 	n, err := os.Stdin.Read(b)
