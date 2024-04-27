@@ -177,6 +177,14 @@ func New(logger *slog.Logger) *CPM {
 		Desc:    "C_RAWIO",
 		Handler: SysCallRawIO,
 	}
+	sys[7] = CPMHandler{
+		Desc:    "GET_IOBYTE",
+		Handler: SysCallGetIOByte,
+	}
+	sys[8] = CPMHandler{
+		Desc:    "SET_IOBYTE",
+		Handler: SysCallSetIOByte,
+	}
 	sys[9] = CPMHandler{
 		Desc:    "C_WRITESTRING",
 		Handler: SysCallWriteString,

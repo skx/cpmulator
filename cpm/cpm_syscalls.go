@@ -264,6 +264,33 @@ func SysCallRawIO(cpm *CPM) error {
 	return nil
 }
 
+// SysCallGetIOByte gets the IOByte, which is used to describe which devices
+// are used for I/O.  No CP/M utilities use it, except for STAT and PIP.
+//
+// The IOByte lives at 0x0003 in RAM, so it is often accessed directly when it is used.
+func SysCallGetIOByte(cpm *CPM) error {
+
+	// Get the value
+	c := cpm.Memory.Get(0x003)
+
+	// return it
+	cpm.CPU.States.AF.Hi = c
+
+	return nil
+}
+
+// SysCallSetIOByte sets the IOByte, which is used to describe which devices
+// are used for I/O.  No CP/M utilities use it, except for STAT and PIP.
+//
+// The IOByte lives at 0x0003 in RAM, so it is often accessed directly when it is used.
+func SysCallSetIOByte(cpm *CPM) error {
+
+	// Set the value
+	cpm.Memory.Set(0x003, cpm.CPU.States.DE.Lo)
+
+	return nil
+}
+
 // SysCallWriteString writes the $-terminated string pointed to by DE to STDOUT
 func SysCallWriteString(cpm *CPM) error {
 	addr := cpm.CPU.States.DE.U16()
