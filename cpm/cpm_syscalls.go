@@ -1,6 +1,6 @@
 // This file contains the implementations for the CP/M calls we emulate.
 //
-// NOTE: They are added to the syscalls map in cpm.go
+// NOTE: They are added to the syscalls map in cpm.go.
 //
 
 package cpm
@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/skx/cpmulator/fcb"
-	"golang.org/x/term"
+	cpmio "github.com/skx/cpmulator/io"
 )
 
 // blkSize is the size of block-based I/O operations
@@ -29,63 +29,267 @@ func SysCallExit(cpm *CPM) error {
 
 // SysCallReadChar reads a single character from the console.
 func SysCallReadChar(cpm *CPM) error {
-	// switch stdin into 'raw' mode
-	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
-	if err != nil {
-		return fmt.Errorf("error making raw terminal %s", err)
-	}
 
-	// read only a single byte
-	b := make([]byte, 1)
-	_, err = os.Stdin.Read(b)
-	if err != nil {
-		return fmt.Errorf("error reading a byte from stdin %s", err)
-	}
+	// Use our I/O package
+	obj := cpmio.New()
 
-	// restore the state of the terminal to avoid mixing RAW/Cooked
-	err = term.Restore(int(os.Stdin.Fd()), oldState)
+	// Block for input
+	c, err := obj.BlockForCharacter()
 	if err != nil {
-		return fmt.Errorf("error restoring terminal state %s", err)
+		return fmt.Errorf("error in call to BlockForCharacter: %s", err)
 	}
 
 	// Return values:
-	// HL = 0, B=0, A=Char
+	// HL = Char, A=Char
 	cpm.CPU.States.HL.Hi = 0x00
-	cpm.CPU.States.HL.Lo = 0x00
-	cpm.CPU.States.BC.Hi = 0x00
-	cpm.CPU.States.AF.Hi = b[0]
+	cpm.CPU.States.HL.Lo = c
+	cpm.CPU.States.AF.Hi = c
+	cpm.CPU.States.AF.Lo = 0x00
 
 	return nil
 }
 
-// SysCallWriteChar writes the single character in the A register to STDOUT.
+// SysCallWriteChar writes the single character in the E register to STDOUT.
 func SysCallWriteChar(cpm *CPM) error {
-	fmt.Printf("%c", (cpm.CPU.States.DE.Lo))
 
-	// Return values:
-	// HL = 0, B=0, A=0
-	cpm.CPU.States.HL.Hi = 0x00
-	cpm.CPU.States.HL.Lo = 0x00
-	cpm.CPU.States.BC.Hi = 0x00
-	cpm.CPU.States.AF.Hi = 0x00
+	// auxIO is set when we see A_READ/A_WRITE
+	//
+	// Mixing I/O modes is not recommended.
+	if cpm.auxIO {
+		return nil
+	}
+
+	cpm.outC(cpm.CPU.States.DE.Lo)
 
 	return nil
 }
 
-func SysCallRawIO(cpm *CPM) error {
-	if cpm.CPU.States.DE.Lo != 0xFF {
-		fmt.Printf("%c", cpm.CPU.States.DE.Lo)
+// SysCallAuxRead reads a single character from the auxillary input.
+//
+// NOTE: Documentation implies this is blocking, but it seems like
+// tastybasic and mbasic prefer it like this
+func SysCallAuxRead(cpm *CPM) error {
 
-		// Return values:
-		// HL = 0, B=0, A=0
-		cpm.CPU.States.HL.Hi = 0x00
-		cpm.CPU.States.HL.Lo = 0x00
-		cpm.CPU.States.BC.Hi = 0x00
-		cpm.CPU.States.AF.Hi = 0x00
+	// Now we're using aux I/O
+	cpm.auxIO = true
 
-	} else {
-		return SysCallReadChar(cpm)
+	// Use our I/O package
+	obj := cpmio.New()
+
+	// Is something waiting for us?
+	p, err := obj.IsPending()
+	if err != nil {
+		return fmt.Errorf("error calling IsPending:%s", err)
 	}
+
+	// If yes, return it
+	if p {
+		c := obj.GetAvailableChar()
+
+		cpm.CPU.States.HL.Hi = 0x00
+		cpm.CPU.States.HL.Lo = c
+		cpm.CPU.States.AF.Hi = c
+		cpm.CPU.States.AF.Lo = 0x00
+		return nil
+	}
+
+	// Return nothing
+	cpm.CPU.States.AF.Hi = 0x00
+	return nil
+}
+
+// SysCallAuxWrite writes the single character in the C register auxillary / punch output
+func SysCallAuxWrite(cpm *CPM) error {
+
+	// Now we're using aux I/O
+	cpm.auxIO = true
+
+	// The character we're going to write
+	c := cpm.CPU.States.BC.Lo
+	cpm.outC(c)
+	return nil
+}
+
+func (cpm *CPM) outC(c uint8) {
+	switch cpm.auxStatus {
+	case 0:
+		switch c {
+		case 0x07: /* BEL: flash screen */
+			fmt.Printf("\033[?5h\033[?5l")
+		case 0x7f: /* DEL: echo BS, space, BS */
+			fmt.Printf("\b \b")
+		case 0x1a: /* adm3a clear screen */
+			fmt.Printf("\033[H\033[2J")
+		case 0x0c: /* vt52 clear screen */
+			fmt.Printf("\033[H\033[2J")
+		case 0x1e: /* adm3a cursor home */
+			fmt.Printf("\033[H")
+		case 0x1b:
+			cpm.auxStatus = 1 /* esc-prefix */
+		case 1:
+			cpm.auxStatus = 2 /* cursor motion prefix */
+		case 2: /* insert line */
+			fmt.Printf("\033[L")
+		case 3: /* delete line */
+			fmt.Printf("\033[M")
+		case 0x18, 5: /* clear to eol */
+			fmt.Printf("\033[K")
+		case 0x12, 0x13:
+			// nop
+		default:
+			fmt.Printf("%c", c)
+		}
+	case 1: /* we had an esc-prefix */
+		switch c {
+		case 0x1b:
+			fmt.Printf("%c", c)
+		case '=', 'Y':
+			cpm.auxStatus = 2
+		case 'E': /* insert line */
+			fmt.Printf("\033[L")
+		case 'R': /* delete line */
+			fmt.Printf("\033[M")
+		case 'B': /* enable attribute */
+			cpm.auxStatus = 4
+		case 'C': /* disable attribute */
+			cpm.auxStatus = 5
+		case 'L', 'D': /* set line */ /* delete line */
+			cpm.auxStatus = 6
+		case '*', ' ': /* set pixel */ /* clear pixel */
+			cpm.auxStatus = 8
+		default: /* some true ANSI sequence? */
+			cpm.auxStatus = 0
+			fmt.Printf("%c%c", 0x1b, c)
+		}
+	case 2:
+		cpm.y = c - ' ' + 1
+		cpm.auxStatus = 3
+	case 3:
+		cpm.x = c - ' ' + 1
+		cpm.auxStatus = 0
+		fmt.Printf("\033[%d;%dH", cpm.y, cpm.x)
+	case 4: /* <ESC>+B prefix */
+		cpm.auxStatus = 0
+		switch c {
+		case '0': /* start reverse video */
+			fmt.Printf("\033[7m")
+		case '1': /* start half intensity */
+			fmt.Printf("\033[1m")
+		case '2': /* start blinking */
+			fmt.Printf("\033[5m")
+		case '3': /* start underlining */
+			fmt.Printf("\033[4m")
+		case '4': /* cursor on */
+			fmt.Printf("\033[?25h")
+		case '5': /* video mode on */
+			// nop
+		case '6': /* remember cursor position */
+			fmt.Printf("\033[s")
+		case '7': /* preserve status line */
+			// nop
+		default:
+			fmt.Printf("%cB%c", 0x1b, c)
+		}
+	case 5: /* <ESC>+C prefix */
+		cpm.auxStatus = 0
+		switch c {
+		case '0': /* stop reverse video */
+			fmt.Printf("\033[27m")
+		case '1': /* stop half intensity */
+			fmt.Printf("\033[m")
+		case '2': /* stop blinking */
+			fmt.Printf("\033[25m")
+		case '3': /* stop underlining */
+			fmt.Printf("\033[24m")
+		case '4': /* cursor off */
+			fmt.Printf("\033[?25l")
+		case '6': /* restore cursor position */
+			fmt.Printf("\033[u")
+		case '5': /* video mode off */
+			// nop
+		case '7': /* don't preserve status line */
+			// nop
+		default:
+			fmt.Printf("%cC%c", 0x1b, c)
+		}
+		/* set/clear line/point */
+	case 6:
+		cpm.auxStatus++
+	case 7:
+		cpm.auxStatus++
+	case 8:
+		cpm.auxStatus++
+	case 9:
+		cpm.auxStatus = 0
+	}
+
+}
+
+// SysCallRawIO handles both simple character output, and input.
+func SysCallRawIO(cpm *CPM) error {
+
+	// Use our I/O package
+	obj := cpmio.New()
+
+	switch cpm.CPU.States.DE.Lo {
+	case 0xFF:
+		p, err := obj.IsPending()
+		if err != nil {
+			return err
+		}
+		if p {
+			cpm.CPU.States.AF.Hi = obj.GetAvailableChar()
+			return nil
+		}
+		cpm.CPU.States.AF.Hi = 0x00
+		return nil
+	case 0xFE:
+		p, err := obj.IsPending()
+		if err != nil {
+			return err
+		}
+		if p {
+			cpm.CPU.States.AF.Hi = 0xff
+			return nil
+		}
+		cpm.CPU.States.AF.Hi = 0x00
+		return nil
+	case 0xFD:
+		var err error
+		cpm.CPU.States.AF.Hi, err = obj.BlockForCharacter()
+		if err != nil {
+			return err
+		}
+		return nil
+	default:
+		fmt.Printf("%c", 0x7f&cpm.CPU.States.DE.Lo)
+	}
+	return nil
+}
+
+// SysCallGetIOByte gets the IOByte, which is used to describe which devices
+// are used for I/O.  No CP/M utilities use it, except for STAT and PIP.
+//
+// The IOByte lives at 0x0003 in RAM, so it is often accessed directly when it is used.
+func SysCallGetIOByte(cpm *CPM) error {
+
+	// Get the value
+	c := cpm.Memory.Get(0x003)
+
+	// return it
+	cpm.CPU.States.AF.Hi = c
+
+	return nil
+}
+
+// SysCallSetIOByte sets the IOByte, which is used to describe which devices
+// are used for I/O.  No CP/M utilities use it, except for STAT and PIP.
+//
+// The IOByte lives at 0x0003 in RAM, so it is often accessed directly when it is used.
+func SysCallSetIOByte(cpm *CPM) error {
+
+	// Set the value
+	cpm.Memory.Set(0x003, cpm.CPU.States.DE.Lo)
 
 	return nil
 }
@@ -179,9 +383,23 @@ func SysCallSetDMA(cpm *CPM) error {
 }
 
 // SysCallConsoleStatus fakes a test for pending console (character) input.
-//
-// As this is fake it always returns "no character pending".
 func SysCallConsoleStatus(cpm *CPM) error {
+
+	// Use our I/O package
+	obj := cpmio.New()
+
+	// Is something waiting for us?
+	p, err := obj.IsPending()
+	if err != nil {
+		return fmt.Errorf("error calling IsPending:%s", err)
+	}
+
+	if p {
+		cpm.CPU.States.AF.Hi = 0xFF
+		return nil
+	}
+
+	// Nothing pending
 	cpm.CPU.States.AF.Hi = 0x00
 	return nil
 }
@@ -193,7 +411,7 @@ func SysCallConsoleStatus(cpm *CPM) error {
 func SysCallDriveAllReset(cpm *CPM) error {
 
 	// Reset disk and user-number
-	cpm.currentDrive = 1
+	cpm.currentDrive = 0
 	cpm.userNumber = 0
 
 	// Reset our DMA address to the default
@@ -212,6 +430,8 @@ func SysCallDriveAllReset(cpm *CPM) error {
 func SysCallDriveSet(cpm *CPM) error {
 	// The drive number passed to this routine is 0 for A:, 1 for B: up to 15 for P:.
 	cpm.currentDrive = (cpm.CPU.States.AF.Hi & 0x0F)
+
+	cpm.Memory.Set(0x0004, cpm.currentDrive)
 
 	// Return values:
 	// HL = 0, B=0, A=0
