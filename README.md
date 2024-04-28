@@ -7,7 +7,7 @@ This repository contains a CP/M emulator, with integrated CCP, which is primaril
 * Over time it has become more functional:
   * It can now run ZORK 1, 2, & 3, as well as The Hitchhiker's guide to the galaxy and other similar games.
 
-I've implemented enough of the BIOS functions to run simple binaries, including Microsoft BASIC, but I've not implemented any notion of disk-based access.  (i.e. Opening, Reading/Writing, Closing files is absolutely fine, but any API call that refers to tracks, sectors, or disks will fail.)
+I've implemented enough of the BIOS functions to run simple binaries, including Microsoft BASIC, but I've not implemented any notion of disk-based access.  (i.e. Opening, reading/writing, and closing files is absolutely fine, but any API call that refers to tracks, sectors, or disks will fail.)
 
 A companion repository contains a collection of vintage CP/M software you can use with this, or any other, emulator:
 
@@ -30,7 +30,7 @@ If you were to clone this repository to your local system you could then build a
 go install .
 ```
 
-If neither of these options sufficed you may download the latest binary from [our release page](https://github.com/skx/cpmulator/releases).
+If neither of these options are suitable you may download the latest binary from [our release page](https://github.com/skx/cpmulator/releases).
 
 
 
@@ -74,13 +74,17 @@ You can terminate the CCP by pressing Ctrl-C, or typing `EXIT`.  The following b
 </details>
 
 
-You can also launch a binary directly by specifying it's path upon the command-line, followed by any optional arguments:
+You can also launch a binary directly by specifying it's path upon the command-line, followed by any optional arguments that the binary accepts or requires:
 
 ```
 $ cpmulator /path/to/binary [optional-args]
 ```
 
-I've placed some games within the `dist/` directory, so you can launch them easily like so:
+
+
+## Sample Binaries
+
+I've placed some games within the `dist/` directory, to make it easier for you to get started:
 
 ```sh
 $ cd dist/
@@ -155,14 +159,14 @@ G: HITCH   .COM | LEATHER .COM | LIHOUSE .COM | PLANET  .COM
 G: ZORK1   .COM | ZORK2   .COM | ZORK3   .COM
 
 G>dir b:*.com
-B: MBASIC  .COM | TBASIC  .COM
+B: MBASIC  .COM | OBASIC  .COM | TBASIC  .COM
 ```
 
 Note that it isn't currently possibly to point different drives to arbitrary paths on your computer, but that might be considered if you have a use-case for it.
 
 
 
-## Debugging Failures
+## Debugging Failures & Tweaking Behaviour
 
 When an unimplemented BIOS call is attempted the program it will abort with a fatal error, for example:
 
@@ -176,37 +180,37 @@ $ ./cpmulator FOO.COM
 Error running FOO.COM: UNIMPLEMENTED
 ```
 
-You can see a log of the functions it did successfully emulate and handle by setting the environmental variable DEBUG to a non-empty value, this will generate a log to STDERR where you can save it.
+There is integrated support for logging the functions that were executed successfully, along with other internal details.  To see the log set the environmental variable `DEBUG` to a non-empty value, which will trigger output to STDERR where you can save it.
 
-```
-$ DEBUG=1 ./cpmulator ZORK1.COM  2>log.log
-..
-$ cat log.log
-{"time":"2024-04-14T15:41:20.62879931+03:00",
-  ..
-```
+The console-I/O is blocking by default, but that can be changed by setting the environmental variable `NON_BLOCK` to any non-empty value.  This will increase CPU load (as it essentially causes the process to run in a busy-loop testing for pending console input).
+
+Here is the complete list of environmental variables which influence behaviour:
+
+| Variable  | Purpose                                                       |
+|-----------|---------------------------------------------------------------|
+| DEBUG     | Send a log of CP/M syscalls to STDERR                         |
+| NON_BLOCK | Avoid blocking for console input, instead poll in a busy-loop |
 
 
 
 ## Sample Programs
 
-You'll see some Z80 assembly programs beneath [samples](samples/) which are used to check my understanding.  If you have the `pasmo` compiler enabled you can build them all by running "make".
-
-In case you don't I've added ensured I also commit the generated binaries to the git repository.
+You'll see some Z80 assembly programs beneath [samples](samples/) which are used to check my understanding.  If you have the `pasmo` compiler enabled you can build them all by running "make", in case you don't I've also committed the generated binaries.
 
 
 
 
 # Credits
 
-* Much of the functionality of this repository comes from the [excellent Z80 emulator library](https://github.com/koron-go/z80) it is using, written by @koron-go.
+* Much of the functionality of this repository comes from the [excellent Z80 emulator library](https://github.com/koron-go/z80) it is using, written by [@koron-go](https://github.com/koron-go).
 * The CCP comes from [my fork](https://github.com/skx/z80-playground-cpm-fat/) of the original [cpm-fat](https://github.com/z80playground/cpm-fat/)
-  * However this is largely unchanged from the [original CCP](http://www.cpm.z80.de/source.html) from Digital Research, although I did add the `CLS`, `EXIT`, `HALT` & `QUIT` commands.
+  * However this is largely unchanged from the [original CCP](http://www.cpm.z80.de/source.html) from Digital Research, although I did add the `CLS`, `EXIT`, `HALT` & `QUIT` built-in commands.
 
 When I was uncertain of how to implement a specific system call the following two emulators were also useful:
 
 * [https://github.com/ivanizag/iz-cpm](https://github.com/ivanizag/iz-cpm)
   * Portable CP/M emulation to run CP/M 2.2 binaries for Z80.
+    * Has a handy "download" script to fetch some CP/M binaries, including BASIC, Turbo Pascal, and WordStar.
   * Written in Rust.
 * [https://github.com/jhallen/cpm](https://github.com/jhallen/cpm)
   * Run CP/M commands in Linux/Cygwin with this Z80 / BDOS / ADM-3A emulator.

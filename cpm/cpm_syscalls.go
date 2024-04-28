@@ -110,6 +110,10 @@ func SysCallAuxWrite(cpm *CPM) error {
 	return nil
 }
 
+// outC attempts to write a single character output, but converting to ANSI from vt.
+// This means tracking state and handling multi-byte output properly.
+//
+// This is all a bit sleazy.
 func (cpm *CPM) outC(c uint8) {
 	switch cpm.auxStatus {
 	case 0:
@@ -228,11 +232,26 @@ func (cpm *CPM) outC(c uint8) {
 // SysCallRawIO handles both simple character output, and input.
 func SysCallRawIO(cpm *CPM) error {
 
+	// Blocking input by default
+	block := true
+
+	// Set $NON_BLOCK to change it
+	if nb := os.Getenv("NON_BLOCK"); nb != "" {
+		block = false
+	}
+
 	// Use our I/O package
 	obj := cpmio.New()
 
 	switch cpm.CPU.States.DE.Lo {
 	case 0xFF:
+		// Blocking input
+		if block {
+			cpm.CPU.States.AF.Hi, _ = obj.BlockForCharacter()
+			return nil
+		}
+
+		// non-blocking, but CPU-heavy
 		p, err := obj.IsPending()
 		if err != nil {
 			return err
