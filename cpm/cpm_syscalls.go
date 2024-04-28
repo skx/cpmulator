@@ -51,7 +51,14 @@ func SysCallReadChar(cpm *CPM) error {
 
 // SysCallWriteChar writes the single character in the E register to STDOUT.
 func SysCallWriteChar(cpm *CPM) error {
-	//	fmt.Printf("%c", 0b01111111&cpm.CPU.States.DE.Lo)
+
+	// auxIO is set when we see A_READ/A_WRITE
+	//
+	// Mixing I/O modes is not recommended.
+	if cpm.auxIO {
+		return nil
+	}
+
 	cpm.outC(cpm.CPU.States.DE.Lo)
 
 	return nil
@@ -62,6 +69,9 @@ func SysCallWriteChar(cpm *CPM) error {
 // NOTE: Documentation implies this is blocking, but it seems like
 // tastybasic and mbasic prefer it like this
 func SysCallAuxRead(cpm *CPM) error {
+
+	// Now we're using aux I/O
+	cpm.auxIO = true
 
 	// Use our I/O package
 	obj := cpmio.New()
@@ -90,6 +100,9 @@ func SysCallAuxRead(cpm *CPM) error {
 
 // SysCallAuxWrite writes the single character in the C register auxillary / punch output
 func SysCallAuxWrite(cpm *CPM) error {
+
+	// Now we're using aux I/O
+	cpm.auxIO = true
 
 	// The character we're going to write
 	c := cpm.CPU.States.BC.Lo
@@ -215,52 +228,42 @@ func (cpm *CPM) outC(c uint8) {
 // SysCallRawIO handles both simple character output, and input.
 func SysCallRawIO(cpm *CPM) error {
 
-	// Are we printing a character?
-	if cpm.CPU.States.DE.Lo != 0xFF {
-		cpm.outC(cpm.CPU.States.DE.Lo)
-
-		// Return values:
-		// HL = 0, B=0, A=0
-		cpm.CPU.States.HL.Hi = 0x00
-		cpm.CPU.States.HL.Lo = 0x00
-		cpm.CPU.States.BC.Hi = 0x00
-		cpm.CPU.States.AF.Hi = 0x00
-
-		return nil
-	}
-
-	// Reading a character
-
-	//
-	// We should return a result in A:
-	//
-	// 0x00 if no character is pending
-	//
-	// C if the character C is read.
-	//
-
 	// Use our I/O package
 	obj := cpmio.New()
 
-	// Is something pending?
-	p, err := obj.IsPending()
-	if err != nil {
-		return fmt.Errorf("error calling IsPending:%s", err)
-	}
-
-	// Yes, return it
-	if p {
-		c := obj.GetAvailableChar()
-
-		cpm.CPU.States.HL.Hi = 0x00
-		cpm.CPU.States.HL.Lo = c
-		cpm.CPU.States.AF.Hi = c
-		cpm.CPU.States.AF.Lo = 0x00
+	switch cpm.CPU.States.DE.Lo {
+	case 0xFF:
+		p, err := obj.IsPending()
+		if err != nil {
+			return err
+		}
+		if p {
+			cpm.CPU.States.AF.Hi = obj.GetAvailableChar()
+			return nil
+		}
+		cpm.CPU.States.AF.Hi = 0x00
 		return nil
+	case 0xFE:
+		p, err := obj.IsPending()
+		if err != nil {
+			return err
+		}
+		if p {
+			cpm.CPU.States.AF.Hi = 0xff
+			return nil
+		}
+		cpm.CPU.States.AF.Hi = 0x00
+		return nil
+	case 0xFD:
+		var err error
+		cpm.CPU.States.AF.Hi, err = obj.BlockForCharacter()
+		if err != nil {
+			return err
+		}
+		return nil
+	default:
+		fmt.Printf("%c", 0x7f&cpm.CPU.States.DE.Lo)
 	}
-
-	// Nothing waiting for us.
-	cpm.CPU.States.AF.Hi = 0x00
 	return nil
 }
 

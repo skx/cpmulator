@@ -91,6 +91,11 @@ type CPM struct {
 	// to basically keep track of multibyte output
 	auxStatus int
 
+	// auxIO is used to disable character output if aux I/O has been seen.
+	// This is a bit hacky, but will resolve the issue of mixed outputs in
+	// Microsoft BASIC
+	auxIO bool
+
 	// x holds the character X position, when using AUX I/O.
 	// It is set/used by escape sequences.
 	x uint8
