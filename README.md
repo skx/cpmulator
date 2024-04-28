@@ -186,10 +186,11 @@ The console-I/O is blocking by default, but that can be changed by setting the e
 
 Here is the complete list of environmental variables which influence behaviour:
 
-| Variable  | Purpose                                                       |
-|-----------|---------------------------------------------------------------|
-| DEBUG     | Send a log of CP/M syscalls to STDERR                         |
-| NON_BLOCK | Avoid blocking for console input, instead poll in a busy-loop |
+| Variable    | Purpose                                                       |
+|-------------|---------------------------------------------------------------|
+| DEBUG       | Send a log of CP/M syscalls to STDERR                         |
+| NON_BLOCK   | Avoid blocking for console input, instead poll in a busy-loop |
+| SIMPLE_CHAR | Avoid the attempted VT52 output conversion.                   |
 
 
 

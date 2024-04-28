@@ -115,6 +115,12 @@ func SysCallAuxWrite(cpm *CPM) error {
 //
 // This is all a bit sleazy.
 func (cpm *CPM) outC(c uint8) {
+
+	if os.Getenv("SIMPLE_CHAR") != "" {
+		fmt.Printf("%c", c)
+		return
+	}
+
 	switch cpm.auxStatus {
 	case 0:
 		switch c {
@@ -281,7 +287,7 @@ func SysCallRawIO(cpm *CPM) error {
 		}
 		return nil
 	default:
-		fmt.Printf("%c", 0x7f&cpm.CPU.States.DE.Lo)
+		cpm.outC(cpm.CPU.States.DE.Lo)
 	}
 	return nil
 }
