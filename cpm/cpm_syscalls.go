@@ -1313,3 +1313,23 @@ func SysCallWriteRand(cpm *CPM) error {
 	cpm.CPU.States.AF.Hi = 0x00
 	return nil
 }
+
+// SysCallDriveAlloc will return the address of the allocation bitmap (which blocks are used and
+// which are free) in HL.
+//
+// TODO: Fake me better.  Right now I just return "random memory".
+func SysCallDriveAlloc(cpm *CPM) error {
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = 0x00
+	return nil
+}
+
+// SysCallDriveROVec will return a bitfield describing which drives are read-only.
+//
+// Bit 7 of H corresponds to P: while bit 0 of L corresponds to A:. A bit is set if the corresponding drive is
+// set to read-only in software.  As we never set drives to read-only we return 0x0000
+func SysCallDriveROVec(cpm *CPM) error {
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = 0x00
+	return nil
+}
