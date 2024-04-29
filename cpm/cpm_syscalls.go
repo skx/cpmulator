@@ -491,10 +491,16 @@ func SysCallFileOpen(cpm *CPM) error {
 		fileName += ext
 	}
 
+	// drive will default to our current drive, if the FCB drive field is 0
+	drive := cpm.currentDrive + 'A'
+	if fcbPtr.Drive != 0 {
+		drive = fcbPtr.Drive + 'A' - 1
+	}
+
 	// Should we remap drives?
 	path := "."
 	if cpm.Drives {
-		path = string(cpm.currentDrive + 'A')
+		path = string(drive)
 	}
 
 	//
@@ -513,11 +519,6 @@ func SysCallFileOpen(cpm *CPM) error {
 		}
 	}
 
-	// Should we remap drives?
-	if cpm.Drives {
-		fileName = string(cpm.currentDrive+'A') + "/" + fileName
-	}
-
 	// child logger with more details.
 	l := cpm.Logger.With(
 		slog.String("function", "SysCallFileOpen"),
@@ -525,6 +526,17 @@ func SysCallFileOpen(cpm *CPM) error {
 		slog.String("ext", ext),
 		slog.String("drive", string(cpm.currentDrive+'A')),
 		slog.String("result", fileName))
+
+	// Should we remap drives?
+	if cpm.Drives {
+		before := fileName
+
+		fileName = string(drive) + "/" + fileName
+
+		l.Debug("SysCallFileOpen remapped path",
+			slog.String("before", before),
+			slog.String("after", fileName))
+	}
 
 	// Now we open..
 	file, err := os.OpenFile(fileName, os.O_RDWR, 0644)
@@ -534,14 +546,18 @@ func SysCallFileOpen(cpm *CPM) error {
 		// exist.
 		if os.IsNotExist(err) {
 
-			l.Debug("failed to open, file does not exist")
+			l.Debug("failed to open, file does not exist",
+				slog.String("path", fileName),
+				slog.String("error", err.Error()))
 
 			cpm.CPU.States.AF.Hi = 0xFF
 			return nil
 		}
 
 		// Ok a different error
-		l.Debug("failed to open", slog.String("error", err.Error()))
+		l.Debug("failed to open",
+			slog.String("path", fileName),
+			slog.String("error", err.Error()))
 		return err
 	}
 
@@ -698,16 +714,22 @@ func SysCallDeleteFile(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
-	dir := "."
+	// drive will default to our current drive, if the FCB drive field is 0
+	drive := cpm.currentDrive + 'A'
+	if fcbPtr.Drive != 0 {
+		drive = fcbPtr.Drive + 'A' - 1
+	}
+
+	path := "."
 	if cpm.Drives {
-		dir = string(cpm.currentDrive+'A') + "/"
+		path = string(drive)
 	}
 
 	// Find files in the FCB.
-	res, err := fcbPtr.GetMatches(dir)
+	res, err := fcbPtr.GetMatches(path)
 	if err != nil {
 		cpm.Logger.Debug("fcbPtr.GetMatches returned error",
-			slog.String("path", dir),
+			slog.String("path", path),
 			slog.String("error", err.Error()))
 
 		cpm.CPU.States.AF.Hi = 0xff
@@ -723,7 +745,7 @@ func SysCallDeleteFile(cpm *CPM) error {
 
 	for _, path := range res {
 		if cpm.Drives {
-			path = string(cpm.currentDrive+'A') + "/" + path
+			path = string(drive) + "/" + path
 		}
 
 		cpm.Logger.Debug("SysCallDeleteFile: deleting file",
@@ -896,10 +918,16 @@ func SysCallMakeFile(cpm *CPM) error {
 		fileName += ext
 	}
 
+	// drive will default to our current drive, if the FCB drive field is 0
+	drive := cpm.currentDrive + 'A'
+	if fcbPtr.Drive != 0 {
+		drive = fcbPtr.Drive + 'A' - 1
+	}
+
 	// Should we remap drives?
 	path := "."
 	if cpm.Drives {
-		path = string(cpm.currentDrive + 'A')
+		path = string(drive)
 	}
 
 	//
@@ -918,11 +946,6 @@ func SysCallMakeFile(cpm *CPM) error {
 		}
 	}
 
-	// Should we remap drives?
-	if cpm.Drives {
-		fileName = string(cpm.currentDrive+'A') + "/" + fileName
-	}
-
 	// child logger with more details.
 	l := cpm.Logger.With(
 		slog.String("function", "SysCallMakeFile"),
@@ -931,11 +954,24 @@ func SysCallMakeFile(cpm *CPM) error {
 		slog.String("drive", string(cpm.currentDrive+'A')),
 		slog.String("result", fileName))
 
+	// Should we remap drives?
+	if cpm.Drives {
+		before := fileName
+
+		fileName = string(drive) + "/" + fileName
+
+		l.Debug("SysCallMakeFile remapped path",
+			slog.String("before", before),
+			slog.String("after", fileName))
+	}
+
 	// Create the file
 	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 
-		l.Debug("failed to open", slog.String("error", err.Error()))
+		l.Debug("failed to open",
+			slog.String("path", fileName),
+			slog.String("error", err.Error()))
 		return err
 	}
 

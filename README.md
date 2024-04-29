@@ -234,8 +234,6 @@ Let me know by filing an issue.  If your program is "real" then it is highly lik
 
 Outstanding issues I'm aware of:
 
-* Inconsistent handling of Drives in FCB entries.
-  * There seems to be no suffering here, but ..
 * I don't implement some of the basic BIOS calls that might be useful
   * Get free RAM, etc, etc.
   * These will be added over time as their absence causes program-failures.
