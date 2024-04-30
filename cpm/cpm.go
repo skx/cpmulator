@@ -139,7 +139,7 @@ type CPM struct {
 	//
 	// This means we need to track state, the way we do this is to store the
 	// results here, and bump the findOffset each time find-next is called.
-	findFirstResults []string
+	findFirstResults []fcb.FCBFind
 	findOffset       int
 
 	// Reader is where we get our STDIN from.

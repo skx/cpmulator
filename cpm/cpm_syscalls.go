@@ -629,7 +629,7 @@ func SysCallFindFirst(cpm *CPM) error {
 	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
 
 	// Previous results are now invalidated
-	cpm.findFirstResults = []string{}
+	cpm.findFirstResults = []fcb.FCBFind{}
 	cpm.findOffset = 0
 
 	// Create a structure with the contents
@@ -637,7 +637,7 @@ func SysCallFindFirst(cpm *CPM) error {
 
 	dir := "."
 	if cpm.Drives {
-		dir = string(cpm.currentDrive+'A') + "/"
+		dir = string(cpm.currentDrive + 'A')
 	}
 
 	// Find files in the FCB.
@@ -663,7 +663,25 @@ func SysCallFindFirst(cpm *CPM) error {
 	cpm.findOffset = 0
 
 	// Create a new FCB and store it in the DMA entry
-	x := fcb.FromString(res[0])
+	x := fcb.FromString(res[0].Name)
+
+	// Get the file-size in records, and add to the FCB
+	tmp, err := os.OpenFile(res[0].Host, os.O_RDONLY, 0644)
+	if err == nil {
+		defer tmp.Close()
+
+		fi, err := tmp.Stat()
+		if err == nil {
+
+			fileSize := fi.Size()
+
+			// Get file size, in blocks
+			x.RC = uint8(fileSize / blkSize)
+
+		}
+	}
+
+	// Update the results
 	data := x.AsBytes()
 	cpm.Memory.SetRange(cpm.dma, data...)
 
@@ -691,7 +709,24 @@ func SysCallFindNext(cpm *CPM) error {
 	cpm.findOffset++
 
 	// Create a new FCB and store it in the DMA entry
-	x := fcb.FromString(res)
+	x := fcb.FromString(res.Name)
+
+	// Get the file-size in records, and add to the FCB
+	tmp, err := os.OpenFile(res.Host, os.O_RDONLY, 0644)
+	if err == nil {
+		defer tmp.Close()
+
+		fi, err := tmp.Stat()
+		if err == nil {
+
+			fileSize := fi.Size()
+
+			// Get file size, in blocks
+			x.RC = uint8(fileSize / blkSize)
+
+		}
+	}
+
 	data := x.AsBytes()
 	cpm.Memory.SetRange(cpm.dma, data...)
 
@@ -743,10 +778,11 @@ func SysCallDeleteFile(cpm *CPM) error {
 		return nil
 	}
 
-	for _, path := range res {
-		if cpm.Drives {
-			path = string(drive) + "/" + path
-		}
+	// For each result
+	for _, entry := range res {
+
+		// Host path
+		path := entry.Host
 
 		cpm.Logger.Debug("SysCallDeleteFile: deleting file",
 			slog.String("path", path))

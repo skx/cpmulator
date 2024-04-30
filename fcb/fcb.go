@@ -53,6 +53,15 @@ type FCB struct {
 	R2 uint8
 }
 
+// FCBFind is the structure which is returned for files found via FindFirst / FindNext
+type FCBFind struct {
+	// Host is the location on the host for the file
+	Host string
+
+	// Name is the name as CP/M would see it
+	Name string
+}
+
 // GetName returns the name component of an FCB entry.
 func (f *FCB) GetName() string {
 	t := ""
@@ -262,8 +271,8 @@ func FromBytes(bytes []uint8) FCB {
 //
 // We try to do this by converting the entries of the named directory into FCBs
 // after ignoring those with impossible formats - i.e. not FILENAME.EXT length.
-func (f *FCB) GetMatches(prefix string) ([]string, error) {
-	var ret []string
+func (f *FCB) GetMatches(prefix string) ([]FCBFind, error) {
+	var ret []FCBFind
 
 	t := string(f.Type[0]) + string(f.Type[1]) + string(f.Type[2])
 	if t == "" || t == "   " {
@@ -279,7 +288,8 @@ func (f *FCB) GetMatches(prefix string) ([]string, error) {
 	// For each file
 	for _, file := range files {
 
-		orig := file.Name()
+		var ent FCBFind
+		ent.Host = prefix + "/" + file.Name()
 
 		// Ignore directories
 		if file.IsDir() {
@@ -322,9 +332,10 @@ func (f *FCB) GetMatches(prefix string) ([]string, error) {
 				include = false
 			}
 		}
-		// Does it match? Then add the original name
+		// Does it match? Then add the entry
 		if include {
-			ret = append(ret, orig)
+			ent.Name = name
+			ret = append(ret, ent)
 		}
 	}
 	// Find files in the current directory.
