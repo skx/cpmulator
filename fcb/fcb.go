@@ -3,6 +3,7 @@ package fcb
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -296,13 +297,16 @@ func (f *FCB) GetMatches(prefix string) ([]FCBFind, error) {
 	// For each file
 	for _, file := range files {
 
-		var ent FCBFind
-		ent.Host = prefix + "/" + file.Name()
-
-		// Ignore directories
+		// Ignore directories, we only care about files.
 		if file.IsDir() {
 			continue
 		}
+
+		// Create the new record, in case this entry matches.
+		var ent FCBFind
+
+		// Populate the host-path before we do anything else.
+		ent.Host = filepath.Join(prefix, +file.Name())
 
 		// Name needs to be upper-cased
 		name := strings.ToUpper(file.Name())
@@ -327,25 +331,43 @@ func (f *FCB) GetMatches(prefix string) ([]FCBFind, error) {
 			}
 		}
 
+		// Default to included the file, now the basics
+		// have matched - filename/extension lengths and
+		// being a non-directory.
 		include := true
+
 		// OK make an fcb
 		tmp := FromString(name)
+
+		// Now test if the name we've got matches that in the
+		// search-pattern: Name.
+		//
+		// Either a literal match, or a wildcard match with "?".
 		for i, c := range tmp.Name {
 			if (f.Name[i] != c) && (f.Name[i] != '?') {
 				include = false
 			}
 		}
+
+		// Repeat for the suffix.
 		for i, c := range tmp.Type {
 			if (t[i] != c) && (t[i] != '?') {
 				include = false
 			}
 		}
-		// Does it match? Then add the entry
+
+		// Does it match? Then add the entry, with the
+		// CP/M visible name.
 		if include {
+
+			// populate
 			ent.Name = name
+
+			// append
 			ret = append(ret, ent)
 		}
 	}
-	// Find files in the current directory.
+
+	// Return the entries we found, if any.
 	return ret, nil
 }
