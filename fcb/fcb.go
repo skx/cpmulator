@@ -53,12 +53,20 @@ type FCB struct {
 	R2 uint8
 }
 
-// FCBFind is the structure which is returned for files found via FindFirst / FindNext
+// FCBFind is the structure which is returned for files found via FindFirst / FindNext.
+//
+// This structure exists to make it easy for us to work with both the path on the host,
+// and the path within the CP/M disk.  Specifically we need to populate the size of
+// files when we return their FCB entries from either call - and that means we need
+// access to the host filesystem (i.e. cope when directories are used to represent
+// drives).
 type FCBFind struct {
-	// Host is the location on the host for the file
+	// Host is the location on the host for the file.
+	// This might refer to the current directory, or a drive-based sub-directory.
 	Host string
 
-	// Name is the name as CP/M would see it
+	// Name is the name as CP/M would see it.
+	// This will be upper-cased and in 8.3 format.
 	Name string
 }
 
