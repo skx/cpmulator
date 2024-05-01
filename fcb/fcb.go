@@ -306,7 +306,7 @@ func (f *FCB) GetMatches(prefix string) ([]FCBFind, error) {
 		var ent FCBFind
 
 		// Populate the host-path before we do anything else.
-		ent.Host = filepath.Join(prefix, +file.Name())
+		ent.Host = filepath.Join(prefix, file.Name())
 
 		// Name needs to be upper-cased
 		name := strings.ToUpper(file.Name())
