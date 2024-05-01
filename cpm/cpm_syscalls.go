@@ -10,6 +10,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/skx/cpmulator/fcb"
@@ -531,7 +532,7 @@ func SysCallFileOpen(cpm *CPM) error {
 	if cpm.Drives {
 		before := fileName
 
-		fileName = string(drive) + "/" + fileName
+		fileName = filepath.Join(string(drive), fileName)
 
 		l.Debug("SysCallFileOpen remapped path",
 			slog.String("before", before),
@@ -994,7 +995,7 @@ func SysCallMakeFile(cpm *CPM) error {
 	if cpm.Drives {
 		before := fileName
 
-		fileName = string(drive) + "/" + fileName
+		fileName = filepath.Join(string(drive), fileName)
 
 		l.Debug("SysCallMakeFile remapped path",
 			slog.String("before", before),
@@ -1094,7 +1095,7 @@ func SysCallRenameFile(cpm *CPM) error {
 
 	// Should we remap drives?
 	if cpm.Drives {
-		fileName = string(cpm.currentDrive+'A') + "/" + fileName
+		fileName = filepath.Join(string(cpm.currentDrive+'A'), fileName)
 	}
 
 	// 2. DEST
@@ -1116,7 +1117,7 @@ func SysCallRenameFile(cpm *CPM) error {
 
 	// Should we remap drives?
 	if cpm.Drives {
-		dstName = string(cpm.currentDrive+'A') + "/" + dstName
+		dstName = filepath.Join(string(cpm.currentDrive+'A'), dstName)
 	}
 
 	cpm.Logger.Debug("Renaming file",
