@@ -3,6 +3,7 @@ package fcb
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -51,6 +52,23 @@ type FCB struct {
 
 	// R2 holds part of the random-record offset.
 	R2 uint8
+}
+
+// FCBFind is the structure which is returned for files found via FindFirst / FindNext.
+//
+// This structure exists to make it easy for us to work with both the path on the host,
+// and the path within the CP/M disk.  Specifically we need to populate the size of
+// files when we return their FCB entries from either call - and that means we need
+// access to the host filesystem (i.e. cope when directories are used to represent
+// drives).
+type FCBFind struct {
+	// Host is the location on the host for the file.
+	// This might refer to the current directory, or a drive-based sub-directory.
+	Host string
+
+	// Name is the name as CP/M would see it.
+	// This will be upper-cased and in 8.3 format.
+	Name string
 }
 
 // GetName returns the name component of an FCB entry.
@@ -262,8 +280,8 @@ func FromBytes(bytes []uint8) FCB {
 //
 // We try to do this by converting the entries of the named directory into FCBs
 // after ignoring those with impossible formats - i.e. not FILENAME.EXT length.
-func (f *FCB) GetMatches(prefix string) ([]string, error) {
-	var ret []string
+func (f *FCB) GetMatches(prefix string) ([]FCBFind, error) {
+	var ret []FCBFind
 
 	t := string(f.Type[0]) + string(f.Type[1]) + string(f.Type[2])
 	if t == "" || t == "   " {
@@ -279,12 +297,16 @@ func (f *FCB) GetMatches(prefix string) ([]string, error) {
 	// For each file
 	for _, file := range files {
 
-		orig := file.Name()
-
-		// Ignore directories
+		// Ignore directories, we only care about files.
 		if file.IsDir() {
 			continue
 		}
+
+		// Create the new record, in case this entry matches.
+		var ent FCBFind
+
+		// Populate the host-path before we do anything else.
+		ent.Host = filepath.Join(prefix, file.Name())
 
 		// Name needs to be upper-cased
 		name := strings.ToUpper(file.Name())
@@ -309,24 +331,43 @@ func (f *FCB) GetMatches(prefix string) ([]string, error) {
 			}
 		}
 
+		// Default to included the file, now the basics
+		// have matched - filename/extension lengths and
+		// being a non-directory.
 		include := true
+
 		// OK make an fcb
 		tmp := FromString(name)
+
+		// Now test if the name we've got matches that in the
+		// search-pattern: Name.
+		//
+		// Either a literal match, or a wildcard match with "?".
 		for i, c := range tmp.Name {
 			if (f.Name[i] != c) && (f.Name[i] != '?') {
 				include = false
 			}
 		}
+
+		// Repeat for the suffix.
 		for i, c := range tmp.Type {
 			if (t[i] != c) && (t[i] != '?') {
 				include = false
 			}
 		}
-		// Does it match? Then add the original name
+
+		// Does it match? Then add the entry, with the
+		// CP/M visible name.
 		if include {
-			ret = append(ret, orig)
+
+			// populate
+			ent.Name = name
+
+			// append
+			ret = append(ret, ent)
 		}
 	}
-	// Find files in the current directory.
+
+	// Return the entries we found, if any.
 	return ret, nil
 }

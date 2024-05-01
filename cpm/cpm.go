@@ -121,7 +121,7 @@ type CPM struct {
 	Drives bool
 
 	// currentDrive contains the currently selected drive.
-	// Valid values are 00-15, where
+	// Valid values are 0-15, where they work in the obvious way:
 	// 0  -> A:
 	// 1  -> B:
 	// 15 -> P:
@@ -129,7 +129,7 @@ type CPM struct {
 
 	// userNumber contains the current user number.
 	//
-	// Valid values are 00-15
+	// Valid values are 0-15.
 	userNumber uint8
 
 	// findFirstResults is a sneaky cache of files that match a glob.
@@ -139,7 +139,7 @@ type CPM struct {
 	//
 	// This means we need to track state, the way we do this is to store the
 	// results here, and bump the findOffset each time find-next is called.
-	findFirstResults []string
+	findFirstResults []fcb.FCBFind
 	findOffset       int
 
 	// Reader is where we get our STDIN from.
@@ -261,6 +261,14 @@ func New(logger *slog.Logger) *CPM {
 	sys[26] = CPMHandler{
 		Desc:    "F_DMAOFF",
 		Handler: SysCallSetDMA,
+	}
+	sys[27] = CPMHandler{
+		Desc:    "DRV_ALLOCVEC",
+		Handler: SysCallDriveAlloc,
+	}
+	sys[29] = CPMHandler{
+		Desc:    "DRV_ROVEC",
+		Handler: SysCallDriveROVec,
 	}
 	sys[31] = CPMHandler{
 		Desc:    "DRV_DPB",
