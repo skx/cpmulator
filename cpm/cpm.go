@@ -553,9 +553,20 @@ func (cpm *CPM) Execute(args []string) error {
 		cpm.Logger.Info("SysCall",
 			slog.String("name", handler.Desc),
 			slog.Int("syscall", int(syscall)),
-			slog.String("syscallHex",
-				fmt.Sprintf("0x%02X", syscall)),
-		)
+			slog.String("syscallHex", fmt.Sprintf("0x%02X", syscall)),
+			slog.Group("registers",
+				slog.String("A", fmt.Sprintf("%02X", cpm.CPU.States.AF.Hi)),
+				slog.String("B", fmt.Sprintf("%02X", cpm.CPU.States.BC.Hi)),
+				slog.String("C", fmt.Sprintf("%02X", cpm.CPU.States.BC.Lo)),
+				slog.String("D", fmt.Sprintf("%02X", cpm.CPU.States.DE.Hi)),
+				slog.String("E", fmt.Sprintf("%02X", cpm.CPU.States.DE.Lo)),
+				slog.String("F", fmt.Sprintf("%02X", cpm.CPU.States.AF.Lo)),
+				slog.String("H", fmt.Sprintf("%02X", cpm.CPU.States.HL.Hi)),
+				slog.String("L", fmt.Sprintf("%02X", cpm.CPU.States.HL.Lo)),
+				slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
+				slog.String("DE", fmt.Sprintf("%04X", cpm.CPU.States.DE.U16())),
+				slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16())),
+			))
 
 		// Invoke the handler
 		err = handler.Handler(cpm)
@@ -625,12 +636,23 @@ func (cpm *CPM) Out(addr uint8, val uint8) {
 	}
 
 	// Log the call we're going to make
-	cpm.Logger.Info("SysCall via I/O",
+	cpm.Logger.Info("IOSysCall",
 		slog.String("name", handler.Desc),
 		slog.Int("syscall", int(val)),
-		slog.String("syscallHex",
-			fmt.Sprintf("0x%02X", val)),
-	)
+		slog.String("syscallHex", fmt.Sprintf("0x%02X", val)),
+		slog.Group("registers",
+			slog.String("A", fmt.Sprintf("%02X", cpm.CPU.States.AF.Hi)),
+			slog.String("B", fmt.Sprintf("%02X", cpm.CPU.States.BC.Hi)),
+			slog.String("C", fmt.Sprintf("%02X", cpm.CPU.States.BC.Lo)),
+			slog.String("D", fmt.Sprintf("%02X", cpm.CPU.States.DE.Hi)),
+			slog.String("E", fmt.Sprintf("%02X", cpm.CPU.States.DE.Lo)),
+			slog.String("F", fmt.Sprintf("%02X", cpm.CPU.States.AF.Lo)),
+			slog.String("H", fmt.Sprintf("%02X", cpm.CPU.States.HL.Hi)),
+			slog.String("L", fmt.Sprintf("%02X", cpm.CPU.States.HL.Lo)),
+			slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
+			slog.String("DE", fmt.Sprintf("%04X", cpm.CPU.States.DE.U16())),
+			slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16())),
+		))
 
 	// Invoke the handler
 	err := handler.Handler(cpm)
