@@ -180,7 +180,9 @@ $ ./cpmulator FOO.COM
 Error running FOO.COM: UNIMPLEMENTED
 ```
 
-There is integrated support for logging the functions that were executed successfully, along with other internal details.  To see the log set the environmental variable `DEBUG` to a non-empty value, which will trigger output to STDERR where you can save it.
+If things are _mostly_ working, but something is not quite producing the correct result then we have some notes on debugging:
+
+* [DEBUGGING.md](DEBUGGING.md)
 
 The console-I/O is blocking by default, but that can be changed by setting the environmental variable `NON_BLOCK` to any non-empty value.  This will increase CPU load (as it essentially causes the process to run in a busy-loop testing for pending console input).
 
