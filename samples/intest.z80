@@ -128,15 +128,31 @@ C_RAWIO_test:
         LD C, 0x09
         CALL 0x0005
 
-        ; get a character
-C_RAWIO_Test_loop
+C_RAWIO_Test_loop:
+        LD DE, C_RAWIO_SPINNER_1
+        LD C, 0x09
+        CALL 0x0005
+
+        ; see if a character is pending
         LD C, 0x06
         LD E, 0xff
         CALL 0x0005
 
+        push af
+        LD DE, C_RAWIO_SPINNER_2
+        LD C, 0x09
+        CALL 0x0005
+        pop af
+
         ; was there nothing pending? then try again
         CP 0x00
         jr z, C_RAWIO_Test_loop
+
+        push af
+        LD DE, C_RAWIO_SPINNER_3
+        LD C, 0x09
+        CALL 0x0005
+        pop af
 
         ; got a character, was it q?
         cp 'q'
@@ -231,6 +247,13 @@ C_RAWIO_PROMPT:
 
 C_RAWIO_BUFFER:
         DB 0x00, "$"
+
+C_RAWIO_SPINNER_1:
+        DB "x", 0x08, "$"
+C_RAWIO_SPINNER_2:
+        DB "X", 0x08, "$"
+C_RAWIO_SPINNER_3:
+        DB "+", 0x08, "$"
 
 ;; C_READSTRING
 C_READSTRING_PROMPT:
