@@ -71,31 +71,22 @@ func SysCallWriteChar(cpm *CPM) error {
 // tastybasic and mbasic prefer it like this
 func SysCallAuxRead(cpm *CPM) error {
 
-	// Now we're using aux I/O
-	cpm.auxIO = true
-
 	// Use our I/O package
 	obj := cpmio.New()
 
-	// Is something waiting for us?
-	p, err := obj.IsPending()
+	// Block for input
+	c, err := obj.BlockForCharacter()
 	if err != nil {
-		return fmt.Errorf("error calling IsPending:%s", err)
+		return fmt.Errorf("error in call to BlockForCharacter: %s", err)
 	}
 
-	// If yes, return it
-	if p {
-		c := obj.GetAvailableChar()
+	// Return values:
+	// HL = Char, A=Char
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = c
+	cpm.CPU.States.AF.Hi = c
+	cpm.CPU.States.AF.Lo = 0x00
 
-		cpm.CPU.States.HL.Hi = 0x00
-		cpm.CPU.States.HL.Lo = c
-		cpm.CPU.States.AF.Hi = c
-		cpm.CPU.States.AF.Lo = 0x00
-		return nil
-	}
-
-	// Return nothing
-	cpm.CPU.States.AF.Hi = 0x00
 	return nil
 }
 

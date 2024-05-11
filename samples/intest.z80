@@ -12,6 +12,8 @@
         call C_READ_test
 
         ;; function 3 (A_READ) - mbasic.com
+        call A_READ_test
+
         ;; function 6 (C_RAWIO)
 
         ;; function 9 (C_READSTRING)
@@ -51,7 +53,7 @@ C_READ_test_loop
         LD HL, READ_STRING
         LD A, (HL)
         LD B,5
-SHOW_LOOP_2:
+SHOW_LOOP_C_READ:
         PUSH HL
         PUSH BC
              LD A,(HL)
@@ -61,10 +63,58 @@ SHOW_LOOP_2:
         POP BC
         POP HL
         INC HL
-        DJNZ SHOW_LOOP_2
-
+        DJNZ SHOW_LOOP_C_READ
 
         LD DE, C_READ_OVER_2
+        LD C, 0x09
+        CALL 0x0005
+
+        RET
+
+
+
+;; Prompt for characters returning them - NOTE: No echo is expected
+A_READ_test:
+	LD	DE, A_READ_PROMPT
+        LD      C,0x09
+        CALL    0x0005
+
+        ; we allow five input characters
+        LD B, 5
+        ; We save the characters into the input area
+        LD HL,READ_STRING
+A_READ_test_loop
+        PUSH HL
+        PUSH BC
+             LD C, 0x03
+             CALL 0x0005
+        POP BC
+        POP HL
+        LD (HL), A
+        INC HL
+        DJNZ A_READ_test_loop
+
+        LD DE, A_READ_OVER_1
+        LD C, 0x09
+        CALL 0x0005
+
+        ; Show the characters
+        LD HL, READ_STRING
+        LD A, (HL)
+        LD B,5
+SHOW_LOOP_A_READ:
+        PUSH HL
+        PUSH BC
+             LD A,(HL)
+             LD E, A
+             LD C, 0x02
+             CALL 0x0005
+        POP BC
+        POP HL
+        INC HL
+        DJNZ SHOW_LOOP_A_READ
+
+        LD DE, A_READ_OVER_2
         LD C, 0x09
         CALL 0x0005
 
@@ -136,6 +186,17 @@ C_READ_OVER_1:
         DB "  Test complete - you entered '$"
 C_READ_OVER_2:
         DB "'.", 0x0a, 0x0d, "$"
+
+;; A_READ
+A_READ_PROMPT:
+        DB "A_READ Test:", 0x0a, 0x0d
+        DB "  This test allows you to enter FIVE characters, one by one.", 0x0a, 0x0d
+        DB "  The characters should NOT be echoed as you type them.", 0x0a, 0x0d, "$"
+A_READ_OVER_1:
+        DB "  Test complete - you entered '$"
+A_READ_OVER_2:
+        DB "'.", 0x0a, 0x0d, "$"
+
 
 ;; C_READSTRING
 C_READSTRING_PROMPT:

@@ -12,6 +12,7 @@ package io
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"syscall"
 	"time"
 
@@ -38,7 +39,18 @@ func (io *IO) GetAvailableChar() byte {
 
 // BlockForCharacter returns the next character from the console, blocking until
 // one is available.
+//
+// NOTE: This function should not echo keystrokes which are entered.
 func (io *IO) BlockForCharacter() (byte, error) {
+
+	// do not display entered characters on the screen
+	exec.Command("stty", "-F", "/dev/tty", "-echo").Run()
+
+	defer func() {
+		//  display entered characters on the screen
+		exec.Command("stty", "-F", "/dev/tty", "echo").Run()
+
+	}()
 
 	// switch stdin into 'raw' mode
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
@@ -64,7 +76,9 @@ func (io *IO) BlockForCharacter() (byte, error) {
 }
 
 // BlockForCharacterWithEcho returns the next character from the console,
-// blocking until one is available.  Echo is enabled.
+// blocking until one is available.
+//
+// NOTE: Characters should be echo'd as they are input.
 func (io *IO) BlockForCharacterWithEcho() (byte, error) {
 
 	// switch stdin into 'raw' mode
@@ -95,6 +109,7 @@ func (io *IO) IsPending() (bool, error) {
 
 	// Set STDIN to be non-blocking.
 	if err1 := syscall.SetNonblock(0, true); err1 != nil {
+
 		return false, fmt.Errorf("failed to set non-blocking stdin %s", err1)
 	}
 
