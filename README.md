@@ -35,6 +35,17 @@ If neither of these options are suitable you may download the latest binary from
 
 
 
+# Portability
+
+The CP/M input handlers need to disable echoing when reading (single) characters from STDIN.  There isn't a simple and portable solution for this in golang - so I've resorted to the naive approach of executing `stty` when necessary.
+
+This means the code in this repository isn't 100% portable; it will work on Linux and MacOS hosts, but not Windows.
+
+There _is_ code to disable echoing in the golang standard library, for example you can [consider the code in the readPassword function](https://cs.opensource.google/go/x/term/+/refs/tags/v0.20.0:term_unix.go) in `x/term`.  Unfortunately the facilities there are only sufficient for reading a _line_, not a _character_.
+
+
+
+
 # Usage
 
 If you launch `cpmulator` with no arguments then the integrated CCP ("console command processor") will be launched, dropping you into a familiar shell:
