@@ -8,11 +8,82 @@
         LD      C,0x09
         CALL    0x0005
 
-        ; Exit
+        ;; function 1 (C_READ)
+        ;; function 3 (A_READ) - mbasic.com
+        ;; function 6 (C_RAWIO)
+
+        ;; function 9 (C_READSTRING)
+        call read_string_test
+
+        ;; Exit
         LD      C,0x00
         CALL    0x0005
 
 
+;; Prompt the user to enter text, and echo it back.
+read_string_test:
+	LD	DE, READ_STRING_PROMPT
+        LD      C,0x09
+        CALL    0x0005
+
+        ; Point to the buffer
+        LD HL, READ_STRING
+
+        ; first byte is how many characters to allow (20 here)
+        LD A, 20
+        LD (HL), A
+
+        ; DE points to the buffer
+        PUSH HL
+        POP DE
+
+        ; call C_READSTRING
+        LD C, 10
+        CALL 0x005
+
+        ;; Show the result
+        LD DE, READ_STRING_RESULT_1
+        LD      C,0x09
+        CALL    0x0005
+
+        ;; Now get the length, and show the output
+        LD HL, READ_STRING + 1
+        LD A, (HL)
+        LD B,A
+SHOW_LOOP
+        INC HL
+        PUSH HL
+        PUSH BC
+             LD A,(HL)
+             LD E, A
+             LD C, 0x02
+             CALL 0x0005
+        POP BC
+        POP HL
+        DJNZ SHOW_LOOP
+
+        ;; And finish
+        LD DE, READ_STRING_RESULT_2
+        LD      C,0x09
+        CALL    0x0005
+
+        RET
+
+
+
+;;
 ;; Text area
+;;
 INTRO_MSG:
         DB  "This program is designed to test input routines.", 0x0a, 0x0d, "$"
+
+READ_STRING_PROMPT:
+        DB "Enter a string, terminated by newline..", 0x0a, 0x0d, "$"
+READ_STRING_RESULT_1:
+        DB "You entered '$"
+READ_STRING_RESULT_2:
+        DB "' - test complete.", 0x0a, 0x0d, "$"
+;;
+;; DATA area
+;;
+READ_STRING:

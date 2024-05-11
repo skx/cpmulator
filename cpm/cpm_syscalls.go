@@ -343,14 +343,25 @@ func SysCallWriteString(cpm *CPM) error {
 
 // SysCallReadString reads a string from the console, into the buffer pointed to by DE.
 func SysCallReadString(cpm *CPM) error {
+
+	// DE points to the buffer
 	addr := cpm.CPU.States.DE.U16()
 
+	// First byte is the max len
+	max := cpm.CPU.Memory.Get(addr)
+
+	// Read a line of text
 	text, err := cpm.Reader.ReadString('\n')
 	if err != nil {
 		return (fmt.Errorf("error reading from STDIN:%s", err))
 	}
 
-	// remove trailing newline
+	// Too much entered?  Truncate the input
+	if len(text) > int(max) {
+		text = text[:max]
+	}
+
+	// remove any trailing newline
 	text = strings.TrimSuffix(text, "\n")
 
 	// addr[0] is the size of the input buffer
