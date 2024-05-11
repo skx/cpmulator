@@ -9,20 +9,70 @@
         CALL    0x0005
 
         ;; function 1 (C_READ)
+        call C_READ_test
+
         ;; function 3 (A_READ) - mbasic.com
         ;; function 6 (C_RAWIO)
 
         ;; function 9 (C_READSTRING)
-        call read_string_test
+        call C_READSTRING_test
 
         ;; Exit
         LD      C,0x00
         CALL    0x0005
 
 
+;; Prompt for characters, echoing and returning them
+C_READ_test:
+	LD	DE, C_READ_PROMPT
+        LD      C,0x09
+        CALL    0x0005
+
+        ; we allow five input characters
+        LD B, 5
+        ; We save the characters into the input area
+        LD HL,READ_STRING
+C_READ_test_loop
+        PUSH HL
+        PUSH BC
+             LD C, 0x01
+             CALL 0x0005
+        POP BC
+        POP HL
+        LD (HL), A
+        INC HL
+        DJNZ C_READ_test_loop
+
+        LD DE, C_READ_OVER_1
+        LD C, 0x09
+        CALL 0x0005
+
+        ; Show the characters
+        LD HL, READ_STRING
+        LD A, (HL)
+        LD B,5
+SHOW_LOOP_2:
+        PUSH HL
+        PUSH BC
+             LD A,(HL)
+             LD E, A
+             LD C, 0x02
+             CALL 0x0005
+        POP BC
+        POP HL
+        INC HL
+        DJNZ SHOW_LOOP_2
+
+
+        LD DE, C_READ_OVER_2
+        LD C, 0x09
+        CALL 0x0005
+
+        RET
+
 ;; Prompt the user to enter text, and echo it back.
-read_string_test:
-	LD	DE, READ_STRING_PROMPT
+C_READSTRING_test:
+	LD	DE, C_READSTRING_PROMPT
         LD      C,0x09
         CALL    0x0005
 
@@ -42,7 +92,7 @@ read_string_test:
         CALL 0x005
 
         ;; Show the result
-        LD DE, READ_STRING_RESULT_1
+        LD DE, C_READSTRING_OVER_1
         LD      C,0x09
         CALL    0x0005
 
@@ -63,7 +113,7 @@ SHOW_LOOP
         DJNZ SHOW_LOOP
 
         ;; And finish
-        LD DE, READ_STRING_RESULT_2
+        LD DE, C_READSTRING_OVER_2
         LD      C,0x09
         CALL    0x0005
 
@@ -75,14 +125,26 @@ SHOW_LOOP
 ;; Text area
 ;;
 INTRO_MSG:
-        DB  "This program is designed to test input routines.", 0x0a, 0x0d, "$"
+        DB  "Simple input-test program, by Steve.", 0x0a, 0x0d, 0x0a, 0x0d,"$"
 
-READ_STRING_PROMPT:
-        DB "Enter a string, terminated by newline..", 0x0a, 0x0d, "$"
-READ_STRING_RESULT_1:
-        DB "You entered '$"
-READ_STRING_RESULT_2:
-        DB "' - test complete.", 0x0a, 0x0d, "$"
+;; C_READ
+C_READ_PROMPT:
+        DB "C_READ Test:", 0x0a, 0x0d
+        DB "  This test allows you to enter FIVE characters, one by one.", 0x0a, 0x0d
+        DB "  The characters SHOULD be echoed as you type them.", 0x0a, 0x0d, "$"
+C_READ_OVER_1:
+        DB "  Test complete - you entered '$"
+C_READ_OVER_2:
+        DB "'.", 0x0a, 0x0d, "$"
+
+;; C_READSTRING
+C_READSTRING_PROMPT:
+        DB "C_READSTRING Test:", 0x0a, 0x0d
+        DB "  Enter a string, terminated by newline..", 0x0a, 0x0d, "$"
+C_READSTRING_OVER_1:
+        DB "  Test complete - you entered '$"
+C_READSTRING_OVER_2:
+        DB "'.", 0x0a, 0x0d, "$"
 ;;
 ;; DATA area
 ;;

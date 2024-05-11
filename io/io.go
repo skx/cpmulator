@@ -63,6 +63,33 @@ func (io *IO) BlockForCharacter() (byte, error) {
 	return b[0], nil
 }
 
+// BlockForCharacterWithEcho returns the next character from the console,
+// blocking until one is available.  Echo is enabled.
+func (io *IO) BlockForCharacterWithEcho() (byte, error) {
+
+	// switch stdin into 'raw' mode
+	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+	if err != nil {
+		return 0x00, fmt.Errorf("error making raw terminal %s", err)
+	}
+
+	// read only a single byte
+	b := make([]byte, 1)
+	_, err = os.Stdin.Read(b)
+	if err != nil {
+		return 0x00, fmt.Errorf("error reading a byte from stdin %s", err)
+	}
+
+	// restore the state of the terminal to avoid mixing RAW/Cooked
+	err = term.Restore(int(os.Stdin.Fd()), oldState)
+	if err != nil {
+		return 0x00, fmt.Errorf("error restoring terminal state %s", err)
+	}
+
+	fmt.Printf("%c", b[0])
+	return b[0], nil
+}
+
 // IsPending returns true if there is pending input.
 func (io *IO) IsPending() (bool, error) {
 

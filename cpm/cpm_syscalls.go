@@ -35,7 +35,7 @@ func SysCallReadChar(cpm *CPM) error {
 	obj := cpmio.New()
 
 	// Block for input
-	c, err := obj.BlockForCharacter()
+	c, err := obj.BlockForCharacterWithEcho()
 	if err != nil {
 		return fmt.Errorf("error in call to BlockForCharacter: %s", err)
 	}
