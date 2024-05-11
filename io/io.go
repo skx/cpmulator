@@ -21,20 +21,11 @@ import (
 
 // IO is used to hold our package state
 type IO struct {
-	// pending holds any pending byte.
-	pending byte
 }
 
 // New is our package constructor.
 func New() *IO {
 	return &IO{}
-}
-
-// GetAvailableChar returns the character that we detected in IsPending.
-func (io *IO) GetAvailableChar() byte {
-	c := io.pending
-	io.pending = 0x00
-	return c
 }
 
 // BlockForCharacter returns the next character from the console, blocking until
@@ -104,19 +95,31 @@ func (io *IO) BlockForCharacterWithEcho() (byte, error) {
 	return b[0], nil
 }
 
-// IsPending returns true if there is pending input.
-func (io *IO) IsPending() (bool, error) {
+// GetCharOrNull retrieves any input that is available, returning NULL
+// if nothing is pending.
+//
+// Note: We should disable echo in this function.
+func (io *IO) GetCharOrNull() (uint8, error) {
+
+	// do not display entered characters on the screen
+	exec.Command("stty", "-F", "/dev/tty", "-echo").Run()
+
+	defer func() {
+		//  display entered characters on the screen
+		exec.Command("stty", "-F", "/dev/tty", "echo").Run()
+
+	}()
 
 	// Set STDIN to be non-blocking.
 	if err1 := syscall.SetNonblock(0, true); err1 != nil {
 
-		return false, fmt.Errorf("failed to set non-blocking stdin %s", err1)
+		return 0x00, fmt.Errorf("failed to set non-blocking stdin %s", err1)
 	}
 
 	// Switch STDIN into 'raw' mode.
 	oldState, err2 := term.MakeRaw(int(os.Stdin.Fd()))
 	if err2 != nil {
-		return false, fmt.Errorf("error making raw terminal %s", err2)
+		return 0x00, fmt.Errorf("error making raw terminal %s", err2)
 	}
 
 	// We'll read only a single byte of input, into this buffer
@@ -132,27 +135,26 @@ func (io *IO) IsPending() (bool, error) {
 	// restore the state of the terminal to avoid mixing RAW/Cooked
 	err3 := term.Restore(int(os.Stdin.Fd()), oldState)
 	if err3 != nil {
-		return false, fmt.Errorf("error restoring terminal state %s", err3)
+		return 0x00, fmt.Errorf("error restoring terminal state %s", err3)
 	}
 
 	// restore the non-blocking state
 	if err4 := syscall.SetNonblock(0, false); err4 != nil {
-		return false, fmt.Errorf("failed to restore non-blocking %s", err4)
+		return 0x00, fmt.Errorf("failed to restore non-blocking %s", err4)
 	}
 
 	// If we got a timeout, or some other error, then we assume
 	// there is no character pending
 	if err != nil {
-		return false, nil
+		return 0x00, nil
 	}
 
 	// If we read one byte, as we hoped to do then we can record
 	// that byte, and return it
 	if n == 1 {
-		io.pending = b[0]
-		return true, nil
+		return b[0], nil
 	}
 
 	// Can't happen?
-	return false, nil
+	return 0x00, fmt.Errorf("impossible condition")
 }

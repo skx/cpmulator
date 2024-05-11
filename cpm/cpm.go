@@ -198,10 +198,6 @@ func New(logger *slog.Logger) *CPM {
 		Desc:    "C_READSTRING",
 		Handler: SysCallReadString,
 	}
-	sys[11] = CPMHandler{
-		Desc:    "C_STAT",
-		Handler: SysCallConsoleStatus,
-	}
 	sys[12] = CPMHandler{
 		Desc:    "S_BDOSVER",
 		Handler: SysCallBDOSVersion,

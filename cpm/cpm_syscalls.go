@@ -67,8 +67,7 @@ func SysCallWriteChar(cpm *CPM) error {
 
 // SysCallAuxRead reads a single character from the auxillary input.
 //
-// NOTE: Documentation implies this is blocking, but it seems like
-// tastybasic and mbasic prefer it like this
+// Note: Echo is not enabled in this function.
 func SysCallAuxRead(cpm *CPM) error {
 
 	// Use our I/O package
@@ -90,7 +89,8 @@ func SysCallAuxRead(cpm *CPM) error {
 	return nil
 }
 
-// SysCallAuxWrite writes the single character in the C register auxillary / punch output
+// SysCallAuxWrite writes the single character in the C register
+// auxillary / punch output.
 func SysCallAuxWrite(cpm *CPM) error {
 
 	// Now we're using aux I/O
@@ -102,8 +102,9 @@ func SysCallAuxWrite(cpm *CPM) error {
 	return nil
 }
 
-// outC attempts to write a single character output, but converting to ANSI from vt.
-// This means tracking state and handling multi-byte output properly.
+// outC attempts to write a single character output, but converting to
+// ANSI from vt. This means tracking state and handling multi-byte
+// output properly.
 //
 // This is all a bit sleazy.
 func (cpm *CPM) outC(c uint8) {
@@ -230,53 +231,17 @@ func (cpm *CPM) outC(c uint8) {
 // SysCallRawIO handles both simple character output, and input.
 func SysCallRawIO(cpm *CPM) error {
 
-	// Blocking input by default
-	block := true
-
-	// Set $NON_BLOCK to change it
-	if nb := os.Getenv("NON_BLOCK"); nb != "" {
-		block = false
-	}
-
 	// Use our I/O package
 	obj := cpmio.New()
 
 	switch cpm.CPU.States.DE.Lo {
 	case 0xFF:
-		// Blocking input
-		if block {
-			cpm.CPU.States.AF.Hi, _ = obj.BlockForCharacter()
-			return nil
-		}
 
-		// non-blocking, but CPU-heavy
-		p, err := obj.IsPending()
+		out, err := obj.GetCharOrNull()
 		if err != nil {
 			return err
 		}
-		if p {
-			cpm.CPU.States.AF.Hi = obj.GetAvailableChar()
-			return nil
-		}
-		cpm.CPU.States.AF.Hi = 0x00
-		return nil
-	case 0xFE:
-		p, err := obj.IsPending()
-		if err != nil {
-			return err
-		}
-		if p {
-			cpm.CPU.States.AF.Hi = 0xff
-			return nil
-		}
-		cpm.CPU.States.AF.Hi = 0x00
-		return nil
-	case 0xFD:
-		var err error
-		cpm.CPU.States.AF.Hi, err = obj.BlockForCharacter()
-		if err != nil {
-			return err
-		}
+		cpm.CPU.States.AF.Hi = out
 		return nil
 	default:
 		cpm.outC(cpm.CPU.States.DE.Lo)
@@ -407,28 +372,6 @@ func SysCallSetDMA(cpm *CPM) error {
 	cpm.CPU.States.BC.Hi = 0x00
 	cpm.CPU.States.AF.Hi = 0x00
 
-	return nil
-}
-
-// SysCallConsoleStatus fakes a test for pending console (character) input.
-func SysCallConsoleStatus(cpm *CPM) error {
-
-	// Use our I/O package
-	obj := cpmio.New()
-
-	// Is something waiting for us?
-	p, err := obj.IsPending()
-	if err != nil {
-		return fmt.Errorf("error calling IsPending:%s", err)
-	}
-
-	if p {
-		cpm.CPU.States.AF.Hi = 0xFF
-		return nil
-	}
-
-	// Nothing pending
-	cpm.CPU.States.AF.Hi = 0x00
 	return nil
 }
 

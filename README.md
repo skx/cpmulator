@@ -184,14 +184,11 @@ If things are _mostly_ working, but something is not quite producing the correct
 
 * [DEBUGGING.md](DEBUGGING.md)
 
-The console-I/O is blocking by default, but that can be changed by setting the environmental variable `NON_BLOCK` to any non-empty value.  This will increase CPU load (as it essentially causes the process to run in a busy-loop testing for pending console input).
-
 Here is the complete list of environmental variables which influence behaviour:
 
 | Variable    | Purpose                                                       |
 |-------------|---------------------------------------------------------------|
 | DEBUG       | Send a log of CP/M syscalls to STDERR                         |
-| NON_BLOCK   | Avoid blocking for console input, instead poll in a busy-loop |
 | SIMPLE_CHAR | Avoid the attempted VT52 output conversion.                   |
 
 

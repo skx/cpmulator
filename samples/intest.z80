@@ -15,6 +15,7 @@
         call A_READ_test
 
         ;; function 6 (C_RAWIO)
+        call C_RAWIO_test
 
         ;; function 9 (C_READSTRING)
         call C_READSTRING_test
@@ -120,6 +121,29 @@ SHOW_LOOP_A_READ:
 
         RET
 
+
+;; This works in a non-blocking way.
+C_RAWIO_test:
+        LD DE, C_RAWIO_PROMPT
+        LD C, 0x09
+        CALL 0x0005
+
+        ; get a character
+C_RAWIO_Test_loop
+        LD C, 0x06
+        LD E, 0xff
+        CALL 0x0005
+
+        ; was there nothing pending? then try again
+        CP 0x00
+        jr z, C_RAWIO_Test_loop
+
+        ; got a character, was it q?
+        cp 'q'
+        jr nz, C_RAWIO_Test_loop
+
+        ret
+
 ;; Prompt the user to enter text, and echo it back.
 C_READSTRING_test:
 	LD	DE, C_READSTRING_PROMPT
@@ -179,7 +203,7 @@ INTRO_MSG:
 
 ;; C_READ
 C_READ_PROMPT:
-        DB "C_READ Test:", 0x0a, 0x0d
+        DB  0x0a, 0x0d, "C_READ Test:", 0x0a, 0x0d
         DB "  This test allows you to enter FIVE characters, one by one.", 0x0a, 0x0d
         DB "  The characters SHOULD be echoed as you type them.", 0x0a, 0x0d, "$"
 C_READ_OVER_1:
@@ -189,7 +213,7 @@ C_READ_OVER_2:
 
 ;; A_READ
 A_READ_PROMPT:
-        DB "A_READ Test:", 0x0a, 0x0d
+        DB  0x0a, 0x0d, "A_READ Test:", 0x0a, 0x0d
         DB "  This test allows you to enter FIVE characters, one by one.", 0x0a, 0x0d
         DB "  The characters should NOT be echoed as you type them.", 0x0a, 0x0d, "$"
 A_READ_OVER_1:
@@ -198,9 +222,19 @@ A_READ_OVER_2:
         DB "'.", 0x0a, 0x0d, "$"
 
 
+;; C_RAWIO
+C_RAWIO_PROMPT:
+        DB 0x0a, 0x0d, "C_RAWIO Test:", 0x0a, 0x0d
+        DB "  This uses polling to read characters.", 0x0a, 0x0d
+        DB "  Echo should NOT be enabled.", 0x0a, 0x0d
+        DB "  Press 'q' to proceed/complete this test.", 0x0a, 0x0d, "$"
+
+C_RAWIO_BUFFER:
+        DB 0x00, "$"
+
 ;; C_READSTRING
 C_READSTRING_PROMPT:
-        DB "C_READSTRING Test:", 0x0a, 0x0d
+        DB 0x0a, 0x0d, "C_READSTRING Test:", 0x0a, 0x0d
         DB "  Enter a string, terminated by newline..", 0x0a, 0x0d, "$"
 C_READSTRING_OVER_1:
         DB "  Test complete - you entered '$"
