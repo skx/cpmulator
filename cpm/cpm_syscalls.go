@@ -306,19 +306,12 @@ func SysCallReadString(cpm *CPM) error {
 	// First byte is the max len
 	max := cpm.CPU.Memory.Get(addr)
 
-	// Read a line of text
-	text, err := cpm.Reader.ReadString('\n')
+	obj := cpmio.New()
+	text, err := obj.ReadLine(max)
+
 	if err != nil {
-		return (fmt.Errorf("error reading from STDIN:%s", err))
+		return err
 	}
-
-	// Too much entered?  Truncate the input
-	if len(text) > int(max) {
-		text = text[:max]
-	}
-
-	// remove any trailing newline
-	text = strings.TrimSuffix(text, "\n")
 
 	// addr[0] is the size of the input buffer
 	// addr[1] should be the size of input read, set it:

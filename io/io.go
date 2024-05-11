@@ -10,9 +10,11 @@
 package io
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 	"time"
 
@@ -28,6 +30,12 @@ func New() *IO {
 	return &IO{}
 }
 
+// Restore enables echoing.
+func (io *IO) Restore() {
+	//  display entered characters on the screen
+	exec.Command("stty", "-F", "/dev/tty", "echo").Run()
+}
+
 // BlockForCharacter returns the next character from the console, blocking until
 // one is available.
 //
@@ -36,12 +44,6 @@ func (io *IO) BlockForCharacter() (byte, error) {
 
 	// do not display entered characters on the screen
 	exec.Command("stty", "-F", "/dev/tty", "-echo").Run()
-
-	defer func() {
-		//  display entered characters on the screen
-		exec.Command("stty", "-F", "/dev/tty", "echo").Run()
-
-	}()
 
 	// switch stdin into 'raw' mode
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
@@ -71,6 +73,9 @@ func (io *IO) BlockForCharacter() (byte, error) {
 //
 // NOTE: Characters should be echo'd as they are input.
 func (io *IO) BlockForCharacterWithEcho() (byte, error) {
+
+	//  display entered characters on the screen
+	exec.Command("stty", "-F", "/dev/tty", "echo").Run()
 
 	// switch stdin into 'raw' mode
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
@@ -103,12 +108,6 @@ func (io *IO) GetCharOrNull() (uint8, error) {
 
 	// do not display entered characters on the screen
 	exec.Command("stty", "-F", "/dev/tty", "-echo").Run()
-
-	defer func() {
-		//  display entered characters on the screen
-		exec.Command("stty", "-F", "/dev/tty", "echo").Run()
-
-	}()
 
 	// Set STDIN to be non-blocking.
 	if err1 := syscall.SetNonblock(0, true); err1 != nil {
@@ -157,4 +156,38 @@ func (io *IO) GetCharOrNull() (uint8, error) {
 
 	// Can't happen?
 	return 0x00, fmt.Errorf("impossible condition")
+}
+
+// ReadLine reads a line of input from the console, truncating to the
+// length specified.  (The user can enter more than is allowed but no
+// buffer-overruns will occur!)
+//
+// Note: We should enable echo in this function.
+func (io *IO) ReadLine(max uint8) (string, error) {
+
+	//  display entered characters on the screen
+	exec.Command("stty", "-F", "/dev/tty", "echo").Run()
+
+	// Create a  reader
+	reader := bufio.NewReader(os.Stdin)
+
+	// Read a line of text
+	text, err := reader.ReadString('\n')
+	if err != nil {
+		return "", fmt.Errorf("error reading from STDIN:%s", err)
+	}
+
+	// remove any trailing newline
+	text = strings.TrimSuffix(text, "\n")
+
+	// Too much entered?  Truncate the text.
+	if len(text) > int(max) {
+		text = text[:max]
+	}
+
+	// remove any trailing newline (again?)
+	text = strings.TrimSuffix(text, "\n")
+
+	// Return the text
+	return text, err
 }

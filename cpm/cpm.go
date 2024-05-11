@@ -7,7 +7,6 @@
 package cpm
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -141,11 +140,6 @@ type CPM struct {
 	// results here, and bump the findOffset each time find-next is called.
 	findFirstResults []fcb.FCBFind
 	findOffset       int
-
-	// Reader is where we get our STDIN from.
-	//
-	// TODO: We should have something similar for STDOUT.
-	Reader *bufio.Reader
 
 	// Logger holds a logger which we use for debugging and diagnostics.
 	Logger *slog.Logger
@@ -286,7 +280,6 @@ func New(logger *slog.Logger) *CPM {
 	// Create the object
 	tmp := &CPM{
 		Logger:   logger,
-		Reader:   bufio.NewReader(os.Stdin),
 		Syscalls: sys,
 		dma:      0x0080,
 		start:    0x0100,

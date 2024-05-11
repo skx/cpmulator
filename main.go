@@ -10,10 +10,18 @@ import (
 	"strings"
 
 	"github.com/skx/cpmulator/cpm"
+	cpmio "github.com/skx/cpmulator/io"
 )
+
+func restoreEcho() {
+	// Use our I/O package
+	obj := cpmio.New()
+	obj.Restore()
+}
 
 func main() {
 
+	defer restoreEcho()
 	//
 	// Parse the command-line flags for this driver-application
 	//
