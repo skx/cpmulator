@@ -1,0 +1,18 @@
+;; intest.z80 - Input-test for the various console functions
+
+        ; Entry point, after the PSP.
+        ORG 0x0100
+
+        ; show our introduction
+	LD	DE, INTRO_MSG
+        LD      C,0x09
+        CALL    0x0005
+
+        ; Exit
+        LD      C,0x00
+        CALL    0x0005
+
+
+;; Text area
+INTRO_MSG:
+        DB  "This program is designed to test input routines.", 0x0a, 0x0d, "$"
