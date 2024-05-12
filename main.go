@@ -48,7 +48,7 @@ func main() {
 		for i := range c.Syscalls {
 			ids = append(ids, int(i))
 		}
-		ids = sort.IntSlice(ids)
+		sort.Ints(ids)
 		for id := range ids {
 			ent := c.Syscalls[uint8(id)]
 			fake := ""
