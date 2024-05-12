@@ -235,7 +235,7 @@ func SysCallRawIO(cpm *CPM) error {
 	obj := cpmio.New()
 
 	switch cpm.CPU.States.DE.Lo {
-	case 0xFF:
+	case 0xFF, 0xFD:
 
 		out, err := obj.BlockForCharacter()
 
