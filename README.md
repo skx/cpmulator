@@ -177,6 +177,37 @@ Note that it isn't currently possibly to point different drives to arbitrary pat
 
 
 
+## Implemented Syscalls
+
+
+You can see the list of implemented syscalls, along with a mention of how complete their implementation is, by running:
+
+```
+$ cpmulator -syscalls
+00 P_TERMCPM
+01 C_READ
+02 C_WRITE
+03 A_READ
+04 A_WRITE
+05 L_WRITE
+06 C_RAWIO
+07 GET_IOBYTE
+08 SET_IOBYTE
+09 C_WRITESTRING
+10 C_READSTRING
+11 C_STAT               FAKE
+12 S_BDOSVER
+..
+31 DRV_DPB              FAKE
+32 F_USERNUM
+33 F_READRAND
+34 F_WRITERAND
+```
+
+Items marked "FAKE" return "appropriate" values, rather than real values.  Or are otherwise incomplete.  The only function with significantly different behaviour is `L_WRITE` which is designed to send a single character to a connected printer - that function appends the character to the file `print.log` in the current-directory, creating it if necessary.
+
+
+
 ## Debugging Failures & Tweaking Behaviour
 
 When an unimplemented BIOS call is attempted the program it will abort with a fatal error, for example:
