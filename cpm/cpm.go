@@ -7,7 +7,6 @@
 package cpm
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -142,11 +141,6 @@ type CPM struct {
 	findFirstResults []fcb.FCBFind
 	findOffset       int
 
-	// Reader is where we get our STDIN from.
-	//
-	// TODO: We should have something similar for STDOUT.
-	Reader *bufio.Reader
-
 	// Logger holds a logger which we use for debugging and diagnostics.
 	Logger *slog.Logger
 }
@@ -197,10 +191,6 @@ func New(logger *slog.Logger) *CPM {
 	sys[10] = CPMHandler{
 		Desc:    "C_READSTRING",
 		Handler: SysCallReadString,
-	}
-	sys[11] = CPMHandler{
-		Desc:    "C_STAT",
-		Handler: SysCallConsoleStatus,
 	}
 	sys[12] = CPMHandler{
 		Desc:    "S_BDOSVER",
@@ -290,7 +280,6 @@ func New(logger *slog.Logger) *CPM {
 	// Create the object
 	tmp := &CPM{
 		Logger:   logger,
-		Reader:   bufio.NewReader(os.Stdin),
 		Syscalls: sys,
 		dma:      0x0080,
 		start:    0x0100,

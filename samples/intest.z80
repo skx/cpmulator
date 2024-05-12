@@ -1,0 +1,269 @@
+;; intest.z80 - Input-test for the various console functions
+
+        ; Entry point, after the PSP.
+        ORG 0x0100
+
+        ; show our introduction
+	LD	DE, INTRO_MSG
+        LD      C,0x09
+        CALL    0x0005
+
+        ;; function 1 (C_READ)
+        call C_READ_test
+
+        ;; function 3 (A_READ) - mbasic.com
+        call A_READ_test
+
+        ;; function 6 (C_RAWIO)
+        call C_RAWIO_test
+
+        ;; function 9 (C_READSTRING)
+        call C_READSTRING_test
+
+        ;; Exit
+        LD      C,0x00
+        CALL    0x0005
+
+
+;; Prompt for characters, echoing and returning them
+C_READ_test:
+	LD	DE, C_READ_PROMPT
+        LD      C,0x09
+        CALL    0x0005
+
+        ; we allow five input characters
+        LD B, 5
+        ; We save the characters into the input area
+        LD HL,READ_STRING
+C_READ_test_loop
+        PUSH HL
+        PUSH BC
+             LD C, 0x01
+             CALL 0x0005
+        POP BC
+        POP HL
+        LD (HL), A
+        INC HL
+        DJNZ C_READ_test_loop
+
+        LD DE, C_READ_OVER_1
+        LD C, 0x09
+        CALL 0x0005
+
+        ; Show the characters
+        LD HL, READ_STRING
+        LD A, (HL)
+        LD B,5
+SHOW_LOOP_C_READ:
+        PUSH HL
+        PUSH BC
+             LD A,(HL)
+             LD E, A
+             LD C, 0x02
+             CALL 0x0005
+        POP BC
+        POP HL
+        INC HL
+        DJNZ SHOW_LOOP_C_READ
+
+        LD DE, C_READ_OVER_2
+        LD C, 0x09
+        CALL 0x0005
+
+        RET
+
+
+
+;; Prompt for characters returning them - NOTE: No echo is expected
+A_READ_test:
+	LD	DE, A_READ_PROMPT
+        LD      C,0x09
+        CALL    0x0005
+
+        ; we allow five input characters
+        LD B, 5
+        ; We save the characters into the input area
+        LD HL,READ_STRING
+A_READ_test_loop
+        PUSH HL
+        PUSH BC
+             LD C, 0x03
+             CALL 0x0005
+        POP BC
+        POP HL
+        LD (HL), A
+        INC HL
+        DJNZ A_READ_test_loop
+
+        LD DE, A_READ_OVER_1
+        LD C, 0x09
+        CALL 0x0005
+
+        ; Show the characters
+        LD HL, READ_STRING
+        LD A, (HL)
+        LD B,5
+SHOW_LOOP_A_READ:
+        PUSH HL
+        PUSH BC
+             LD A,(HL)
+             LD E, A
+             LD C, 0x02
+             CALL 0x0005
+        POP BC
+        POP HL
+        INC HL
+        DJNZ SHOW_LOOP_A_READ
+
+        LD DE, A_READ_OVER_2
+        LD C, 0x09
+        CALL 0x0005
+
+        RET
+
+
+;; This works in a non-blocking way.
+C_RAWIO_test:
+        LD DE, C_RAWIO_PROMPT
+        LD C, 0x09
+        CALL 0x0005
+
+C_RAWIO_Test_loop:
+        LD DE, C_RAWIO_SPINNER_1
+        LD C, 0x09
+        CALL 0x0005
+
+        ; see if a character is pending
+        LD C, 0x06
+        LD E, 0xff
+        CALL 0x0005
+
+        push af
+        LD DE, C_RAWIO_SPINNER_2
+        LD C, 0x09
+        CALL 0x0005
+        pop af
+
+        ; was there nothing pending? then try again
+        CP 0x00
+        jr z, C_RAWIO_Test_loop
+
+        push af
+        LD DE, C_RAWIO_SPINNER_3
+        LD C, 0x09
+        CALL 0x0005
+        pop af
+
+        ; got a character, was it q?
+        cp 'q'
+        jr nz, C_RAWIO_Test_loop
+
+        ret
+
+;; Prompt the user to enter text, and echo it back.
+C_READSTRING_test:
+	LD	DE, C_READSTRING_PROMPT
+        LD      C,0x09
+        CALL    0x0005
+
+        ; Point to the buffer
+        LD HL, READ_STRING
+
+        ; first byte is how many characters to allow (20 here)
+        LD A, 20
+        LD (HL), A
+
+        ; DE points to the buffer
+        PUSH HL
+        POP DE
+
+        ; call C_READSTRING
+        LD C, 10
+        CALL 0x005
+
+        ;; Show the result
+        LD DE, C_READSTRING_OVER_1
+        LD      C,0x09
+        CALL    0x0005
+
+        ;; Now get the length, and show the output
+        LD HL, READ_STRING + 1
+        LD A, (HL)
+        LD B,A
+SHOW_LOOP
+        INC HL
+        PUSH HL
+        PUSH BC
+             LD A,(HL)
+             LD E, A
+             LD C, 0x02
+             CALL 0x0005
+        POP BC
+        POP HL
+        DJNZ SHOW_LOOP
+
+        ;; And finish
+        LD DE, C_READSTRING_OVER_2
+        LD      C,0x09
+        CALL    0x0005
+
+        RET
+
+
+
+;;
+;; Text area
+;;
+INTRO_MSG:
+        DB  "Simple input-test program, by Steve.", 0x0a, 0x0d, 0x0a, 0x0d,"$"
+
+;; C_READ
+C_READ_PROMPT:
+        DB  0x0a, 0x0d, "C_READ Test:", 0x0a, 0x0d
+        DB "  This test allows you to enter FIVE characters, one by one.", 0x0a, 0x0d
+        DB "  The characters SHOULD be echoed as you type them.", 0x0a, 0x0d, "$"
+C_READ_OVER_1:
+        DB "  Test complete - you entered '$"
+C_READ_OVER_2:
+        DB "'.", 0x0a, 0x0d, "$"
+
+;; A_READ
+A_READ_PROMPT:
+        DB  0x0a, 0x0d, "A_READ Test:", 0x0a, 0x0d
+        DB "  This test allows you to enter FIVE characters, one by one.", 0x0a, 0x0d
+        DB "  The characters should NOT be echoed as you type them.", 0x0a, 0x0d, "$"
+A_READ_OVER_1:
+        DB "  Test complete - you entered '$"
+A_READ_OVER_2:
+        DB "'.", 0x0a, 0x0d, "$"
+
+
+;; C_RAWIO
+C_RAWIO_PROMPT:
+        DB 0x0a, 0x0d, "C_RAWIO Test:", 0x0a, 0x0d
+        DB "  This uses polling to read characters.", 0x0a, 0x0d
+        DB "  Echo should NOT be enabled.", 0x0a, 0x0d
+        DB "  Press 'q' to proceed/complete this test.", 0x0a, 0x0d, "$"
+
+C_RAWIO_BUFFER:
+        DB 0x00, "$"
+
+C_RAWIO_SPINNER_1:
+        DB "x", 0x08, "$"
+C_RAWIO_SPINNER_2:
+        DB "X", 0x08, "$"
+C_RAWIO_SPINNER_3:
+        DB "+", 0x08, "$"
+
+;; C_READSTRING
+C_READSTRING_PROMPT:
+        DB 0x0a, 0x0d, "C_READSTRING Test:", 0x0a, 0x0d
+        DB "  Enter a string, terminated by newline..", 0x0a, 0x0d, "$"
+C_READSTRING_OVER_1:
+        DB "  Test complete - you entered '$"
+C_READSTRING_OVER_2:
+        DB "'.", 0x0a, 0x0d, "$"
+;;
+;; DATA area
+;;
+READ_STRING:

@@ -32,10 +32,10 @@ func SysCallExit(cpm *CPM) error {
 func SysCallReadChar(cpm *CPM) error {
 
 	// Use our I/O package
-	obj := cpmio.New()
+	obj := cpmio.New(cpm.Logger)
 
 	// Block for input
-	c, err := obj.BlockForCharacter()
+	c, err := obj.BlockForCharacterWithEcho()
 	if err != nil {
 		return fmt.Errorf("error in call to BlockForCharacter: %s", err)
 	}
@@ -67,39 +67,30 @@ func SysCallWriteChar(cpm *CPM) error {
 
 // SysCallAuxRead reads a single character from the auxillary input.
 //
-// NOTE: Documentation implies this is blocking, but it seems like
-// tastybasic and mbasic prefer it like this
+// Note: Echo is not enabled in this function.
 func SysCallAuxRead(cpm *CPM) error {
 
-	// Now we're using aux I/O
-	cpm.auxIO = true
-
 	// Use our I/O package
-	obj := cpmio.New()
+	obj := cpmio.New(cpm.Logger)
 
-	// Is something waiting for us?
-	p, err := obj.IsPending()
+	// Block for input
+	c, err := obj.BlockForCharacter()
 	if err != nil {
-		return fmt.Errorf("error calling IsPending:%s", err)
+		return fmt.Errorf("error in call to BlockForCharacter: %s", err)
 	}
 
-	// If yes, return it
-	if p {
-		c := obj.GetAvailableChar()
+	// Return values:
+	// HL = Char, A=Char
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = c
+	cpm.CPU.States.AF.Hi = c
+	cpm.CPU.States.AF.Lo = 0x00
 
-		cpm.CPU.States.HL.Hi = 0x00
-		cpm.CPU.States.HL.Lo = c
-		cpm.CPU.States.AF.Hi = c
-		cpm.CPU.States.AF.Lo = 0x00
-		return nil
-	}
-
-	// Return nothing
-	cpm.CPU.States.AF.Hi = 0x00
 	return nil
 }
 
-// SysCallAuxWrite writes the single character in the C register auxillary / punch output
+// SysCallAuxWrite writes the single character in the C register
+// auxillary / punch output.
 func SysCallAuxWrite(cpm *CPM) error {
 
 	// Now we're using aux I/O
@@ -111,8 +102,9 @@ func SysCallAuxWrite(cpm *CPM) error {
 	return nil
 }
 
-// outC attempts to write a single character output, but converting to ANSI from vt.
-// This means tracking state and handling multi-byte output properly.
+// outC attempts to write a single character output, but converting to
+// ANSI from vt. This means tracking state and handling multi-byte
+// output properly.
 //
 // This is all a bit sleazy.
 func (cpm *CPM) outC(c uint8) {
@@ -239,53 +231,22 @@ func (cpm *CPM) outC(c uint8) {
 // SysCallRawIO handles both simple character output, and input.
 func SysCallRawIO(cpm *CPM) error {
 
-	// Blocking input by default
-	block := true
-
-	// Set $NON_BLOCK to change it
-	if nb := os.Getenv("NON_BLOCK"); nb != "" {
-		block = false
-	}
-
 	// Use our I/O package
-	obj := cpmio.New()
+	obj := cpmio.New(cpm.Logger)
 
 	switch cpm.CPU.States.DE.Lo {
-	case 0xFF:
-		// Blocking input
-		if block {
-			cpm.CPU.States.AF.Hi, _ = obj.BlockForCharacter()
-			return nil
-		}
+	case 0xFF, 0xFD:
 
-		// non-blocking, but CPU-heavy
-		p, err := obj.IsPending()
+		out, err := obj.BlockForCharacter()
+
+		// I think this is correct: but it breaks zork
+		// TODO: Reassess
+		// With this in-place zork runs, mbasic runs, and turbo.com runs
+		//		out, err := obj.GetCharOrNull()
 		if err != nil {
 			return err
 		}
-		if p {
-			cpm.CPU.States.AF.Hi = obj.GetAvailableChar()
-			return nil
-		}
-		cpm.CPU.States.AF.Hi = 0x00
-		return nil
-	case 0xFE:
-		p, err := obj.IsPending()
-		if err != nil {
-			return err
-		}
-		if p {
-			cpm.CPU.States.AF.Hi = 0xff
-			return nil
-		}
-		cpm.CPU.States.AF.Hi = 0x00
-		return nil
-	case 0xFD:
-		var err error
-		cpm.CPU.States.AF.Hi, err = obj.BlockForCharacter()
-		if err != nil {
-			return err
-		}
+		cpm.CPU.States.AF.Hi = out
 		return nil
 	default:
 		cpm.outC(cpm.CPU.States.DE.Lo)
@@ -300,7 +261,7 @@ func SysCallRawIO(cpm *CPM) error {
 func SysCallGetIOByte(cpm *CPM) error {
 
 	// Get the value
-	c := cpm.Memory.Get(0x003)
+	c := cpm.Memory.Get(0x0003)
 
 	// return it
 	cpm.CPU.States.AF.Hi = c
@@ -343,15 +304,19 @@ func SysCallWriteString(cpm *CPM) error {
 
 // SysCallReadString reads a string from the console, into the buffer pointed to by DE.
 func SysCallReadString(cpm *CPM) error {
+
+	// DE points to the buffer
 	addr := cpm.CPU.States.DE.U16()
 
-	text, err := cpm.Reader.ReadString('\n')
-	if err != nil {
-		return (fmt.Errorf("error reading from STDIN:%s", err))
-	}
+	// First byte is the max len
+	max := cpm.CPU.Memory.Get(addr)
 
-	// remove trailing newline
-	text = strings.TrimSuffix(text, "\n")
+	obj := cpmio.New(cpm.Logger)
+	text, err := obj.ReadLine(max)
+
+	if err != nil {
+		return err
+	}
 
 	// addr[0] is the size of the input buffer
 	// addr[1] should be the size of input read, set it:
@@ -371,6 +336,14 @@ func SysCallReadString(cpm *CPM) error {
 	cpm.CPU.States.BC.Hi = 0x00
 	cpm.CPU.States.AF.Hi = 0x00
 
+	return nil
+}
+
+// SysCallConsoleStatus tests if we have pending console (character) input.
+func SysCallConsoleStatus(cpm *CPM) error {
+
+	// Nothing pending
+	cpm.CPU.States.AF.Hi = 0x00
 	return nil
 }
 
@@ -405,28 +378,6 @@ func SysCallSetDMA(cpm *CPM) error {
 	cpm.CPU.States.BC.Hi = 0x00
 	cpm.CPU.States.AF.Hi = 0x00
 
-	return nil
-}
-
-// SysCallConsoleStatus fakes a test for pending console (character) input.
-func SysCallConsoleStatus(cpm *CPM) error {
-
-	// Use our I/O package
-	obj := cpmio.New()
-
-	// Is something waiting for us?
-	p, err := obj.IsPending()
-	if err != nil {
-		return fmt.Errorf("error calling IsPending:%s", err)
-	}
-
-	if p {
-		cpm.CPU.States.AF.Hi = 0xFF
-		return nil
-	}
-
-	// Nothing pending
-	cpm.CPU.States.AF.Hi = 0x00
 	return nil
 }
 
