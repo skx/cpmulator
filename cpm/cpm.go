@@ -220,7 +220,7 @@ func New(logger *slog.Logger) *CPM {
 	sys[13] = CPMHandler{
 		Desc:    "DRV_ALLRESET",
 		Handler: SysCallDriveAllReset,
-		Fake: true
+		Fake:    true,
 	}
 	sys[14] = CPMHandler{
 		Desc:    "DRV_SET",
@@ -265,7 +265,7 @@ func New(logger *slog.Logger) *CPM {
 	sys[24] = CPMHandler{
 		Desc:    "DRV_LOGINVEC",
 		Handler: SysCallLoginVec,
-		Fake: true,
+		Fake:    true,
 	}
 	sys[25] = CPMHandler{
 		Desc:    "DRV_GET",
@@ -288,7 +288,7 @@ func New(logger *slog.Logger) *CPM {
 	sys[29] = CPMHandler{
 		Desc:    "DRV_ROVEC",
 		Handler: SysCallDriveROVec,
-		Fake: true,
+		Fake:    true,
 	}
 	sys[30] = CPMHandler{
 		Desc:    "F_ATTRIB",
