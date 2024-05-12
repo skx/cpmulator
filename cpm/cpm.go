@@ -71,6 +71,13 @@ type FileCache struct {
 // CPM is the object that holds our emulator state
 type CPM struct {
 
+	// ioErr holds any error received by the IO handler.
+	//
+	// We need this because the CPU handler we use for IO operations
+	// cannot return an error - due to the interface used in the z80
+	// emulator
+	ioErr error
+
 	// files is the cache we use for File handles
 	files map[uint16]FileCache
 
@@ -191,6 +198,10 @@ func New(logger *slog.Logger) *CPM {
 	sys[10] = CPMHandler{
 		Desc:    "C_READSTRING",
 		Handler: SysCallReadString,
+	}
+	sys[11] = CPMHandler{
+		Desc:    "C_STAT",
+		Handler: SysCallConsoleStatus,
 	}
 	sys[12] = CPMHandler{
 		Desc:    "S_BDOSVER",
@@ -376,7 +387,17 @@ func (cpm *CPM) fixupRAM() {
 	// Finally the current drive and usernumber.
 	SETMEM(0x0004, 0x00)
 
-	/* fake BIOS entry points */
+	// fake BIOS entry points for 30 syscalls.
+	//
+	// These are setup so that the RST instructions magically
+	// end up at our handlers - our Z80 emulator allows us to trap
+	// IN and OUT instructions, and later you'll see that we redirect
+	// OUT(0xff, N) to invoke our handler(s).
+	//
+	// See the function:
+	//
+	//     func (cpm *CPM) Out(addr uint8, val uint8)
+	//
 	for i < 30 {
 		/* JP <bios-entry> */
 		SETMEM(CBIOS+3*i, 0xC3)
@@ -518,9 +539,22 @@ func (cpm *CPM) Execute(args []string) error {
 		// Run until we hit an error
 		err := cpm.CPU.Run(context.Background())
 
+		// If we ended up here because the I/O handler received
+		// an error, and then HALTed the emulator we'll process it
+		// here.
+		if cpm.ioErr != nil {
+			err = cpm.ioErr
+			cpm.ioErr = nil
+		}
+
 		// No error?  Then end - the CPU hit a HALT.
 		if err == nil {
 			return ErrHalt
+		}
+
+		// Are we being asked to terminate CP/M?  If so return
+		if err == ErrExit {
+			return nil
 		}
 
 		// An error which wasn't a breakpoint?  Give up
@@ -578,6 +612,7 @@ func (cpm *CPM) Execute(args []string) error {
 		if err == ErrExit {
 			return nil
 		}
+
 		// Any other error is fatal.
 		if err != nil {
 			return err
@@ -659,8 +694,17 @@ func (cpm *CPM) Out(addr uint8, val uint8) {
 
 	// Invoke the handler
 	err := handler.Handler(cpm)
-	if err != nil {
-		fmt.Printf("ERROR Via I/O Handler: %s\n", err)
-	}
 
+	// We cannot return an error because the I/O interface requires
+	// our "Out" function to not return an error.
+	//
+	// So we save it internally, and halt the Z80.
+	if err != nil {
+
+		// Save the error
+		cpm.ioErr = err
+
+		// halt processing.
+		cpm.CPU.HALT = true
+	}
 }
