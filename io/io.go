@@ -12,6 +12,7 @@ package io
 import (
 	"bufio"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"strings"
@@ -23,17 +24,35 @@ import (
 
 // IO is used to hold our package state
 type IO struct {
+	Logger *slog.Logger
 }
 
 // New is our package constructor.
-func New() *IO {
-	return &IO{}
+func New(log *slog.Logger) *IO {
+	return &IO{Logger: log}
+}
+
+// disableEcho is the single place where we disable echoing.
+func (io *IO) disableEcho() {
+	err := exec.Command("stty", "-F", "/dev/tty", "-echo").Run()
+	if err != nil {
+		io.Logger.Debug("disableEcho",
+			slog.String("error", err.Error()))
+	}
+}
+
+// enableEcho is the single place where we enable echoing.
+func (io *IO) enableEcho() {
+	err := exec.Command("stty", "-F", "/dev/tty", "echo").Run()
+	if err != nil {
+		io.Logger.Debug("enableEcho",
+			slog.String("error", err.Error()))
+	}
 }
 
 // Restore enables echoing.
 func (io *IO) Restore() {
-	//  display entered characters on the screen
-	exec.Command("stty", "-F", "/dev/tty", "echo").Run()
+	io.enableEcho()
 }
 
 // BlockForCharacter returns the next character from the console, blocking until
@@ -42,8 +61,7 @@ func (io *IO) Restore() {
 // NOTE: This function should not echo keystrokes which are entered.
 func (io *IO) BlockForCharacter() (byte, error) {
 
-	// do not display entered characters on the screen
-	exec.Command("stty", "-F", "/dev/tty", "-echo").Run()
+	io.disableEcho()
 
 	// switch stdin into 'raw' mode
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
@@ -74,8 +92,7 @@ func (io *IO) BlockForCharacter() (byte, error) {
 // NOTE: Characters should be echo'd as they are input.
 func (io *IO) BlockForCharacterWithEcho() (byte, error) {
 
-	//  display entered characters on the screen
-	exec.Command("stty", "-F", "/dev/tty", "echo").Run()
+	io.enableEcho()
 
 	// switch stdin into 'raw' mode
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
@@ -106,8 +123,7 @@ func (io *IO) BlockForCharacterWithEcho() (byte, error) {
 // Note: We should disable echo in this function.
 func (io *IO) GetCharOrNull() (uint8, error) {
 
-	// do not display entered characters on the screen
-	exec.Command("stty", "-F", "/dev/tty", "-echo").Run()
+	io.disableEcho()
 
 	// Set STDIN to be non-blocking.
 	if err1 := syscall.SetNonblock(0, true); err1 != nil {
@@ -126,7 +142,7 @@ func (io *IO) GetCharOrNull() (uint8, error) {
 
 	// NOTE: This doesn't work without the non-blocking mode having been
 	// set previously.
-	_ = os.Stdin.SetDeadline(time.Now().Add(time.Millisecond * 10))
+	_ = os.Stdin.SetDeadline(time.Now().Add(time.Millisecond * 50))
 
 	// Try the read
 	n, err := os.Stdin.Read(b)
@@ -154,8 +170,7 @@ func (io *IO) GetCharOrNull() (uint8, error) {
 		return b[0], nil
 	}
 
-	// Can't happen?
-	return 0x00, fmt.Errorf("impossible condition")
+	return 0x00, fmt.Errorf("can't happen")
 }
 
 // ReadLine reads a line of input from the console, truncating to the
@@ -165,8 +180,7 @@ func (io *IO) GetCharOrNull() (uint8, error) {
 // Note: We should enable echo in this function.
 func (io *IO) ReadLine(max uint8) (string, error) {
 
-	//  display entered characters on the screen
-	exec.Command("stty", "-F", "/dev/tty", "echo").Run()
+	io.enableEcho()
 
 	// Create a  reader
 	reader := bufio.NewReader(os.Stdin)
@@ -184,9 +198,6 @@ func (io *IO) ReadLine(max uint8) (string, error) {
 	if len(text) > int(max) {
 		text = text[:max]
 	}
-
-	// remove any trailing newline (again?)
-	text = strings.TrimSuffix(text, "\n")
 
 	// Return the text
 	return text, err

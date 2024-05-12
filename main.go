@@ -13,9 +13,14 @@ import (
 	cpmio "github.com/skx/cpmulator/io"
 )
 
+// log holds our logging handle
+var log *slog.Logger
+
+// restoreEcho is designed to ensure we leave our terminal in a good state,
+// when we terminate, by enabling console-echoing if it had been disabled.
 func restoreEcho() {
 	// Use our I/O package
-	obj := cpmio.New()
+	obj := cpmio.New(log)
 	obj.Restore()
 }
 
@@ -52,7 +57,7 @@ func main() {
 	}
 
 	// Create our logging handler, using the level we've just setup
-	log := slog.New(
+	log = slog.New(
 		slog.NewJSONHandler(
 			os.Stderr,
 			&slog.HandlerOptions{

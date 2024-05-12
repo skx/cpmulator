@@ -32,7 +32,7 @@ func SysCallExit(cpm *CPM) error {
 func SysCallReadChar(cpm *CPM) error {
 
 	// Use our I/O package
-	obj := cpmio.New()
+	obj := cpmio.New(cpm.Logger)
 
 	// Block for input
 	c, err := obj.BlockForCharacterWithEcho()
@@ -71,7 +71,7 @@ func SysCallWriteChar(cpm *CPM) error {
 func SysCallAuxRead(cpm *CPM) error {
 
 	// Use our I/O package
-	obj := cpmio.New()
+	obj := cpmio.New(cpm.Logger)
 
 	// Block for input
 	c, err := obj.BlockForCharacter()
@@ -232,7 +232,7 @@ func (cpm *CPM) outC(c uint8) {
 func SysCallRawIO(cpm *CPM) error {
 
 	// Use our I/O package
-	obj := cpmio.New()
+	obj := cpmio.New(cpm.Logger)
 
 	switch cpm.CPU.States.DE.Lo {
 	case 0xFF, 0xFD:
@@ -311,7 +311,7 @@ func SysCallReadString(cpm *CPM) error {
 	// First byte is the max len
 	max := cpm.CPU.Memory.Get(addr)
 
-	obj := cpmio.New()
+	obj := cpmio.New(cpm.Logger)
 	text, err := obj.ReadLine(max)
 
 	if err != nil {
@@ -336,6 +336,14 @@ func SysCallReadString(cpm *CPM) error {
 	cpm.CPU.States.BC.Hi = 0x00
 	cpm.CPU.States.AF.Hi = 0x00
 
+	return nil
+}
+
+// SysCallConsoleStatus tests if we have pending console (character) input.
+func SysCallConsoleStatus(cpm *CPM) error {
+
+	// Nothing pending
+	cpm.CPU.States.AF.Hi = 0x00
 	return nil
 }
 
