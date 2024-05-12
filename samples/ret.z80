@@ -1,4 +1,57 @@
-;; ret.z80 - A program that terminates with a single RET instruction
+;; ret.z80 - A program demonstrating how to exit, in multiple ways
+;;
+;; Call this with an argument
+;;
+;;  1.  jp 0x0000
+;;  2.  rst 0
+;;  3.  ret
+;;  4.  via syscall
+;;
+;;
+
+FCB1:    EQU 0x5C
 
         ORG 0x0100
+
+        ; Get the first character of the argument
+        LD A, (FCB1 + 1)
+
+        ; test for valid options
+        cp '1'
+        jr z,one
+        cp '2'
+        jr z,two
+        cp '3'
+        jr z,three
+        cp '4'
+        jr z,four
+
+        ; nothing valid?  Show message
+        LD DE, ret_msg
+        LD C, 9
+        call 0x0005
+
+exit_fn:
+        LD      C,0x00
+        CALL    0x0005
+
+
+
+
+one:
+        jp 0x0000
+two:
+        rst 0
+three:
         ret
+four:
+        jr exit_fn
+
+
+ret_msg:
+        DB "Call this program with argument '1', '2', '3', or '4'.", 0x0a, 0x0d
+        DB "  1.  Exit via 'JP 0x0000'", 0x0a, 0x0d
+        DB "  2.  Exit via 'RST 0'", 0x0a, 0x0d
+        DB "  3.  Exit via 'RET'", 0x0a, 0x0d
+        DB "  4.  Exit via 'P_TERMCPM'", 0x0a, 0x0d
+        DB "$"

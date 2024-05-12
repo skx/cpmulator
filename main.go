@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/skx/cpmulator/cpm"
@@ -33,8 +34,31 @@ func main() {
 	cd := flag.String("cd", "", "Change to this directory before launching")
 	useDirectories := flag.Bool("directories", false, "Use subdirectories on the host computer for CP/M drives.")
 	createDirectories := flag.Bool("create", false, "Create subdirectories on the host computer for each CP/M drive.")
+	syscalls := flag.Bool("syscalls", false, "List the syscalls we implement.")
 	flag.Parse()
 
+	// Are we dumping syscalls?
+	if *syscalls {
+
+		// Create helper
+		c := cpm.New(nil)
+
+		// Get syscalls in sorted order
+		ids := []int{}
+		for i := range c.Syscalls {
+			ids = append(ids, int(i))
+		}
+		sort.Ints(ids)
+		for id := range ids {
+			ent := c.Syscalls[uint8(id)]
+			fake := ""
+			if ent.Fake {
+				fake = "FAKE"
+			}
+			fmt.Printf("%02d %-20s %s\n", int(id), ent.Desc, fake)
+		}
+		return
+	}
 	// Default program to execute, and arguments to pass to program
 	program := ""
 	args := []string{}

@@ -55,6 +55,11 @@ type CPMHandler struct {
 
 	// Handler contains the function which should be involved for this syscall.
 	Handler CPMHandlerType
+
+	// Fake stores a quick comment on the completeness of the syscall
+	// implementation.  If Fake is set to true then the syscall is
+	// faked, or otherwise incompletely implemented.
+	Fake bool
 }
 
 // FileCache is used to cache filehandles, against FCB addresses.
@@ -179,6 +184,10 @@ func New(logger *slog.Logger) *CPM {
 		Desc:    "A_WRITE",
 		Handler: SysCallAuxWrite,
 	}
+	sys[5] = CPMHandler{
+		Desc:    "L_WRITE",
+		Handler: SysCallPrinterWrite,
+	}
 	sys[6] = CPMHandler{
 		Desc:    "C_RAWIO",
 		Handler: SysCallRawIO,
@@ -202,6 +211,7 @@ func New(logger *slog.Logger) *CPM {
 	sys[11] = CPMHandler{
 		Desc:    "C_STAT",
 		Handler: SysCallConsoleStatus,
+		Fake:    true,
 	}
 	sys[12] = CPMHandler{
 		Desc:    "S_BDOSVER",
@@ -210,6 +220,7 @@ func New(logger *slog.Logger) *CPM {
 	sys[13] = CPMHandler{
 		Desc:    "DRV_ALLRESET",
 		Handler: SysCallDriveAllReset,
+		Fake:    true,
 	}
 	sys[14] = CPMHandler{
 		Desc:    "DRV_SET",
@@ -254,6 +265,7 @@ func New(logger *slog.Logger) *CPM {
 	sys[24] = CPMHandler{
 		Desc:    "DRV_LOGINVEC",
 		Handler: SysCallLoginVec,
+		Fake:    true,
 	}
 	sys[25] = CPMHandler{
 		Desc:    "DRV_GET",
@@ -266,14 +278,27 @@ func New(logger *slog.Logger) *CPM {
 	sys[27] = CPMHandler{
 		Desc:    "DRV_ALLOCVEC",
 		Handler: SysCallDriveAlloc,
+		Fake:    true,
+	}
+	sys[28] = CPMHandler{
+		Desc:    "DRV_SETRO",
+		Handler: SysCallDriveSetRO,
+		Fake:    true,
 	}
 	sys[29] = CPMHandler{
 		Desc:    "DRV_ROVEC",
 		Handler: SysCallDriveROVec,
+		Fake:    true,
+	}
+	sys[30] = CPMHandler{
+		Desc:    "F_ATTRIB",
+		Handler: SysCallSetFileAttributes,
+		Fake:    true,
 	}
 	sys[31] = CPMHandler{
 		Desc:    "DRV_DPB",
 		Handler: SysCallGetDriveDPB,
+		Fake:    true,
 	}
 	sys[32] = CPMHandler{
 		Desc:    "F_USERNUM",

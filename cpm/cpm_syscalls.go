@@ -89,6 +89,30 @@ func SysCallAuxRead(cpm *CPM) error {
 	return nil
 }
 
+// SysCallPrinterWrite should send a single character to the printer,
+// we fake that by writing to the file "print.log" in the current directory.
+func SysCallPrinterWrite(cpm *CPM) error {
+	// If the file doesn't exist, create it, or append to the file
+	f, err := os.OpenFile("print.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return fmt.Errorf("SysCallPrinterWrite: Failed to open file 'print.log' %s", err)
+	}
+
+	data := make([]byte, 1)
+	data[0] = cpm.CPU.States.BC.Lo
+	_, err = f.Write(data)
+	if err != nil {
+		return fmt.Errorf("SysCallPrinterWrite: Failed to write %s", err)
+	}
+
+	err = f.Close()
+	if err != nil {
+		return fmt.Errorf("SysCallPrinterWrite: Failed to close %s", err)
+	}
+
+	return nil
+}
+
 // SysCallAuxWrite writes the single character in the C register
 // auxillary / punch output.
 func SysCallAuxWrite(cpm *CPM) error {
@@ -100,132 +124,6 @@ func SysCallAuxWrite(cpm *CPM) error {
 	c := cpm.CPU.States.BC.Lo
 	cpm.outC(c)
 	return nil
-}
-
-// outC attempts to write a single character output, but converting to
-// ANSI from vt. This means tracking state and handling multi-byte
-// output properly.
-//
-// This is all a bit sleazy.
-func (cpm *CPM) outC(c uint8) {
-
-	if os.Getenv("SIMPLE_CHAR") != "" {
-		fmt.Printf("%c", c)
-		return
-	}
-
-	switch cpm.auxStatus {
-	case 0:
-		switch c {
-		case 0x07: /* BEL: flash screen */
-			fmt.Printf("\033[?5h\033[?5l")
-		case 0x7f: /* DEL: echo BS, space, BS */
-			fmt.Printf("\b \b")
-		case 0x1a: /* adm3a clear screen */
-			fmt.Printf("\033[H\033[2J")
-		case 0x0c: /* vt52 clear screen */
-			fmt.Printf("\033[H\033[2J")
-		case 0x1e: /* adm3a cursor home */
-			fmt.Printf("\033[H")
-		case 0x1b:
-			cpm.auxStatus = 1 /* esc-prefix */
-		case 1:
-			cpm.auxStatus = 2 /* cursor motion prefix */
-		case 2: /* insert line */
-			fmt.Printf("\033[L")
-		case 3: /* delete line */
-			fmt.Printf("\033[M")
-		case 0x18, 5: /* clear to eol */
-			fmt.Printf("\033[K")
-		case 0x12, 0x13:
-			// nop
-		default:
-			fmt.Printf("%c", c)
-		}
-	case 1: /* we had an esc-prefix */
-		switch c {
-		case 0x1b:
-			fmt.Printf("%c", c)
-		case '=', 'Y':
-			cpm.auxStatus = 2
-		case 'E': /* insert line */
-			fmt.Printf("\033[L")
-		case 'R': /* delete line */
-			fmt.Printf("\033[M")
-		case 'B': /* enable attribute */
-			cpm.auxStatus = 4
-		case 'C': /* disable attribute */
-			cpm.auxStatus = 5
-		case 'L', 'D': /* set line */ /* delete line */
-			cpm.auxStatus = 6
-		case '*', ' ': /* set pixel */ /* clear pixel */
-			cpm.auxStatus = 8
-		default: /* some true ANSI sequence? */
-			cpm.auxStatus = 0
-			fmt.Printf("%c%c", 0x1b, c)
-		}
-	case 2:
-		cpm.y = c - ' ' + 1
-		cpm.auxStatus = 3
-	case 3:
-		cpm.x = c - ' ' + 1
-		cpm.auxStatus = 0
-		fmt.Printf("\033[%d;%dH", cpm.y, cpm.x)
-	case 4: /* <ESC>+B prefix */
-		cpm.auxStatus = 0
-		switch c {
-		case '0': /* start reverse video */
-			fmt.Printf("\033[7m")
-		case '1': /* start half intensity */
-			fmt.Printf("\033[1m")
-		case '2': /* start blinking */
-			fmt.Printf("\033[5m")
-		case '3': /* start underlining */
-			fmt.Printf("\033[4m")
-		case '4': /* cursor on */
-			fmt.Printf("\033[?25h")
-		case '5': /* video mode on */
-			// nop
-		case '6': /* remember cursor position */
-			fmt.Printf("\033[s")
-		case '7': /* preserve status line */
-			// nop
-		default:
-			fmt.Printf("%cB%c", 0x1b, c)
-		}
-	case 5: /* <ESC>+C prefix */
-		cpm.auxStatus = 0
-		switch c {
-		case '0': /* stop reverse video */
-			fmt.Printf("\033[27m")
-		case '1': /* stop half intensity */
-			fmt.Printf("\033[m")
-		case '2': /* stop blinking */
-			fmt.Printf("\033[25m")
-		case '3': /* stop underlining */
-			fmt.Printf("\033[24m")
-		case '4': /* cursor off */
-			fmt.Printf("\033[?25l")
-		case '6': /* restore cursor position */
-			fmt.Printf("\033[u")
-		case '5': /* video mode off */
-			// nop
-		case '7': /* don't preserve status line */
-			// nop
-		default:
-			fmt.Printf("%cC%c", 0x1b, c)
-		}
-		/* set/clear line/point */
-	case 6:
-		cpm.auxStatus++
-	case 7:
-		cpm.auxStatus++
-	case 8:
-		cpm.auxStatus++
-	case 9:
-		cpm.auxStatus = 0
-	}
-
 }
 
 // SysCallRawIO handles both simple character output, and input.
@@ -403,7 +301,7 @@ func SysCallDriveAllReset(cpm *CPM) error {
 	return nil
 }
 
-// SysCallDriveSet updates the current drive number
+// SysCallDriveSet updates the current drive number.
 func SysCallDriveSet(cpm *CPM) error {
 	// The drive number passed to this routine is 0 for A:, 1 for B: up to 15 for P:.
 	cpm.currentDrive = (cpm.CPU.States.AF.Hi & 0x0F)
@@ -826,7 +724,6 @@ func SysCallRead(cpm *CPM) error {
 	}
 
 	return nil
-
 }
 
 // SysCallWrite writes a record to the file named in the FCB given in DE
@@ -882,7 +779,6 @@ func SysCallWrite(cpm *CPM) error {
 	// All done
 	cpm.CPU.States.AF.Hi = 0x00
 	return nil
-
 }
 
 // SysCallMakeFile creates the file named in the FCB given in DE
@@ -1107,6 +1003,13 @@ func SysCallDriveGet(cpm *CPM) error {
 	return nil
 }
 
+// SysCallSetFileAttributes should update the attributes of the given
+// file, but it fakes it.
+func SysCallSetFileAttributes(cpm *CPM) error {
+	cpm.CPU.States.AF.Hi = 0x00
+	return nil
+}
+
 // SysCallGetDriveDPB returns the address of the DPB, which is faked.
 func SysCallGetDriveDPB(cpm *CPM) error {
 	cpm.CPU.States.HL.Hi = 0xCD
@@ -1114,6 +1017,7 @@ func SysCallGetDriveDPB(cpm *CPM) error {
 	return nil
 }
 
+// SysCallUserNumber gets, or sets, the user-number.
 func SysCallUserNumber(cpm *CPM) error {
 
 	// We're either setting or getting
@@ -1309,6 +1213,14 @@ func SysCallWriteRand(cpm *CPM) error {
 func SysCallDriveAlloc(cpm *CPM) error {
 	cpm.CPU.States.HL.Hi = 0x00
 	cpm.CPU.States.HL.Lo = 0x00
+	return nil
+}
+
+// SysCallDriveSetRO will mark the current drive as being read-only.
+//
+// This call is faked.
+func SysCallDriveSetRO(cpm *CPM) error {
+	cpm.CPU.States.AF.Hi = 0x00
 	return nil
 }
 

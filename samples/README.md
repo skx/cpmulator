@@ -21,3 +21,5 @@ The top-level [dist/](../dist) directory contains more useful programs, includin
   * Write populates the named file with 255 records of fixed content.
   * Read processes the named file and aborts if the records contain surprising content.
   * Used to test sequential read/write operations.
+* [ret.z80](ret.z80)
+  * Terminate the execution of a binary in four different ways.
