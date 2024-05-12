@@ -237,7 +237,12 @@ func SysCallRawIO(cpm *CPM) error {
 	switch cpm.CPU.States.DE.Lo {
 	case 0xFF:
 
-		out, err := obj.GetCharOrNull()
+		out, err := obj.BlockForCharacter()
+
+		// I think this is correct: but it breaks zork
+		// TODO: Reassess
+		// With this in-place zork runs, mbasic runs, and turbo.com runs
+		//		out, err := obj.GetCharOrNull()
 		if err != nil {
 			return err
 		}
@@ -256,7 +261,7 @@ func SysCallRawIO(cpm *CPM) error {
 func SysCallGetIOByte(cpm *CPM) error {
 
 	// Get the value
-	c := cpm.Memory.Get(0x003)
+	c := cpm.Memory.Get(0x0003)
 
 	// return it
 	cpm.CPU.States.AF.Hi = c
