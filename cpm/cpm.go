@@ -344,6 +344,7 @@ func (cpm *CPM) LoadBinary(filename string) error {
 func (cpm *CPM) fixupRAM() {
 	i := 0
 	CBIOS := 0xFE00
+	BDOS := 0xF000
 	NENTRY := 30
 
 	SETMEM := func(a int, v int) {
@@ -353,14 +354,27 @@ func (cpm *CPM) fixupRAM() {
 	// We _should_ add "JUMP TO CCP" here, but instead
 	// we terminate execution via a HALT (0x76) instruction.
 	//
-	// This works regardless of whether CCP is present or not
+	// This works regardless of whether CCP is present or not.
 	//
-	SETMEM(0x0000, 0x76) // 0xC3) /* JP CBIOS+3 */
-	SETMEM(0x0001, ((CBIOS + 3) & 0xFF))
+	// We do the same thing for the jump at 0x0005 because
+	// turbo pascal, and other programs presumably, look at
+	// the following address to see how much free RAM is available.
+	//
+	SETMEM(0x0000, 0x76)                 /* HALT */
+	SETMEM(0x0001, ((CBIOS + 3) & 0xFF)) /* Fake address of entry-point */
 	SETMEM(0x0002, ((CBIOS + 3) >> 8))
 
-	SETMEM(0x0003, 0x00) // IO/byte
-	SETMEM(0x0004, 0x00) // Current drive
+	// We setup a fake jump here, because 0x0006 is sometimes
+	// used to find the free RAM and we pretend our BDOS is at 0xDC00
+	SETMEM(0x0005, 0x76)                /* HALT */
+	SETMEM(0x0006, ((BDOS + 6) & 0xFF)) /* Fake Address of entry point */
+	SETMEM(0x0007, ((BDOS + 6) >> 8))
+
+	// Now we setup the initial values of the I/O byte
+	SETMEM(0x0003, 0x00)
+
+	// Finally the current drive and usernumber.
+	SETMEM(0x0004, 0x00)
 
 	/* fake BIOS entry points */
 	for i < 30 {
