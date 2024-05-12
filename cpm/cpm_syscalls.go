@@ -281,13 +281,35 @@ func SysCallSetDMA(cpm *CPM) error {
 
 // SysCallDriveAllReset resets the drives.
 //
-// TODO: If there is a file named "$..." then we need to return 0xFF in A,
+// If there is a file named "$..." then we need to return 0xFF in A,
 // which will be read by the CCP - as created by SUBMIT.COM
 func SysCallDriveAllReset(cpm *CPM) error {
 
 	// Reset disk and user-number
 	cpm.currentDrive = 0
 	cpm.userNumber = 0
+
+	// Default return value
+	var ret uint8 = 0
+
+	// drive will default to our current drive, if the FCB drive field is 0
+	drive := cpm.currentDrive + 'A'
+
+	// Should we remap drives?
+	path := "."
+	if cpm.Drives {
+		path = string(drive)
+	}
+
+	// Look for a file with $ in its name
+	files, err := os.ReadDir(path)
+	if err == nil {
+		for _, n := range files {
+			if strings.Contains(n.Name(), "$") {
+				ret = 0xff
+			}
+		}
+	}
 
 	// Reset our DMA address to the default
 	cpm.dma = 0x80
@@ -297,7 +319,7 @@ func SysCallDriveAllReset(cpm *CPM) error {
 	cpm.CPU.States.HL.Hi = 0x00
 	cpm.CPU.States.HL.Lo = 0x00
 	cpm.CPU.States.BC.Hi = 0x00
-	cpm.CPU.States.AF.Hi = 0x00
+	cpm.CPU.States.AF.Hi = ret
 	return nil
 }
 

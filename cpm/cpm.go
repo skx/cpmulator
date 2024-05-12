@@ -220,7 +220,6 @@ func New(logger *slog.Logger) *CPM {
 	sys[13] = CPMHandler{
 		Desc:    "DRV_ALLRESET",
 		Handler: SysCallDriveAllReset,
-		Fake:    true,
 	}
 	sys[14] = CPMHandler{
 		Desc:    "DRV_SET",
