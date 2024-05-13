@@ -2,12 +2,19 @@
 
 This repository contains a CP/M emulator, with integrated CCP, which is primarily designed to launch simple CP/M binaries:
 
-* The project was created to run [a text-based adventure game](https://github.com/skx/lighthouse-of-doom/) I wrote a few years ago, to amuse my child.
+* The project was initially created to run [my text-based adventure game](https://github.com/skx/lighthouse-of-doom/), which I wrote a few years ago, to amuse my child.
   * This was written in Z80 assembly language and initially targeted at CP/M, although it was later ported to the ZX Spectrum.
-* Over time it has become more functional:
-  * It can now run ZORK 1, 2, & 3, as well as The Hitchhiker's guide to the galaxy and other similar games.
 
-I've implemented enough of the BIOS functions to run simple binaries, including Microsoft BASIC, but I've not implemented any notion of disk-based access.  (i.e. Opening, reading/writing, and closing files is absolutely fine, but any API call that refers to tracks, sectors, or disks will fail.)
+Over time this project has become more complete, and more complex.  I've implemented enough of the BIOS functions to run simple binaries and also several of the well-known programs of the time:
+
+* The Aztec C-Compiler.
+  * You can edit and compile code within the emulator, then run it!
+* Borland's Turbo Pascal
+  * You can edit and compile code within the emulator, then run it!
+* Microsoft BASIC
+* Zork 1, 2, & 3
+
+The biggest caveat of the emulator is that I've not implemented any notion of disk-based access.  This means that, for example opening, reading/writing, and closing files is absolutely fine, but any API call that refers to tracks, sectors, or disks will fail.
 
 A companion repository contains a collection of vintage CP/M software you can use with this, or any other, emulator:
 
@@ -30,7 +37,7 @@ If you were to clone this repository to your local system you could then build a
 go install .
 ```
 
-If neither of these options are suitable you may download the latest binary from [our release page](https://github.com/skx/cpmulator/releases).
+If neither of these options are suitable you may download the latest binary from [the release page](https://github.com/skx/cpmulator/releases).
 
 
 
@@ -76,7 +83,7 @@ You can terminate the CCP by pressing Ctrl-C, or typing `EXIT`.  The following b
 * `EXIT` / `HALT` / `QUIT`
   * Terminate the CCP.
 * `ERA`
-  * Erase the named files.
+  * Erase the named files, wildcards are permitted.
 * `TYPE`
   * View the contents of the named file - wildcards are not permitted.
 * `REN`
@@ -122,7 +129,7 @@ A companion repository contains a larger collection of vintage CP/M software you
 
 ## Drives vs. Directories
 
-By default when you launch `cpmulator` with no arguments you'll be presented with the CCP interface, with A: as the current drive.   In this mode A:, B:, C:, and all other drives, will refer to the current-working directory where you launched the emulator from (i.e. they have the same view of files).  This is perhaps the most practical way to get started, but it means that files are unique across drives:
+By default when you launch `cpmulator` with no arguments you'll be presented with the CCP interface, with A: as the current drive.   In this mode A:, B:, C:, and all other drives, will refer to the current-working directory where you launched the emulator from (i.e. they have the same view of files).  This is perhaps the most practical way to get started, but it means that files are repeated across drives:
 
 * i.e. "`A:FOO`" is the same as "`B:FOO`", and if you delete "`C:FOO`" you'll find it has vanished from all drives.
   * In short "`FOO`" will exist on drives `A:` all the way through to `P:`.
@@ -161,9 +168,6 @@ This is arranged into subdirectories, on the assumption you'll run with the `-di
 
 ```
 frodo ~/Repos/github.com/skx/cpm-dist $ cpmulator  -directories
-A>dir
-No file
-
 A>g:
 G>dir *.com
 G: HITCH   .COM | LEATHER .COM | LIHOUSE .COM | PLANET  .COM
@@ -273,10 +277,5 @@ When I was uncertain of how to implement a specific system call the following tw
 
 Let me know by filing an issue.  If your program is "real" then it is highly likely it will try to invoke an unimplemented BIOS function.
 
-Outstanding issues I'm aware of:
-
-* I don't implement some of the basic BIOS calls that might be useful
-  * Get free RAM, etc, etc.
-  * These will be added over time as their absence causes program-failures.
 
 Steve
