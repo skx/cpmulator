@@ -32,8 +32,10 @@ func main() {
 	// Parse the command-line flags for this driver-application
 	//
 	cd := flag.String("cd", "", "Change to this directory before launching")
-	useDirectories := flag.Bool("directories", false, "Use subdirectories on the host computer for CP/M drives.")
 	createDirectories := flag.Bool("create", false, "Create subdirectories on the host computer for each CP/M drive.")
+	useDirectories := flag.Bool("directories", false, "Use subdirectories on the host computer for CP/M drives.")
+	logPath := flag.String("log-path", "", "Specify the file to write debug logs to.")
+	prnPath := flag.String("prn-path", "print.log", "Specify the file to write printer-output to.")
 	syscalls := flag.Bool("syscalls", false, "List the syscalls we implement.")
 	flag.Parse()
 
@@ -41,7 +43,7 @@ func main() {
 	if *syscalls {
 
 		// Create helper
-		c := cpm.New(nil)
+		c := cpm.New(nil, "print.log")
 
 		// Get syscalls in sorted order
 		ids := []int{}
@@ -75,21 +77,35 @@ func main() {
 	lvl := new(slog.LevelVar)
 	lvl.Set(slog.LevelWarn)
 
-	// But show everything if $DEBUG is non-empty.
-	if os.Getenv("DEBUG") != "" {
+	// The default log behaviour is to show critical issues to STDERR
+	logFile := os.Stderr
+
+	// But if we have a logfile, we'll write there
+	if *logPath != "" {
+
+		var err error
+		logFile, err = os.OpenFile(*logPath, os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			fmt.Printf("failed to open logfile for writing %s:%s\n", *logPath, err)
+			return
+		}
+
+		// And that will trigger more verbose output
 		lvl.Set(slog.LevelDebug)
+
+		defer logFile.Close()
 	}
 
-	// Create our logging handler, using the level we've just setup
+	// Create our logging handler, using the level we've just setup.
 	log = slog.New(
 		slog.NewJSONHandler(
-			os.Stderr,
+			logFile,
 			&slog.HandlerOptions{
 				Level: lvl,
 			}))
 
 	// Create a new emulator.
-	obj := cpm.New(log)
+	obj := cpm.New(log, *prnPath)
 
 	// change directory?
 	if *cd != "" {

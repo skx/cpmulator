@@ -90,6 +90,10 @@ type CPM struct {
 	// for block I/O.
 	dma uint16
 
+	// prnPath contains the name of a file to write all printer-output
+	// to.
+	prnPath string
+
 	// start contains the location to which we load our binaries,
 	// and execute them from.  This is specifically a variable because
 	// while all CP/M binaries are loaded at 0x0100 the CCP we can
@@ -158,7 +162,7 @@ type CPM struct {
 }
 
 // New returns a new emulation object
-func New(logger *slog.Logger) *CPM {
+func New(logger *slog.Logger, prn string) *CPM {
 
 	//
 	// Create and populate our syscall table
@@ -319,6 +323,7 @@ func New(logger *slog.Logger) *CPM {
 		dma:      0x0080,
 		start:    0x0100,
 		files:    make(map[uint16]FileCache),
+		prnPath:  prn,
 	}
 	return tmp
 }
