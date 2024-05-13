@@ -90,10 +90,11 @@ func SysCallAuxRead(cpm *CPM) error {
 }
 
 // SysCallPrinterWrite should send a single character to the printer,
-// we fake that by writing to the file "print.log" in the current directory.
+// we fake that by writing to a file instead.
 func SysCallPrinterWrite(cpm *CPM) error {
-	// If the file doesn't exist, create it, or append to the file
-	f, err := os.OpenFile("print.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+
+	// If the file doesn't exist, create it.
+	f, err := os.OpenFile(cpm.prnPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return fmt.Errorf("SysCallPrinterWrite: Failed to open file 'print.log' %s", err)
 	}

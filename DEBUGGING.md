@@ -6,10 +6,10 @@
 
 The emulator can be configured to log all the syscalls, or bios requests, that it was asked to carry out.
 
-To enable logging set the environmental variable `DEBUG` to any non-empty value, and redirect STDERR to capture these logs into a file:
+To enable logging specify the path to a file, with the `-log-path` command-line argument:
 
 ```sh
-DEBUG=1 cpmulator [args] 2>logs.out
+cpmulator -log-path debug.log [args] 2>logs.out
 ```
 
 The logging is produced via the golang `slog` package, and will be written in JSON format for ease of processing.  However note that each line is a distinct record and we don't have an array of logs.
@@ -17,13 +17,13 @@ The logging is produced via the golang `slog` package, and will be written in JS
 You can convert the flat file to a JSON array object using `jq` like so:
 
 ```sh
-jq --slurp '.' logs.out > logs.json
+jq --slurp '.' debug.log > debug.json
 ```
 
 Once you have the logs as a JSON array you can use the `jq` tool to count unique syscalls, or perform further processing like so:
 
 ```sh
-cat logs.json | jq '.[].name' | sort | grep -v null | uniq --count  | sort --numeric-sort
+cat debug.json | jq '.[].name' | sort | grep -v null | uniq --count  | sort --numeric-sort
 ```
 This will give output like this:
 

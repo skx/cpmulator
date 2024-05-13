@@ -98,9 +98,21 @@ You can also launch a binary directly by specifying it's path upon the command-l
 $ cpmulator /path/to/binary [optional-args]
 ```
 
+Other options are shown in the output of `cpmulator -help`, but in brief:
+
+* `-cd /path/to/directory`
+  * Change to the given directory before running.
+* `-directories`
+  * Use directories on the host for drive-contents, discussed later in this document.
+* `-log-path /path/to/file`
+  * Output debug-logs to the given file, creating it if necessary.
+* `-prn-path /path/to/file`
+  * All output which CP/M sends to the "printer" will be written to the given file.
 
 
-## Sample Binaries
+
+
+# Sample Binaries
 
 I've placed some games within the `dist/` directory, to make it easier for you to get started:
 
@@ -127,7 +139,8 @@ A companion repository contains a larger collection of vintage CP/M software you
 
 
 
-## Drives vs. Directories
+
+# Drives vs. Directories
 
 By default when you launch `cpmulator` with no arguments you'll be presented with the CCP interface, with A: as the current drive.   In this mode A:, B:, C:, and all other drives, will refer to the current-working directory where you launched the emulator from (i.e. they have the same view of files).  This is perhaps the most practical way to get started, but it means that files are repeated across drives:
 
@@ -181,7 +194,8 @@ Note that it isn't currently possibly to point different drives to arbitrary pat
 
 
 
-## Implemented Syscalls
+
+# Implemented Syscalls
 
 
 You can see the list of implemented syscalls, along with a mention of how complete their implementation is, by running:
@@ -208,11 +222,12 @@ $ cpmulator -syscalls
 34 F_WRITERAND
 ```
 
-Items marked "FAKE" return "appropriate" values, rather than real values.  Or are otherwise incomplete.  The only function with significantly different behaviour is `L_WRITE` which is designed to send a single character to a connected printer - that function appends the character to the file `print.log` in the current-directory, creating it if necessary.
+Items marked "FAKE" return "appropriate" values, rather than real values.  Or are otherwise incomplete.  The only function with significantly different behaviour is `L_WRITE` which is designed to send a single character to a connected printer - that function appends the character to the file `print.log` in the current-directory, creating it if necessary.  (The path may be altered via the `-prn-path` command-line argument.)
 
 
 
-## Debugging Failures & Tweaking Behaviour
+
+# Debugging Failures & Tweaking Behaviour
 
 When an unimplemented BIOS call is attempted the program it will abort with a fatal error, for example:
 
@@ -230,16 +245,16 @@ If things are _mostly_ working, but something is not quite producing the correct
 
 * [DEBUGGING.md](DEBUGGING.md)
 
-Here is the complete list of environmental variables which influence behaviour:
+The following environmental variables influence runtime behaviour:
 
 | Variable    | Purpose                                                       |
 |-------------|---------------------------------------------------------------|
-| DEBUG       | Send a log of CP/M syscalls to STDERR                         |
 | SIMPLE_CHAR | Avoid the attempted VT52 output conversion.                   |
 
 
 
-## Sample Programs
+
+# Sample Programs
 
 You'll see some Z80 assembly programs beneath [samples](samples/) which are used to check my understanding.  If you have the `pasmo` compiler enabled you can build them all by running "make", in case you don't I've also committed the generated binaries.
 
@@ -264,7 +279,8 @@ When I was uncertain of how to implement a specific system call the following tw
 
 
 
-## References
+
+# References
 
 * [Digital Research - CP/M Operating System Manual](http://www.gaby.de/cpm/manuals/archive/cpm22htm/)
   * Particularly the syscall reference in [Section 5: CP/M 2 System Interface](http://www.gaby.de/cpm/manuals/archive/cpm22htm/ch5.htm).
