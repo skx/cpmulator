@@ -289,9 +289,41 @@ When I was uncertain of how to implement a specific system call the following tw
 
 
 
+
+# Release Checklist
+
+The testing that I should do before a release:
+
+* [ ] Play lighthouse of doom to completion, either victory or death.
+* [ ] Compile a program with ASM & LOAD.  Confirm it runs.
+* [ ] Compile HELLO.C and ECHO.C with Aztec C Compiler.
+  * [ ] Confirm the generated binaries run.
+* [ ] Run BBC Basic, and play a game.
+  * [ ] Test "SAVE" and "LOAD" commands.
+  * [ ] Test saving tokenized AND raw versions. (i.e `SAVE "FOO"`, and `SAVE "FOO", A`.)
+* [ ] Compile a program with Turbo Pascal.
+  * [ ] Confirm the generated binary runs.
+* [ ] Play Zork1 for a few turns.
+  * [ ] Test SAVE and RESTORE commands, and confirm they work.
+* [ ] Test BE.COM
+* [ ] Test STAT.COM
+* [ ] Test some built-in shell-commands; ERA TYPE, and EXIT.
+* [ ] Test `samples/INTEST.COM` `samples/READ.COM`, `samples/WRITE.COM`.
+
+
+
 ## Bugs?
 
 Let me know by filing an issue.  If your program is "real" then it is highly likely it will try to invoke an unimplemented BIOS function.
 
+Known issues:
+
+* Wordstar is broken.
+  * Don't care, because I have no strong attachment to it.
+  * Seems to be related to console I/O via "`RST xx`" instructions.
+* SUBMIT.COM doesn't work.
+  * I suspect at least part of this is CCP-related.
+  * It can _print_ the last record of a file, but not execute it.
+  * I think it also doesn't work in reverse like it is supposed to.
 
 Steve
