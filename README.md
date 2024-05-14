@@ -3,16 +3,19 @@
 This repository contains a CP/M emulator, with integrated CCP, which is primarily designed to launch simple CP/M binaries:
 
 * The project was initially created to run [my text-based adventure game](https://github.com/skx/lighthouse-of-doom/), which I wrote a few years ago, to amuse my child.
-  * This was written in Z80 assembly language and initially targeted at CP/M, although it was later ported to the ZX Spectrum.
+  * That was written in Z80 assembly language and initially targeted CP/M, although it was later ported to the ZX Spectrum.
 
-Over time this project has become more complete, and more complex.  I've implemented enough of the BIOS functions to run simple binaries and also several of the well-known programs of the time:
+Over time this project has become more complete, and more complex.  I've implemented enough of the BIOS functions to run simple binaries and also several of the well-known "vintage" CP/M programs:
 
 * The Aztec C-Compiler.
-  * You can edit and compile code within the emulator, then run it!
+  * You can edit and compile C code within the emulator, then run it!
 * Borland's Turbo Pascal
-  * You can edit and compile code within the emulator, then run it!
+  * You can edit and compile Pascal code within the emulator, then run it!
 * Microsoft BASIC
-* Zork 1, 2, & 3
+* Various Infocom games
+  * Zork 1, 2, & 3.
+  * Planetfall.
+  * etc.
 
 The biggest caveat of the emulator is that I've not implemented any notion of disk-based access.  This means that, for example opening, reading/writing, and closing files is absolutely fine, but any API call that refers to tracks, sectors, or disks will fail.
 
@@ -23,7 +26,7 @@ A companion repository contains a collection of vintage CP/M software you can us
 
 
 
-# Installation
+# Installation & Versioning
 
 This emulator is written using golang, so if you have a working golang toolchain you can install in the standard way:
 
@@ -39,6 +42,10 @@ go install .
 
 If neither of these options are suitable you may download the latest binary from [the release page](https://github.com/skx/cpmulator/releases).
 
+Releases will be made as/when features seem to justify it, but it should be noted that I consider the CLI tool, and the emulator itself, the "product".  That means that the internal APIs will change around as/when necessary.
+
+If you wish to import any of the internal APIs you do so at the risk of changes happening at any time - although so far these have been minor I'm not averse to changing parameters to internal packages, or adding/renaming/removing methods as necessary without any regard for external users.
+
 
 
 
@@ -48,7 +55,9 @@ The CP/M input handlers need to disable echoing when reading (single) characters
 
 This means the code in this repository isn't 100% portable; it will work on Linux and MacOS hosts, but not Windows.
 
-There _is_ code to disable echoing in the golang standard library, for example you can [consider the code in the readPassword function](https://cs.opensource.google/go/x/term/+/refs/tags/v0.20.0:term_unix.go) in `x/term`.  Unfortunately the facilities there are only sufficient for reading a _line_, not a _character_.
+There _is_ code to set a console into RAW mode, and disable echoing input, for example you can [consider the code in the readPassword function](https://cs.opensource.google/go/x/term/+/refs/tags/v0.20.0:term_unix.go) in `x/term`.  Unfortunately the facilities there are only sufficient for reading a _line_, not a _character_ which means we'll need to essentially copy and paste their implementations inline to take advantage of this, and restore portability.
+
+This is tracked in #65.
 
 
 
