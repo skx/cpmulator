@@ -11,11 +11,12 @@ Over time this project has become more complete, and more complex.  I've impleme
   * You can edit and compile C code within the emulator, then run it!
 * Borland's Turbo Pascal
   * You can edit and compile Pascal code within the emulator, then run it!
-* Microsoft BASIC
-* Various Infocom games
+* Many early Infocom games:
   * Zork 1, 2, & 3.
   * Planetfall.
   * etc.
+* Microsoft BASIC
+* Wordstar
 
 The biggest caveat of the emulator is that I've not implemented any notion of disk-based access.  This means that, for example opening, reading/writing, and closing files is absolutely fine, but any API call that refers to tracks, sectors, or disks will fail.
 
