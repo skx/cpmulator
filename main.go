@@ -179,6 +179,11 @@ func main() {
 				return
 			}
 
+			// Reboot attempt, also fine
+			if err == cpm.ErrBoot {
+				return
+			}
+
 			// Deliberate stop of execution.
 			if err == cpm.ErrExit {
 				return
@@ -208,6 +213,9 @@ func main() {
 		err := obj.Execute(args)
 		if err != nil {
 
+			if err == cpm.ErrBoot {
+				continue
+			}
 			// Deliberate stop of execution.
 			if err == cpm.ErrHalt {
 				return
