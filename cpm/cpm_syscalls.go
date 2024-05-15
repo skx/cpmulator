@@ -53,13 +53,6 @@ func SysCallReadChar(cpm *CPM) error {
 // SysCallWriteChar writes the single character in the E register to STDOUT.
 func SysCallWriteChar(cpm *CPM) error {
 
-	// auxIO is set when we see A_READ/A_WRITE
-	//
-	// Mixing I/O modes is not recommended.
-	if cpm.auxIO {
-		return nil
-	}
-
 	cpm.outC(cpm.CPU.States.DE.Lo)
 
 	return nil
@@ -117,9 +110,6 @@ func SysCallPrinterWrite(cpm *CPM) error {
 // SysCallAuxWrite writes the single character in the C register
 // auxillary / punch output.
 func SysCallAuxWrite(cpm *CPM) error {
-
-	// Now we're using aux I/O
-	cpm.auxIO = true
 
 	// The character we're going to write
 	c := cpm.CPU.States.BC.Lo

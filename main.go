@@ -51,14 +51,23 @@ func main() {
 			ids = append(ids, int(i))
 		}
 		sort.Ints(ids)
+
+		fmt.Printf("BDOS\n")
 		for id := range ids {
 			ent := c.Syscalls[uint8(id)]
 			fake := ""
 			if ent.Fake {
 				fake = "FAKE"
 			}
-			fmt.Printf("%02d %-20s %s\n", int(id), ent.Desc, fake)
+			fmt.Printf("\t%02d %-20s %s\n", int(id), ent.Desc, fake)
 		}
+		fmt.Printf("BIOS\n")
+		fmt.Printf("\t00  BOOT                FAKE\n")
+		fmt.Printf("\t01  WBOOT               FAKE\n")
+		fmt.Printf("\t02  CONST\n")
+		fmt.Printf("\t03  CONIN\n")
+		fmt.Printf("\t04  CONOUT\n")
+
 		return
 	}
 	// Default program to execute, and arguments to pass to program

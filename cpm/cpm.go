@@ -17,6 +17,7 @@ import (
 	"github.com/koron-go/z80"
 	"github.com/skx/cpmulator/ccp"
 	"github.com/skx/cpmulator/fcb"
+	cpmio "github.com/skx/cpmulator/io"
 	"github.com/skx/cpmulator/memory"
 )
 
@@ -106,11 +107,6 @@ type CPM struct {
 	// to basically keep track of multibyte output
 	auxStatus int
 
-	// auxIO is used to disable character output if aux I/O has been seen.
-	// This is a bit hacky, but will resolve the issue of mixed outputs in
-	// Microsoft BASIC
-	auxIO bool
-
 	// x holds the character X position, when using AUX I/O.
 	// It is set/used by escape sequences.
 	x uint8
@@ -121,6 +117,8 @@ type CPM struct {
 
 	// Syscalls contains the syscalls we know how to emulate, indexed
 	// by their ID.
+	//
+	// NOTE: These are BDOS functions.
 	Syscalls map[uint8]CPMHandler
 
 	// Memory contains the memory the system runs with.
@@ -607,7 +605,7 @@ func (cpm *CPM) Execute(args []string) error {
 		//
 		if !exists {
 
-			cpm.Logger.Error("Unimplemented SysCall",
+			cpm.Logger.Error("Unimplemented BDOS Syscall",
 				slog.Int("syscall", int(syscall)),
 				slog.String("syscallHex",
 					fmt.Sprintf("0x%02X", syscall)),
@@ -616,7 +614,7 @@ func (cpm *CPM) Execute(args []string) error {
 		}
 
 		// Log the call we're going to make
-		cpm.Logger.Info("SysCall",
+		cpm.Logger.Info("BDOS",
 			slog.String("name", handler.Desc),
 			slog.Int("syscall", int(syscall)),
 			slog.String("syscallHex", fmt.Sprintf("0x%02X", syscall)),
@@ -679,6 +677,12 @@ func (cpm *CPM) In(addr uint8) uint8 {
 // used by any system which used RST instructions to invoke the
 // CP/M syscalls, rather than using "CALL 0x0005".  Notable offenders
 // include Microsoft's BASIC.
+//
+// The functions called here BIOS functions, NOT BDOS functions.
+//
+// BDOS functions are implemented in our Execute method, via a lookup of
+// the C register.  The functions here are invoked with their number in the
+// A register and there are far far fewer of them.
 func (cpm *CPM) Out(addr uint8, val uint8) {
 
 	// We use port FF for CP/M calls - via
@@ -688,52 +692,48 @@ func (cpm *CPM) Out(addr uint8, val uint8) {
 		return
 	}
 
-	//
-	// Is there a syscall entry for this number?
-	//
-	handler, exists := cpm.Syscalls[val]
+	switch val {
+	case 00:
+		cpm.Logger.Error("BIOS syscall 0x00 - can't happen",
+			slog.String("BIOS", "BOOT"))
+	case 01:
+		cpm.Logger.Error("BIOS syscall 0x01",
+			slog.String("BIOS", "WBOOT"))
 
-	if !exists {
-		cpm.Logger.Error("Unimplemented SysCall - Via I/O",
+	case 02:
+		// Returns its status in A; 0 if no character is ready, 0FFh if one is.
+		cpm.Logger.Info("BIOS syscall 0x02",
+			slog.String("BIOS", "CONST"))
+
+		// Nothing pending - FAKE
+		cpm.CPU.States.AF.Hi = 0x00
+
+	case 03:
+		cpm.Logger.Info("BIOS syscall 0x03",
+			slog.String("BIOS", "CONIN"))
+		// Wait until the keyboard is ready to provide a character, and return it in A.
+		// Use our I/O package
+		obj := cpmio.New(cpm.Logger)
+
+		out, err := obj.BlockForCharacter()
+		if err != nil {
+			// record the error
+			cpm.ioErr = err
+			// halt processing.
+			cpm.CPU.HALT = true
+		}
+		cpm.CPU.States.AF.Hi = out
+
+	case 04:
+		cpm.Logger.Info("BIOS syscall 0x04",
+			slog.String("BIOS", "CONOUT"))
+
+		// Write the character in C to the screen.
+		c := cpm.CPU.States.BC.Lo
+		cpm.outC(c)
+	default:
+		cpm.Logger.Error("Unimplemented BIOS syscall",
 			slog.Int("syscall", int(val)),
-			slog.String("syscallHex",
-				fmt.Sprintf("0x%02X", val)),
-		)
-		return
-	}
-
-	// Log the call we're going to make
-	cpm.Logger.Info("IOSysCall",
-		slog.String("name", handler.Desc),
-		slog.Int("syscall", int(val)),
-		slog.String("syscallHex", fmt.Sprintf("0x%02X", val)),
-		slog.Group("registers",
-			slog.String("A", fmt.Sprintf("%02X", cpm.CPU.States.AF.Hi)),
-			slog.String("B", fmt.Sprintf("%02X", cpm.CPU.States.BC.Hi)),
-			slog.String("C", fmt.Sprintf("%02X", cpm.CPU.States.BC.Lo)),
-			slog.String("D", fmt.Sprintf("%02X", cpm.CPU.States.DE.Hi)),
-			slog.String("E", fmt.Sprintf("%02X", cpm.CPU.States.DE.Lo)),
-			slog.String("F", fmt.Sprintf("%02X", cpm.CPU.States.AF.Lo)),
-			slog.String("H", fmt.Sprintf("%02X", cpm.CPU.States.HL.Hi)),
-			slog.String("L", fmt.Sprintf("%02X", cpm.CPU.States.HL.Lo)),
-			slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
-			slog.String("DE", fmt.Sprintf("%04X", cpm.CPU.States.DE.U16())),
-			slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16())),
-		))
-
-	// Invoke the handler
-	err := handler.Handler(cpm)
-
-	// We cannot return an error because the I/O interface requires
-	// our "Out" function to not return an error.
-	//
-	// So we save it internally, and halt the Z80.
-	if err != nil {
-
-		// Save the error
-		cpm.ioErr = err
-
-		// halt processing.
-		cpm.CPU.HALT = true
+			slog.String("syscallHex", fmt.Sprintf("0x%02X", val)))
 	}
 }
