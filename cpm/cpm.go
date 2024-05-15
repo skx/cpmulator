@@ -33,6 +33,12 @@ var (
 	// It should be handled and expected by callers.
 	ErrHalt = errors.New("HALT")
 
+	// ErrBoot will be used to note that the Z80 emulator executed code
+	// at 0x0000 - i.e. a boot attempt
+	//
+	// It should be handled and expected by callers.
+	ErrBoot = errors.New("BOOT")
+
 	// ErrUnimplemented will be used to handle a CP/M binary calling an unimplemented syscall.
 	//
 	// It should be handled and expected by callers.
@@ -532,9 +538,15 @@ func (cpm *CPM) Execute(args []string) error {
 	//
 	cpm.CPU.States.BC.Lo = cpm.currentDrive
 
-	// Setup a breakpoint on 0x0005 - the BIOS entrypoint.
+	// Setup our breakpoints.
+	//
+	// We configure two:
+	//
+	//  0x0000 - is the boot address of the Z80 processor.
+	//  0x0005 - The CPM BDOS entrypoint.
 	cpm.CPU.BreakPoints = map[uint16]struct{}{}
-	cpm.CPU.BreakPoints[0x05] = struct{}{}
+	cpm.CPU.BreakPoints[0x0000] = struct{}{}
+	cpm.CPU.BreakPoints[0x0005] = struct{}{}
 
 	// Convert our array of CLI arguments to a string.
 	cli := strings.Join(args, " ")
@@ -576,6 +588,11 @@ func (cpm *CPM) Execute(args []string) error {
 		if cpm.ioErr != nil {
 			err = cpm.ioErr
 			cpm.ioErr = nil
+		}
+
+		// Reboot?
+		if cpm.CPU.PC == 0x0000 {
+			return ErrBoot
 		}
 
 		// No error?  Then end - the CPU hit a HALT.
@@ -698,12 +715,19 @@ func (cpm *CPM) Out(addr uint8, val uint8) {
 
 	switch val {
 	case 00:
-		cpm.Logger.Error("BIOS syscall 0x00 - can't happen",
+		cpm.Logger.Info("BIOS syscall 0x00 - can't happen",
 			slog.String("BIOS", "BOOT"))
+
+		// Set entry-point to 0x0000 which will result in
+		// a boot-trap
+		cpm.CPU.States.PC = 0x0000
 	case 01:
-		cpm.Logger.Error("BIOS syscall 0x01",
+		cpm.Logger.Info("BIOS syscall 0x01",
 			slog.String("BIOS", "WBOOT"))
 
+		// Set entry-point to 0x0000 which will result in
+		// a boot-trap
+		cpm.CPU.States.PC = 0x0000
 	case 02:
 		// Returns its status in A; 0 if no character is ready, 0FFh if one is.
 		cpm.Logger.Info("BIOS syscall 0x02",
