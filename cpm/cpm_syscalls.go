@@ -316,9 +316,20 @@ func SysCallDriveAllReset(cpm *CPM) error {
 
 // SysCallDriveSet updates the current drive number.
 func SysCallDriveSet(cpm *CPM) error {
-	// The drive number passed to this routine is 0 for A:, 1 for B: up to 15 for P:.
-	cpm.currentDrive = (cpm.CPU.States.AF.Hi & 0x0F)
 
+	// The drive number passed to this routine is 0 for A:, 1 for B:
+	// up to 15 for P:.
+	drv := cpm.CPU.States.AF.Hi
+
+	// P: is the maximum
+	if drv > 15 {
+		drv = 15
+	}
+
+	// set the drive
+	cpm.currentDrive = drv
+
+	// Update RAM
 	cpm.Memory.Set(0x0004, cpm.currentDrive)
 
 	// Return values:
