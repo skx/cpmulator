@@ -1351,3 +1351,7 @@ func SysCallDriveROVec(cpm *CPM) error {
 	cpm.CPU.States.HL.Lo = 0x00
 	return nil
 }
+
+func SysCallTime(cpm *CPM) error {
+	return nil
+}

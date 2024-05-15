@@ -323,6 +323,11 @@ func New(logger *slog.Logger, prn string) *CPM {
 		Desc:    "F_SIZE",
 		Handler: SysCallFileSize,
 	}
+	sys[105] = CPMHandler{
+		Desc:    "T_GET",
+		Handler: SysCallTime,
+		Fake:    true,
+	}
 
 	// Create the object
 	tmp := &CPM{
