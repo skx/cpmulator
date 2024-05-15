@@ -1219,6 +1219,100 @@ func SysCallWriteRand(cpm *CPM) error {
 	return nil
 }
 
+// SysCallFileSize updates the Random Record bytes of the given FCB to the
+// number of records in the file.
+//
+// Returns the result in the A record
+func SysCallFileSize(cpm *CPM) error {
+
+	// The pointer to the FCB
+	ptr := cpm.CPU.States.DE.U16()
+
+	// Get the bytes which make up the FCB entry.
+	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
+
+	// Create a structure with the contents
+	fcbPtr := fcb.FromBytes(xxx)
+
+	//
+	// Seems this doesn't require a file to be open.
+	//
+	// So we have to go through the dance of getting the filename.
+	//
+
+	// Get the name
+	name := fcbPtr.GetName()
+	ext := fcbPtr.GetType()
+
+	fileName := name
+	if ext != "" && ext != "   " {
+		fileName += "."
+		fileName += ext
+	}
+
+	// Should we remap drives?
+	path := "."
+	if cpm.Drives {
+		path = string(cpm.currentDrive + 'A')
+	}
+
+	//
+	// Ok we have a filename, but we probably have an upper-case
+	// filename.
+	//
+	// Run a glob, and if there's an existing file with the same
+	// name then replace with the mixed/lower cased version.
+	//
+	files, err2 := os.ReadDir(path)
+	if err2 == nil {
+		for _, n := range files {
+			if strings.ToUpper(n.Name()) == fileName {
+				fileName = n.Name()
+			}
+		}
+	}
+
+	// Should we remap drives?
+	if cpm.Drives {
+		fileName = filepath.Join(string(cpm.currentDrive+'A'), fileName)
+	}
+
+	file, err := os.OpenFile(fileName, os.O_RDONLY, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open file for FileSize %s:%s", fileName, err)
+	}
+
+	// ensure we close
+	defer file.Close()
+
+	// Get file size, in bytes
+	fi, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to get file size of %s: %s", fileName, err)
+	}
+
+	// Now we have the size we need to turn it into the number
+	// of records
+	records := int(fi.Size() / 128)
+
+	// Store the value in the three fields
+	fcbPtr.R0 = uint8(records & 0xff)
+	fcbPtr.R1 = uint8(records & 0xff00)
+	fcbPtr.R2 = uint8(records & 0xff0000)
+
+	// sanity check because I've messed this up in the past
+	n := int(int(fcbPtr.R2)<<16) | int(int(fcbPtr.R1)<<8) | int(fcbPtr.R0)
+	if n != records {
+		return fmt.Errorf("failed to update because maths is hard")
+	}
+
+	// Update the FCB in memory
+	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
+	cpm.CPU.States.AF.Hi = 0x00
+
+	return nil
+}
+
 // SysCallDriveAlloc will return the address of the allocation bitmap (which blocks are used and
 // which are free) in HL.
 //
