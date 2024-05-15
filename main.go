@@ -62,9 +62,9 @@ func main() {
 			fmt.Printf("\t%02d %-20s %s\n", int(id), ent.Desc, fake)
 		}
 		fmt.Printf("BIOS\n")
-		fmt.Printf("\t00  BOOT                FAKE\n")
-		fmt.Printf("\t01  WBOOT               FAKE\n")
-		fmt.Printf("\t02  CONST\n")
+		fmt.Printf("\t00  BOOT\n")
+		fmt.Printf("\t01  WBOOT\n")
+		fmt.Printf("\t02  CONST               FAKE\n")
 		fmt.Printf("\t03  CONIN\n")
 		fmt.Printf("\t04  CONOUT\n")
 

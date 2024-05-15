@@ -212,24 +212,16 @@ You can see the list of implemented syscalls, along with a mention of how comple
 
 ```
 $ cpmulator -syscalls
-00 P_TERMCPM
-01 C_READ
-02 C_WRITE
-03 A_READ
-04 A_WRITE
-05 L_WRITE
-06 C_RAWIO
-07 GET_IOBYTE
-08 SET_IOBYTE
-09 C_WRITESTRING
-10 C_READSTRING
-11 C_STAT               FAKE
-12 S_BDOSVER
-..
-31 DRV_DPB              FAKE
-32 F_USERNUM
-33 F_READRAND
-34 F_WRITERAND
+BDOS
+	00 P_TERMCPM
+	01 C_READ
+	02 C_WRITE
+	03 A_READ
+..snip..
+BIOS
+	00  BOOT
+	01  WBOOT
+..snip..
 ```
 
 Items marked "FAKE" return "appropriate" values, rather than real values.  Or are otherwise incomplete.  The only function with significantly different behaviour is `L_WRITE` which is designed to send a single character to a connected printer - that function appends the character to the file `print.log` in the current-directory, creating it if necessary.  (The path may be altered via the `-prn-path` command-line argument.)
