@@ -67,6 +67,7 @@ func main() {
 		fmt.Printf("\t02  CONST               FAKE\n")
 		fmt.Printf("\t03  CONIN\n")
 		fmt.Printf("\t04  CONOUT\n")
+		fmt.Printf("\t05  LIST\n")
 
 		return
 	}

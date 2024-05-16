@@ -86,25 +86,9 @@ func SysCallAuxRead(cpm *CPM) error {
 // we fake that by writing to a file instead.
 func SysCallPrinterWrite(cpm *CPM) error {
 
-	// If the file doesn't exist, create it.
-	f, err := os.OpenFile(cpm.prnPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return fmt.Errorf("SysCallPrinterWrite: Failed to open file 'print.log' %s", err)
-	}
-
-	data := make([]byte, 1)
-	data[0] = cpm.CPU.States.BC.Lo
-	_, err = f.Write(data)
-	if err != nil {
-		return fmt.Errorf("SysCallPrinterWrite: Failed to write %s", err)
-	}
-
-	err = f.Close()
-	if err != nil {
-		return fmt.Errorf("SysCallPrinterWrite: Failed to close %s", err)
-	}
-
-	return nil
+	// write the character to our printer-file
+	err := cpm.prnC(cpm.CPU.States.BC.Lo)
+	return err
 }
 
 // SysCallAuxWrite writes the single character in the C register
