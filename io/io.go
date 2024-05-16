@@ -1,12 +1,16 @@
 // Package io is designed to collect the code that reads from STDIN.
 //
-// There are, broadly speaking, two things we need to do here:
+// There are three functions we need to care about:
 //
-// * See if there is any available (single-character) input.
+// * Block for a character, and return it.
 //
-// * Read a single byte of input.
+// * Block for a character, and return it, but disable echo first.
 //
-// This package is explicitly not used for _line_ based IO (yet).
+// * Read a single line of input.
+//
+// There are functions for polling console status in CP/M, however it
+// seems to work just fine if we fake their results - which means this
+// package is simpler than it would otherwise need to be.
 package io
 
 import (
