@@ -16,8 +16,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"syscall"
-	"time"
 
 	"golang.org/x/term"
 )
@@ -115,62 +113,6 @@ func (io *IO) BlockForCharacterWithEcho() (byte, error) {
 
 	fmt.Printf("%c", b[0])
 	return b[0], nil
-}
-
-// GetCharOrNull retrieves any input that is available, returning NULL
-// if nothing is pending.
-//
-// Note: We should disable echo in this function.
-func (io *IO) GetCharOrNull() (uint8, error) {
-
-	io.disableEcho()
-
-	// Set STDIN to be non-blocking.
-	if err1 := syscall.SetNonblock(0, true); err1 != nil {
-
-		return 0x00, fmt.Errorf("failed to set non-blocking stdin %s", err1)
-	}
-
-	// Switch STDIN into 'raw' mode.
-	oldState, err2 := term.MakeRaw(int(os.Stdin.Fd()))
-	if err2 != nil {
-		return 0x00, fmt.Errorf("error making raw terminal %s", err2)
-	}
-
-	// We'll read only a single byte of input, into this buffer
-	b := make([]byte, 1)
-
-	// NOTE: This doesn't work without the non-blocking mode having been
-	// set previously.
-	_ = os.Stdin.SetDeadline(time.Now().Add(time.Millisecond * 50))
-
-	// Try the read
-	n, err := os.Stdin.Read(b)
-
-	// restore the state of the terminal to avoid mixing RAW/Cooked
-	err3 := term.Restore(int(os.Stdin.Fd()), oldState)
-	if err3 != nil {
-		return 0x00, fmt.Errorf("error restoring terminal state %s", err3)
-	}
-
-	// restore the non-blocking state
-	if err4 := syscall.SetNonblock(0, false); err4 != nil {
-		return 0x00, fmt.Errorf("failed to restore non-blocking %s", err4)
-	}
-
-	// If we got a timeout, or some other error, then we assume
-	// there is no character pending
-	if err != nil {
-		return 0x00, nil
-	}
-
-	// If we read one byte, as we hoped to do then we can record
-	// that byte, and return it
-	if n == 1 {
-		return b[0], nil
-	}
-
-	return 0x00, fmt.Errorf("can't happen")
 }
 
 // ReadLine reads a line of input from the console, truncating to the
