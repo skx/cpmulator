@@ -120,11 +120,13 @@ type CPM struct {
 	// It is set/used by escape sequences.
 	y uint8
 
-	// Syscalls contains the syscalls we know how to emulate, indexed
+	// BDOSSyscalls contains the syscalls we know how to emulate, indexed
 	// by their ID.
-	//
-	// NOTE: These are BDOS functions.
-	Syscalls map[uint8]CPMHandler
+	BDOSSyscalls map[uint8]CPMHandler
+
+	// BIOSSyscalls contains the syscalls we know how to emulate, indexed
+	// by their ID.
+	BIOSSyscalls map[uint8]CPMHandler
 
 	// Memory contains the memory the system runs with.
 	Memory *memory.Memory
@@ -168,7 +170,7 @@ type CPM struct {
 func New(logger *slog.Logger, prn string) *CPM {
 
 	//
-	// Create and populate our syscall table
+	// Create and populate our syscall table for the BDOS
 	//
 	sys := make(map[uint8]CPMHandler)
 	sys[0] = CPMHandler{
@@ -328,14 +330,45 @@ func New(logger *slog.Logger, prn string) *CPM {
 		Fake:    true,
 	}
 
+	//
+	// Create and populate our syscall table for the BIOS
+	//
+	b := make(map[uint8]CPMHandler)
+	b[0] = CPMHandler{
+		Desc:    "BOOT",
+		Handler: BiosSysCallBoot,
+	}
+	b[1] = CPMHandler{
+		Desc:    "WBOOT",
+		Handler: BiosSysCallBoot,
+	}
+	b[2] = CPMHandler{
+		Desc:    "CONST",
+		Handler: BiosSysCallConsoleStatus,
+		Fake:    true,
+	}
+	b[3] = CPMHandler{
+		Desc:    "CONIN",
+		Handler: BiosSysCallConsoleInput,
+	}
+	b[4] = CPMHandler{
+		Desc:    "CONOUT",
+		Handler: BiosSysCallConsoleOutput,
+	}
+	b[5] = CPMHandler{
+		Desc:    "LIST",
+		Handler: BiosSysCallPrintChar,
+	}
+
 	// Create the object
 	tmp := &CPM{
-		Logger:   logger,
-		Syscalls: sys,
-		dma:      0x0080,
-		start:    0x0100,
-		files:    make(map[uint16]FileCache),
-		prnPath:  prn,
+		Logger:       logger,
+		BDOSSyscalls: sys,
+		BIOSSyscalls: b,
+		dma:          0x0080,
+		start:        0x0100,
+		files:        make(map[uint16]FileCache),
+		prnPath:      prn,
 	}
 	return tmp
 }
@@ -392,7 +425,7 @@ func (cpm *CPM) LoadBinary(filename string) error {
 // is the syscall to run.
 //
 // The precise region we patch is unimportant, but we want to make sure
-// we don't overlap with our CCP, or "large programs" loaded at 0x0100
+// we don't overlap with our CCP, or "large programs" loaded at 0x0100.
 func (cpm *CPM) fixupRAM() {
 	i := 0
 	CBIOS := 0xFE00
@@ -616,14 +649,14 @@ func (cpm *CPM) Execute(args []string) error {
 
 		// OK we have a breakpoint error to handle.
 		//
-		// That means we have a CP/M BIOS function to emulate,
+		// That means we have a CP/M BDOS function to emulate,
 		// the syscall identifier is stored in the C-register.
 		syscall := cpm.CPU.States.BC.Lo
 
 		//
 		// Is there a syscall entry for this number?
 		//
-		handler, exists := cpm.Syscalls[syscall]
+		handler, exists := cpm.BDOSSyscalls[syscall]
 
 		//
 		// Nope: That will stop execution with a fatal log

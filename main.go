@@ -45,32 +45,44 @@ func main() {
 		// Create helper
 		c := cpm.New(nil, "print.log")
 
-		// Get syscalls in sorted order
+		// Get the BDOS syscalls in sorted order
 		ids := []int{}
-		for i := range c.Syscalls {
+		for i := range c.BDOSSyscalls {
 			ids = append(ids, int(i))
 		}
 		sort.Ints(ids)
 
+		// Now show them.
 		fmt.Printf("BDOS\n")
 		for id := range ids {
-			ent := c.Syscalls[uint8(id)]
+			ent := c.BDOSSyscalls[uint8(id)]
 			fake := ""
 			if ent.Fake {
 				fake = "FAKE"
 			}
 			fmt.Printf("\t%02d %-20s %s\n", int(id), ent.Desc, fake)
 		}
-		fmt.Printf("BIOS\n")
-		fmt.Printf("\t00  BOOT\n")
-		fmt.Printf("\t01  WBOOT\n")
-		fmt.Printf("\t02  CONST               FAKE\n")
-		fmt.Printf("\t03  CONIN\n")
-		fmt.Printf("\t04  CONOUT\n")
-		fmt.Printf("\t05  LIST\n")
 
+		// Get the BIOS syscalls in sorted order
+		ids = []int{}
+		for i := range c.BIOSSyscalls {
+			ids = append(ids, int(i))
+		}
+		sort.Ints(ids)
+
+		// Now show them.
+		fmt.Printf("BIOS\n")
+		for id := range ids {
+			ent := c.BIOSSyscalls[uint8(id)]
+			fake := ""
+			if ent.Fake {
+				fake = "FAKE"
+			}
+			fmt.Printf("\t%02d %-20s %s\n", int(id), ent.Desc, fake)
+		}
 		return
 	}
+
 	// Default program to execute, and arguments to pass to program
 	program := ""
 	args := []string{}
