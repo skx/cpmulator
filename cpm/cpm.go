@@ -17,7 +17,6 @@ import (
 	"github.com/koron-go/z80"
 	"github.com/skx/cpmulator/ccp"
 	"github.com/skx/cpmulator/fcb"
-	cpmio "github.com/skx/cpmulator/io"
 	"github.com/skx/cpmulator/memory"
 )
 
@@ -121,11 +120,13 @@ type CPM struct {
 	// It is set/used by escape sequences.
 	y uint8
 
-	// Syscalls contains the syscalls we know how to emulate, indexed
+	// BDOSSyscalls contains the syscalls we know how to emulate, indexed
 	// by their ID.
-	//
-	// NOTE: These are BDOS functions.
-	Syscalls map[uint8]CPMHandler
+	BDOSSyscalls map[uint8]CPMHandler
+
+	// BIOSSyscalls contains the syscalls we know how to emulate, indexed
+	// by their ID.
+	BIOSSyscalls map[uint8]CPMHandler
 
 	// Memory contains the memory the system runs with.
 	Memory *memory.Memory
@@ -169,7 +170,7 @@ type CPM struct {
 func New(logger *slog.Logger, prn string) *CPM {
 
 	//
-	// Create and populate our syscall table
+	// Create and populate our syscall table for the BDOS
 	//
 	sys := make(map[uint8]CPMHandler)
 	sys[0] = CPMHandler{
@@ -195,6 +196,7 @@ func New(logger *slog.Logger, prn string) *CPM {
 	sys[5] = CPMHandler{
 		Desc:    "L_WRITE",
 		Handler: SysCallPrinterWrite,
+		Fake:    true,
 	}
 	sys[6] = CPMHandler{
 		Desc:    "C_RAWIO",
@@ -329,14 +331,46 @@ func New(logger *slog.Logger, prn string) *CPM {
 		Fake:    true,
 	}
 
-	// Create the object
+	//
+	// Create and populate our syscall table for the BIOS
+	//
+	b := make(map[uint8]CPMHandler)
+	b[0] = CPMHandler{
+		Desc:    "BOOT",
+		Handler: BiosSysCallBoot,
+	}
+	b[1] = CPMHandler{
+		Desc:    "WBOOT",
+		Handler: BiosSysCallBoot,
+	}
+	b[2] = CPMHandler{
+		Desc:    "CONST",
+		Handler: BiosSysCallConsoleStatus,
+		Fake:    true,
+	}
+	b[3] = CPMHandler{
+		Desc:    "CONIN",
+		Handler: BiosSysCallConsoleInput,
+	}
+	b[4] = CPMHandler{
+		Desc:    "CONOUT",
+		Handler: BiosSysCallConsoleOutput,
+	}
+	b[5] = CPMHandler{
+		Desc:    "LIST",
+		Handler: BiosSysCallPrintChar,
+		Fake:    true,
+	}
+
+	// Create the emulator object and return it
 	tmp := &CPM{
-		Logger:   logger,
-		Syscalls: sys,
-		dma:      0x0080,
-		start:    0x0100,
-		files:    make(map[uint16]FileCache),
-		prnPath:  prn,
+		Logger:       logger,
+		BDOSSyscalls: sys,
+		BIOSSyscalls: b,
+		dma:          0x0080,
+		start:        0x0100,
+		files:        make(map[uint16]FileCache),
+		prnPath:      prn,
 	}
 	return tmp
 }
@@ -393,7 +427,7 @@ func (cpm *CPM) LoadBinary(filename string) error {
 // is the syscall to run.
 //
 // The precise region we patch is unimportant, but we want to make sure
-// we don't overlap with our CCP, or "large programs" loaded at 0x0100
+// we don't overlap with our CCP, or "large programs" loaded at 0x0100.
 func (cpm *CPM) fixupRAM() {
 	i := 0
 	CBIOS := 0xFE00
@@ -549,6 +583,7 @@ func (cpm *CPM) Execute(args []string) error {
 	//
 	//  0x0000 - is the boot address of the Z80 processor.
 	//  0x0005 - The CPM BDOS entrypoint.
+	//
 	cpm.CPU.BreakPoints = map[uint16]struct{}{}
 	cpm.CPU.BreakPoints[0x0000] = struct{}{}
 	cpm.CPU.BreakPoints[0x0005] = struct{}{}
@@ -617,14 +652,14 @@ func (cpm *CPM) Execute(args []string) error {
 
 		// OK we have a breakpoint error to handle.
 		//
-		// That means we have a CP/M BIOS function to emulate,
+		// That means we have a CP/M BDOS function to emulate,
 		// the syscall identifier is stored in the C-register.
 		syscall := cpm.CPU.States.BC.Lo
 
 		//
 		// Is there a syscall entry for this number?
 		//
-		handler, exists := cpm.Syscalls[syscall]
+		handler, exists := cpm.BDOSSyscalls[syscall]
 
 		//
 		// Nope: That will stop execution with a fatal log
@@ -718,55 +753,8 @@ func (cpm *CPM) Out(addr uint8, val uint8) {
 		return
 	}
 
-	switch val {
-	case 00:
-		cpm.Logger.Info("BIOS syscall 0x00 - can't happen",
-			slog.String("BIOS", "BOOT"))
-
-		// Set entry-point to 0x0000 which will result in
-		// a boot-trap
-		cpm.CPU.States.PC = 0x0000
-	case 01:
-		cpm.Logger.Info("BIOS syscall 0x01",
-			slog.String("BIOS", "WBOOT"))
-
-		// Set entry-point to 0x0000 which will result in
-		// a boot-trap
-		cpm.CPU.States.PC = 0x0000
-	case 02:
-		// Returns its status in A; 0 if no character is ready, 0FFh if one is.
-		cpm.Logger.Info("BIOS syscall 0x02",
-			slog.String("BIOS", "CONST"))
-
-		// Nothing pending - FAKE
-		cpm.CPU.States.AF.Hi = 0x00
-
-	case 03:
-		cpm.Logger.Info("BIOS syscall 0x03",
-			slog.String("BIOS", "CONIN"))
-		// Wait until the keyboard is ready to provide a character, and return it in A.
-		// Use our I/O package
-		obj := cpmio.New(cpm.Logger)
-
-		out, err := obj.BlockForCharacter()
-		if err != nil {
-			// record the error
-			cpm.ioErr = err
-			// halt processing.
-			cpm.CPU.HALT = true
-		}
-		cpm.CPU.States.AF.Hi = out
-
-	case 04:
-		cpm.Logger.Info("BIOS syscall 0x04",
-			slog.String("BIOS", "CONOUT"))
-
-		// Write the character in C to the screen.
-		c := cpm.CPU.States.BC.Lo
-		cpm.outC(c)
-	default:
-		cpm.Logger.Error("Unimplemented BIOS syscall",
-			slog.Int("syscall", int(val)),
-			slog.String("syscallHex", fmt.Sprintf("0x%02X", val)))
-	}
+	//
+	// Invoke the handler, in cpm_bios.go
+	//
+	cpm.BiosHandler(val)
 }

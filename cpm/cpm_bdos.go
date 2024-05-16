@@ -1,7 +1,8 @@
-// This file contains the implementations for the CP/M calls we emulate.
+// This file implements the BDOS function-calls.
 //
-// NOTE: They are added to the syscalls map in cpm.go.
+// These are documented online:
 //
+// * https://www.seasip.info/Cpm/bdos.html
 
 package cpm
 
@@ -86,25 +87,9 @@ func SysCallAuxRead(cpm *CPM) error {
 // we fake that by writing to a file instead.
 func SysCallPrinterWrite(cpm *CPM) error {
 
-	// If the file doesn't exist, create it.
-	f, err := os.OpenFile(cpm.prnPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return fmt.Errorf("SysCallPrinterWrite: Failed to open file 'print.log' %s", err)
-	}
-
-	data := make([]byte, 1)
-	data[0] = cpm.CPU.States.BC.Lo
-	_, err = f.Write(data)
-	if err != nil {
-		return fmt.Errorf("SysCallPrinterWrite: Failed to write %s", err)
-	}
-
-	err = f.Close()
-	if err != nil {
-		return fmt.Errorf("SysCallPrinterWrite: Failed to close %s", err)
-	}
-
-	return nil
+	// write the character to our printer-file
+	err := cpm.prnC(cpm.CPU.States.BC.Lo)
+	return err
 }
 
 // SysCallAuxWrite writes the single character in the C register
@@ -127,11 +112,6 @@ func SysCallRawIO(cpm *CPM) error {
 	case 0xFF, 0xFD:
 
 		out, err := obj.BlockForCharacter()
-
-		// I think this is correct: but it breaks zork
-		// TODO: Reassess
-		// With this in-place zork runs, mbasic runs, and turbo.com runs
-		//		out, err := obj.GetCharOrNull()
 		if err != nil {
 			return err
 		}
