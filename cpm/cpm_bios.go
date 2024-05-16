@@ -84,7 +84,34 @@ func (cpm *CPM) BiosHandler(val uint8) {
 		cpm.Logger.Error("Unimplemented BIOS syscall",
 			slog.Int("syscall", int(val)),
 			slog.String("syscallHex", fmt.Sprintf("0x%02X", val)))
+
+		// record the error
+		cpm.ioErr = ErrUnimplemented
+		// halt processing.
+		cpm.CPU.HALT = true
+
+		// stop now.
+		return
 	}
+
+	// Log the call we're going to make
+	cpm.Logger.Info("BIOS",
+		slog.String("name", handler.Desc),
+		slog.Int("syscall", int(val)),
+		slog.String("syscallHex", fmt.Sprintf("0x%02X", val)),
+		slog.Group("registers",
+			slog.String("A", fmt.Sprintf("%02X", cpm.CPU.States.AF.Hi)),
+			slog.String("B", fmt.Sprintf("%02X", cpm.CPU.States.BC.Hi)),
+			slog.String("C", fmt.Sprintf("%02X", cpm.CPU.States.BC.Lo)),
+			slog.String("D", fmt.Sprintf("%02X", cpm.CPU.States.DE.Hi)),
+			slog.String("E", fmt.Sprintf("%02X", cpm.CPU.States.DE.Lo)),
+			slog.String("F", fmt.Sprintf("%02X", cpm.CPU.States.AF.Lo)),
+			slog.String("H", fmt.Sprintf("%02X", cpm.CPU.States.HL.Hi)),
+			slog.String("L", fmt.Sprintf("%02X", cpm.CPU.States.HL.Lo)),
+			slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
+			slog.String("DE", fmt.Sprintf("%04X", cpm.CPU.States.DE.U16())),
+			slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16())),
+		))
 
 	// Otherwise invoke it, and look for any error
 	err := handler.Handler(cpm)

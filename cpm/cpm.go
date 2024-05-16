@@ -44,27 +44,33 @@ var (
 	ErrUnimplemented = errors.New("UNIMPLEMENTED")
 )
 
-// CPMHandlerType contains the signature of a CP/M bios function.
+// CPMHandlerType contains the signature of a function we use to
+// emulate a CP/M BIOS or BDOS function.
 //
 // It is not expected that outside packages will want to add custom BIOS
 // functions, or syscalls, but this is public so that it could be done if
-// it was necessary.
+// necessary.
 type CPMHandlerType func(cpm *CPM) error
 
 // CPMHandler contains details of a specific call we implement.
 //
 // While we mostly need a "number to handler", mapping having a name
-// is useful for the logs we produce.
+// is useful for the logs we produce, and we mark those functions that
+// don't do 100% of what they should as "Fake".
 type CPMHandler struct {
-	// Desc contain the human-readable description of the given CP/M syscall.
+	// Desc contain the human-readable name of the given CP/M syscall.
 	Desc string
 
-	// Handler contains the function which should be involved for this syscall.
+	// Handler contains the function which should be invoked for
+	// this syscall.
 	Handler CPMHandlerType
 
 	// Fake stores a quick comment on the completeness of the syscall
 	// implementation.  If Fake is set to true then the syscall is
 	// faked, or otherwise incompletely implemented.
+	//
+	// This might mean completely bogus behaviour, or it might mean
+	// "good enough, even if wrong".
 	Fake bool
 }
 
@@ -79,25 +85,25 @@ type FileCache struct {
 	handle *os.File
 }
 
-// CPM is the object that holds our emulator state
+// CPM is the object that holds our emulator state.
 type CPM struct {
 
 	// ioErr holds any error received by the IO handler.
 	//
 	// We need this because the CPU handler we use for IO operations
 	// cannot return an error - due to the interface used in the z80
-	// emulator
+	// emulator.
 	ioErr error
 
-	// files is the cache we use for File handles
+	// files is the cache we use for File handles.
 	files map[uint16]FileCache
 
-	// dma contains the offset of the DMA area which is used
-	// for block I/O.
+	// dma contains the address of the DMA area in RAM.
+	//
+	// The DMA area is used for all file I/O, and is 128 bytes in length.
 	dma uint16
 
-	// prnPath contains the name of a file to write all printer-output
-	// to.
+	// prnPath contains the filename to write all printer-output to.
 	prnPath string
 
 	// start contains the location to which we load our binaries,
@@ -120,12 +126,12 @@ type CPM struct {
 	// It is set/used by escape sequences.
 	y uint8
 
-	// BDOSSyscalls contains the syscalls we know how to emulate, indexed
-	// by their ID.
+	// BDOSSyscalls contains details of the BDOS syscalls we
+	// know how to emulate, indexed by their ID.
 	BDOSSyscalls map[uint8]CPMHandler
 
-	// BIOSSyscalls contains the syscalls we know how to emulate, indexed
-	// by their ID.
+	// BIOSSyscalls contains details of the BIOS syscalls we
+	// know how to emulate, indexed by their ID.
 	BIOSSyscalls map[uint8]CPMHandler
 
 	// Memory contains the memory the system runs with.
@@ -160,7 +166,10 @@ type CPM struct {
 	// This means we need to track state, the way we do this is to store the
 	// results here, and bump the findOffset each time find-next is called.
 	findFirstResults []fcb.FCBFind
-	findOffset       int
+
+	// findOffset contains the index into findFirstResults which is
+	// to be read next.
+	findOffset int
 
 	// Logger holds a logger which we use for debugging and diagnostics.
 	Logger *slog.Logger
@@ -170,7 +179,7 @@ type CPM struct {
 func New(logger *slog.Logger, prn string) *CPM {
 
 	//
-	// Create and populate our syscall table for the BDOS
+	// Create and populate our syscall table for the BDOS syscalls.
 	//
 	sys := make(map[uint8]CPMHandler)
 	sys[0] = CPMHandler{
@@ -332,7 +341,7 @@ func New(logger *slog.Logger, prn string) *CPM {
 	}
 
 	//
-	// Create and populate our syscall table for the BIOS
+	// Create and populate our syscall table for the BIOS syscalls.
 	//
 	b := make(map[uint8]CPMHandler)
 	b[0] = CPMHandler{

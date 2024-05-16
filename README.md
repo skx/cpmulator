@@ -224,7 +224,16 @@ BIOS
 ..snip..
 ```
 
-Items marked "FAKE" return "appropriate" values, rather than real values.  Or are otherwise incomplete.  The only function with significantly different behaviour is `L_WRITE` which is designed to send a single character to a connected printer - that function appends the character to the file `print.log` in the current-directory, creating it if necessary.  (The path may be altered via the `-prn-path` command-line argument.)
+Items marked "FAKE" return "appropriate" values, rather than real values.  Or are otherwise incomplete.
+
+> The only functions with significantly different behaviour are those which should send a single character to the printer (BDOS "L_WRITE" / BIOS "LIST"), they actually send their output to the file `print.log` in the current-directory, creating it if necessary.  (The path may be altered via the `-prn-path` command-line argument.)
+
+The implementation of the syscalls is the core of our emulator, and they can be found here:
+
+* [cpm/cpm_bdos.go](cpm/cpm_bdos.go) - BDOS functions.
+  * https://www.seasip.info/Cpm/bdos.html
+* [cpm/cpm_bios.go](cpm/cpm_bios.go) - BIOS functions.
+  * https://www.seasip.info/Cpm/bios.html
 
 
 
