@@ -196,6 +196,7 @@ func New(logger *slog.Logger, prn string) *CPM {
 	sys[5] = CPMHandler{
 		Desc:    "L_WRITE",
 		Handler: SysCallPrinterWrite,
+		Fake:    true,
 	}
 	sys[6] = CPMHandler{
 		Desc:    "C_RAWIO",
@@ -358,9 +359,10 @@ func New(logger *slog.Logger, prn string) *CPM {
 	b[5] = CPMHandler{
 		Desc:    "LIST",
 		Handler: BiosSysCallPrintChar,
+		Fake:    true,
 	}
 
-	// Create the object
+	// Create the emulator object and return it
 	tmp := &CPM{
 		Logger:       logger,
 		BDOSSyscalls: sys,
@@ -581,6 +583,7 @@ func (cpm *CPM) Execute(args []string) error {
 	//
 	//  0x0000 - is the boot address of the Z80 processor.
 	//  0x0005 - The CPM BDOS entrypoint.
+	//
 	cpm.CPU.BreakPoints = map[uint16]struct{}{}
 	cpm.CPU.BreakPoints[0x0000] = struct{}{}
 	cpm.CPU.BreakPoints[0x0005] = struct{}{}

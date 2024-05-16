@@ -1,3 +1,9 @@
+// This file implements the BIOS function-calls.
+//
+// These are documented online:
+//
+// * https://www.seasip.info/Cpm/bios.html
+
 package cpm
 
 import (
@@ -24,6 +30,8 @@ func BiosSysCallConsoleStatus(cpm *CPM) error {
 	return nil
 }
 
+// BiosSysCallConsoleInput should block for a single character of input,
+// and return the character pressed in the A-register.
 func BiosSysCallConsoleInput(cpm *CPM) error {
 
 	// Wait until the keyboard is ready to provide a character, and return it in A.
@@ -39,6 +47,8 @@ func BiosSysCallConsoleInput(cpm *CPM) error {
 	return nil
 }
 
+// BiosSysCallConsoleOutput should write a single character, in the C-register,
+// to the console.
 func BiosSysCallConsoleOutput(cpm *CPM) error {
 
 	// Write the character in C to the screen.
@@ -48,6 +58,8 @@ func BiosSysCallConsoleOutput(cpm *CPM) error {
 	return nil
 }
 
+// BiosSysCallPrintChar should print the specified character, in the C-register,
+// to the printer.  We fake that and write to a file instead.
 func BiosSysCallPrintChar(cpm *CPM) error {
 
 	// Write the character in C to the printer
@@ -59,10 +71,9 @@ func BiosSysCallPrintChar(cpm *CPM) error {
 }
 
 // BiosHandler is involved when a BIOS syscall needs to be executed,
-// which is handled via trapping RST instructions and using a short
-// trampoline.
+// which is handled via a small trampoline.
 //
-// The functions here are far fewer than those in the cpm_bdos.go files.
+// These are looked up in the BIOSSyscalls map.
 func (cpm *CPM) BiosHandler(val uint8) {
 
 	// Lookup the handler

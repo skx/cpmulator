@@ -1,7 +1,8 @@
-// This file contains the implementations for the CP/M calls we emulate.
+// This file implements the BDOS function-calls.
 //
-// NOTE: They are added to the syscalls map in cpm.go.
+// These are documented online:
 //
+// * https://www.seasip.info/Cpm/bdos.html
 
 package cpm
 
@@ -111,11 +112,6 @@ func SysCallRawIO(cpm *CPM) error {
 	case 0xFF, 0xFD:
 
 		out, err := obj.BlockForCharacter()
-
-		// I think this is correct: but it breaks zork
-		// TODO: Reassess
-		// With this in-place zork runs, mbasic runs, and turbo.com runs
-		//		out, err := obj.GetCharOrNull()
 		if err != nil {
 			return err
 		}
