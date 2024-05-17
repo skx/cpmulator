@@ -16,6 +16,9 @@ type Flavour struct {
 	// Name has the name of the CCP.
 	Name string
 
+	// Description has the description of the CCP.
+	Description string
+
 	// Bytes contains the raw binary content.
 	Bytes []uint8
 
@@ -33,16 +36,23 @@ var ccpzBin []uint8
 // the array, with suitable names/offsets.
 func init() {
 	ccps = append(ccps, Flavour{
-		Name:  "ccp",
-		Start: 0xDE00,
-		Bytes: ccpBin,
+		Name:        "ccp",
+		Description: "CP/M v2.2",
+		Start:       0xDE00,
+		Bytes:       ccpBin,
 	})
 
 	ccps = append(ccps, Flavour{
-		Name:  "ccpz",
-		Start: 0xE400,
-		Bytes: ccpzBin,
+		Name:        "ccpz",
+		Description: "CCPZ v4.1",
+		Start:       0xE400,
+		Bytes:       ccpzBin,
 	})
+}
+
+// GetAll returns the details of all known CCPs we have embedded.
+func GetAll() []Flavour {
+	return ccps
 }
 
 // Get returns the CCP version specified, by name, if it exists.

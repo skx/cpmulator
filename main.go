@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	cpmccp "github.com/skx/cpmulator/ccp"
 	"github.com/skx/cpmulator/cpm"
 	cpmio "github.com/skx/cpmulator/io"
 )
@@ -34,11 +35,21 @@ func main() {
 	cd := flag.String("cd", "", "Change to this directory before launching")
 	createDirectories := flag.Bool("create", false, "Create subdirectories on the host computer for each CP/M drive.")
 	ccp := flag.String("ccp", "ccp", "The name of the CCP that we should run (ccp vs. ccpz).")
+	ccps := flag.Bool("ccps", false, "Dump the list of embedded CCPs.")
 	useDirectories := flag.Bool("directories", false, "Use subdirectories on the host computer for CP/M drives.")
 	logPath := flag.String("log-path", "", "Specify the file to write debug logs to.")
 	prnPath := flag.String("prn-path", "print.log", "Specify the file to write printer-output to.")
 	syscalls := flag.Bool("syscalls", false, "List the syscalls we implement.")
 	flag.Parse()
+
+	// Are we dumping CCPs?
+	if *ccps {
+		x := cpmccp.GetAll()
+		for _, x := range x {
+			fmt.Printf("%5s %-10s %04X bytes, entry-point %04X\n", x.Name, x.Description, len(x.Bytes), x.Start)
+		}
+		return
+	}
 
 	// Are we dumping syscalls?
 	if *syscalls {
