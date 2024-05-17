@@ -1,2 +1,10 @@
-ccp.bin: DR.ASM
+ALL: DR.BIN CCPZ.BIN
+
+DR.BIN: DR.ASM
 	pasmo DR.ASM DR.BIN
+
+CCPZ.BIN: CCPZ.ASM
+	pasmo CCPZ.ASM CCPZ.BIN
+
+clean:
+	rm *.BIN
