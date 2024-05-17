@@ -277,7 +277,7 @@ func SysCallDriveAllReset(cpm *CPM) error {
 	if err == nil {
 		for _, n := range files {
 			if strings.Contains(n.Name(), "$") {
-				ret = 0xff
+				ret = 0xFF
 			}
 		}
 	}
@@ -501,13 +501,13 @@ func SysCallFindFirst(cpm *CPM) error {
 			slog.String("path", dir),
 			slog.String("error", err.Error()))
 
-		cpm.CPU.States.AF.Hi = 0xff
+		cpm.CPU.States.AF.Hi = 0xFF
 		return nil
 	}
 
 	// No matches?  Return an error
 	if len(res) < 1 {
-		cpm.CPU.States.AF.Hi = 0xff
+		cpm.CPU.States.AF.Hi = 0xFF
 		return nil
 	}
 
@@ -621,7 +621,7 @@ func SysCallDeleteFile(cpm *CPM) error {
 			slog.String("path", path),
 			slog.String("error", err.Error()))
 
-		cpm.CPU.States.AF.Hi = 0xff
+		cpm.CPU.States.AF.Hi = 0xFF
 		return nil
 	}
 
@@ -648,7 +648,7 @@ func SysCallDeleteFile(cpm *CPM) error {
 				slog.String("path", path),
 				slog.String("error", err.Error()))
 
-			cpm.CPU.States.AF.Hi = 0xff
+			cpm.CPU.States.AF.Hi = 0xFF
 			return nil
 		}
 	}
@@ -695,7 +695,7 @@ func SysCallRead(cpm *CPM) error {
 
 	// Fill the area with data
 	for i := range data {
-		data[i] = 0x1a
+		data[i] = 0x1A
 	}
 
 	// Read from the file, now we're in the right place
@@ -1077,7 +1077,7 @@ func SysCallReadRand(cpm *CPM) error {
 		}
 
 		for i := range data {
-			data[i] = 0x1a
+			data[i] = 0x1A
 		}
 
 		_, err = f.Read(data)
@@ -1287,9 +1287,9 @@ func SysCallFileSize(cpm *CPM) error {
 	records := int(fi.Size() / 128)
 
 	// Store the value in the three fields
-	fcbPtr.R0 = uint8(records & 0xff)
-	fcbPtr.R1 = uint8(records & 0xff00)
-	fcbPtr.R2 = uint8(records & 0xff0000)
+	fcbPtr.R0 = uint8(records & 0xFF)
+	fcbPtr.R1 = uint8(records & 0xFF00)
+	fcbPtr.R2 = uint8(records & 0xFF0000)
 
 	// sanity check because I've messed this up in the past
 	n := int(int(fcbPtr.R2)<<16) | int(int(fcbPtr.R1)<<8) | int(fcbPtr.R0)

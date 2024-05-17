@@ -508,21 +508,24 @@ func (cpm *CPM) fixupRAM() {
 //
 // This function modifies the "start" attribute, to ensure the CCP is loaded
 // and executed at a higher address than the default of 0x0100.
-func (cpm *CPM) LoadCCP() {
+func (cpm *CPM) LoadCCP(name string) error {
 
 	// Create 64K of memory, full of NOPs
 	if cpm.Memory == nil {
 		cpm.Memory = new(memory.Memory)
 	}
 
-	// Get our embedded CCP
-	data := ccp.CCPBinary
+	//
+	// Get our helper to find the CCP to load
+	//
+	helper, err := ccp.Get(name)
 
-	// The location in RAM of the binary
-	var ccpEntrypoint uint16 = 0xDE00
+	if err != nil {
+		return fmt.Errorf("error retrieving CCP by name: %s", err)
+	}
 
 	// Load it into memory
-	cpm.Memory.SetRange(ccpEntrypoint, data...)
+	cpm.Memory.SetRange(helper.Start, helper.Bytes...)
 
 	// DMA area / CLI Args are going to be unset.
 	cpm.Memory.Set(0x0080, 0x00)
@@ -537,12 +540,14 @@ func (cpm *CPM) LoadCCP() {
 	cpm.Memory.FillRange(0x006C+1, 11, ' ')
 
 	// Ensure our starting point is what we expect
-	cpm.start = ccpEntrypoint
+	cpm.start = helper.Start
 
 	// patch low-memory so that RST instructions will
 	// ultimately invoke our CP/M syscalls, via our "Out"
 	// function.
 	cpm.fixupRAM()
+
+	return nil
 }
 
 // Execute executes our named binary, with the specified arguments.
@@ -593,7 +598,7 @@ func (cpm *CPM) Execute(args []string) error {
 	//  0x0000 - is the boot address of the Z80 processor.
 	//  0x0005 - The CPM BDOS entrypoint.
 	//
-	cpm.CPU.BreakPoints = map[uint16]struct{}{}
+	cpm.CPU.BreakPoints = make(map[uint16]struct{})
 	cpm.CPU.BreakPoints[0x0000] = struct{}{}
 	cpm.CPU.BreakPoints[0x0005] = struct{}{}
 
@@ -699,8 +704,7 @@ func (cpm *CPM) Execute(args []string) error {
 				slog.String("L", fmt.Sprintf("%02X", cpm.CPU.States.HL.Lo)),
 				slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
 				slog.String("DE", fmt.Sprintf("%04X", cpm.CPU.States.DE.U16())),
-				slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16())),
-			))
+				slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16()))))
 
 		// Invoke the handler
 		err = handler.Handler(cpm)
