@@ -1,2 +1,2 @@
-ccp.bin: ccp.asm
-	pasmo ccp.asm ccp.bin
+ccp.bin: DR.ASM
+	pasmo DR.ASM DR.BIN

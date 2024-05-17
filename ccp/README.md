@@ -8,9 +8,9 @@ This directory contains the two CCP flavours:
 
 ## DR CCP
 
-* [CCP.ASM](CCP.ASM)
+* [DR.ASM](DR.ASM)
   * The source-code, to be compiled by pasmo with the included `Makefile`.
-* `CCP.BIN`
+* `DR.BIN`
   * The compiled binary, which is embedded in `cpmulator`, via [ccp.go](ccp.go).
 
 

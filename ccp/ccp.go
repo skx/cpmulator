@@ -23,7 +23,7 @@ type Flavour struct {
 	Start uint16
 }
 
-//go:embed CCP.BIN
+//go:embed DR.BIN
 var ccpBin []uint8
 
 //go:embed CCPZ.BIN
