@@ -33,6 +33,7 @@ func main() {
 	//
 	cd := flag.String("cd", "", "Change to this directory before launching")
 	createDirectories := flag.Bool("create", false, "Create subdirectories on the host computer for each CP/M drive.")
+	ccp := flag.String("ccp", "ccp", "The name of the CCP that we should run (ccp vs. ccpz).")
 	useDirectories := flag.Bool("directories", false, "Use subdirectories on the host computer for CP/M drives.")
 	logPath := flag.String("log-path", "", "Specify the file to write debug logs to.")
 	prnPath := flag.String("prn-path", "print.log", "Specify the file to write printer-output to.")
@@ -218,12 +219,16 @@ func main() {
 	//
 	for {
 		// Load the CCP binary - reseting RAM
-		obj.LoadCCP()
+		err := obj.LoadCCP(*ccp)
+		if err != nil {
+			fmt.Printf("error loading CCP: %s\n", err)
+			return
+		}
 
 		// Run the CCP, which will often load a child-binary.
 		// The child-binary will call "P_TERMCPM" which will cause
 		// the CCP to terminate.
-		err := obj.Execute(args)
+		err = obj.Execute(args)
 		if err != nil {
 
 			if err == cpm.ErrBoot {
