@@ -50,6 +50,22 @@ If you wish to import any of the internal APIs you do so at the risk of changes 
 
 
 
+# Quick Start
+
+* Build/Install this application.
+* Clone the associated repository of binaries
+  * `git clone https://github.com/skx/cpm-dist.git /tmp/cpm-dist`
+* Launch the emulator, pointing at the binaries
+  * `cpmulator -cd /tmp/cpm-dist -directories`
+* Start something:
+  * "B:", then "MBASIC" - to run BASIC.  ("SYSTEM" to exit)
+  * "G:", then "ZORK1" - to play zork1.
+  * "P:", then "TURBO" - to run turbo pascal.
+  * "E:", then "WS" - to run worstar.
+
+
+
+
 # Portability
 
 The CP/M input handlers need to disable echoing when reading (single) characters from STDIN.  There isn't a simple and portable solution for this in golang - so I've resorted to the naive approach of executing `stty` when necessary.
