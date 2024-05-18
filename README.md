@@ -1,11 +1,11 @@
 # cpmulator - A CP/M emulator written in golang
 
-This repository contains a CP/M emulator, with integrated CCP, which is primarily designed to launch simple CP/M binaries:
+This repository contains a CP/M emulator, with integrated CCP, which is designed to run CP/M binaries:
 
 * The project was initially created to run [my text-based adventure game](https://github.com/skx/lighthouse-of-doom/), which I wrote a few years ago, to amuse my child.
   * That was written in Z80 assembly language and initially targeted CP/M, although it was later ported to the ZX Spectrum.
 
-Over time this project has become more complete, and more complex.  I've implemented enough of the BIOS functions to run simple binaries and also several of the well-known "vintage" CP/M programs:
+Over time this project has become more complete, and more complex, and I've implemented enough functionity to run simple binaries and many of the well-known CP/M programs:
 
 * The Aztec C-Compiler.
   * You can edit and compile C code within the emulator, then run it!
@@ -18,7 +18,7 @@ Over time this project has become more complete, and more complex.  I've impleme
 * Microsoft BASIC
 * Wordstar
 
-The biggest caveat of the emulator is that I've not implemented any notion of disk-based access.  This means that, for example opening, reading/writing, and closing files is absolutely fine, but any API call that refers to tracks, sectors, or disks will fail.
+The biggest caveat is that I've not implemented any notion of disk-based access.  This means that, for example, opening, reading/writing, and closing files is absolutely fine, but any API call that refers to tracks, sectors, or disks will fail.
 
 A companion repository contains a collection of vintage CP/M software you can use with this, or any other, emulator:
 
@@ -65,7 +65,7 @@ This is tracked in #65.
 
 # Usage
 
-If you launch `cpmulator` with no arguments then the integrated CCP ("console command processor") will be launched, dropping you into a familiar shell:
+If you launch `cpmulator` with no arguments then one of the integrated CCPs ("console command processor") will be launched, dropping you into a familiar shell:
 
 ```sh
 $ cpmulator
@@ -83,7 +83,7 @@ A>
 You can terminate the CCP by pressing Ctrl-C, or typing `EXIT`.  The following built-in commands are available:
 
 <details>
-<summary>Show the CCP built-in commands:</summary>
+<summary>Show the built-in commands of the default CCP:</summary>
 
 * `CLS`
   * Clear the screen.
@@ -101,6 +101,18 @@ You can terminate the CCP by pressing Ctrl-C, or typing `EXIT`.  The following b
 
 </details>
 
+
+There are currently a pair of CCP implementations included within the emulator, and they can be selected via the `-ccp` command-line flag:
+
+* "ccp"
+  * This is the default, but you can choose it explicitly via `cpmulator -ccp=ccp ..`.
+  * The original/default one, from Digital Research
+* "ccpz"
+  * Launch this via `cpmulate -ccp=ccpz ..`
+  * An enhanced one with extra built-in commands.
+  * Notably "GET 0100 FOO.COM" will load a binary into RAM, at address 0x100.  Then "JMP 0100" will launch it.
+  * The prompt changes to show user-number, for example if you run "USER 3".
+  * If a command isn't found in the current drive A: will be searched instead, which is handy.
 
 You can also launch a binary directly by specifying it's path upon the command-line, followed by any optional arguments that the binary accepts or requires:
 

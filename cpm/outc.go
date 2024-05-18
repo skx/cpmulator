@@ -22,15 +22,15 @@ func (cpm *CPM) outC(c uint8) {
 		switch c {
 		case 0x07: /* BEL: flash screen */
 			fmt.Printf("\033[?5h\033[?5l")
-		case 0x7f: /* DEL: echo BS, space, BS */
+		case 0x7F: /* DEL: echo BS, space, BS */
 			fmt.Printf("\b \b")
-		case 0x1a: /* adm3a clear screen */
+		case 0x1A: /* adm3a clear screen */
 			fmt.Printf("\033[H\033[2J")
-		case 0x0c: /* vt52 clear screen */
+		case 0x0C: /* vt52 clear screen */
 			fmt.Printf("\033[H\033[2J")
-		case 0x1e: /* adm3a cursor home */
+		case 0x1E: /* adm3a cursor home */
 			fmt.Printf("\033[H")
-		case 0x1b:
+		case 0x1B:
 			cpm.auxStatus = 1 /* esc-prefix */
 		case 1:
 			cpm.auxStatus = 2 /* cursor motion prefix */
@@ -47,7 +47,7 @@ func (cpm *CPM) outC(c uint8) {
 		}
 	case 1: /* we had an esc-prefix */
 		switch c {
-		case 0x1b:
+		case 0x1B:
 			fmt.Printf("%c", c)
 		case '=', 'Y':
 			cpm.auxStatus = 2
@@ -65,7 +65,7 @@ func (cpm *CPM) outC(c uint8) {
 			cpm.auxStatus = 8
 		default: /* some true ANSI sequence? */
 			cpm.auxStatus = 0
-			fmt.Printf("%c%c", 0x1b, c)
+			fmt.Printf("%c%c", 0x1B, c)
 		}
 	case 2:
 		cpm.y = c - ' ' + 1
@@ -94,7 +94,7 @@ func (cpm *CPM) outC(c uint8) {
 		case '7': /* preserve status line */
 			// nop
 		default:
-			fmt.Printf("%cB%c", 0x1b, c)
+			fmt.Printf("%cB%c", 0x1B, c)
 		}
 	case 5: /* <ESC>+C prefix */
 		cpm.auxStatus = 0
@@ -116,7 +116,7 @@ func (cpm *CPM) outC(c uint8) {
 		case '7': /* don't preserve status line */
 			// nop
 		default:
-			fmt.Printf("%cC%c", 0x1b, c)
+			fmt.Printf("%cC%c", 0x1B, c)
 		}
 		/* set/clear line/point */
 	case 6:

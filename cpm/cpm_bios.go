@@ -110,8 +110,7 @@ func (cpm *CPM) BiosHandler(val uint8) {
 			slog.String("L", fmt.Sprintf("%02X", cpm.CPU.States.HL.Lo)),
 			slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
 			slog.String("DE", fmt.Sprintf("%04X", cpm.CPU.States.DE.U16())),
-			slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16())),
-		))
+			slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16()))))
 
 	// Otherwise invoke it, and look for any error
 	err := handler.Handler(cpm)

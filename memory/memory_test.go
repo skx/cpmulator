@@ -1,6 +1,8 @@
 package memory
 
-import "testing"
+import (
+	"testing"
+)
 
 // TestMemoryTrivial just does basic get/set tests
 func TestMemoryTrivial(t *testing.T) {
@@ -24,20 +26,20 @@ func TestMemoryTrivial(t *testing.T) {
 	}
 
 	// Fill with 0xCD
-	mem.FillRange(0x00, 0xffff, 0xcd)
+	mem.FillRange(0x00, 0xFFFF, 0xCD)
 
-	if mem.Get(0xFFFE) != 0xcd {
+	if mem.Get(0xFFFE) != 0xCD {
 		t.Fatalf("failed to get expected result")
 	}
 	// GetU16
-	if mem.GetU16(0x0100) != 0xcdcd {
+	if mem.GetU16(0x0100) != 0xCDCD {
 		t.Fatalf("failed to get expected result")
 	}
 
 	// Get a random range
-	out := mem.GetRange(0x300, 0x00ff)
+	out := mem.GetRange(0x300, 0x00FF)
 	for _, d := range out {
-		if d != 0xcd {
+		if d != 0xCD {
 			t.Fatalf("wrong result in GetRange")
 		}
 	}
@@ -56,7 +58,7 @@ func TestMemoryTrivial(t *testing.T) {
 	if mem.GetU16(0x00) != 0x0201 {
 		t.Fatalf("failed to get expected result")
 	}
-	if mem.GetU16(0x02) != 0xcd03 {
+	if mem.GetU16(0x02) != 0xCD03 {
 		t.Fatalf("failed to get expected result")
 	}
 
