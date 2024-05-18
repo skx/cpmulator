@@ -15,7 +15,6 @@ import (
 	"strings"
 
 	"github.com/skx/cpmulator/fcb"
-	cpmio "github.com/skx/cpmulator/io"
 )
 
 // blkSize is the size of block-based I/O operations
@@ -32,11 +31,8 @@ func SysCallExit(cpm *CPM) error {
 // SysCallReadChar reads a single character from the console.
 func SysCallReadChar(cpm *CPM) error {
 
-	// Use our I/O package
-	obj := cpmio.New(cpm.Logger)
-
 	// Block for input
-	c, err := obj.BlockForCharacterWithEcho()
+	c, err := cpm.input.BlockForCharacterWithEcho()
 	if err != nil {
 		return fmt.Errorf("error in call to BlockForCharacter: %s", err)
 	}
@@ -64,13 +60,10 @@ func SysCallWriteChar(cpm *CPM) error {
 // Note: Echo is not enabled in this function.
 func SysCallAuxRead(cpm *CPM) error {
 
-	// Use our I/O package
-	obj := cpmio.New(cpm.Logger)
-
 	// Block for input
-	c, err := obj.BlockForCharacter()
+	c, err := cpm.input.BlockForCharacterNoEcho()
 	if err != nil {
-		return fmt.Errorf("error in call to BlockForCharacter: %s", err)
+		return fmt.Errorf("error in call to BlockForCharacterNoEcho: %s", err)
 	}
 
 	// Return values:
@@ -105,13 +98,10 @@ func SysCallAuxWrite(cpm *CPM) error {
 // SysCallRawIO handles both simple character output, and input.
 func SysCallRawIO(cpm *CPM) error {
 
-	// Use our I/O package
-	obj := cpmio.New(cpm.Logger)
-
 	switch cpm.CPU.States.DE.Lo {
 	case 0xFF, 0xFD:
 
-		out, err := obj.BlockForCharacter()
+		out, err := cpm.input.BlockForCharacterNoEcho()
 		if err != nil {
 			return err
 		}
@@ -180,8 +170,8 @@ func SysCallReadString(cpm *CPM) error {
 	// First byte is the max len
 	max := cpm.CPU.Memory.Get(addr)
 
-	obj := cpmio.New(cpm.Logger)
-	text, err := obj.ReadLine(max)
+	// read the input
+	text, err := cpm.input.ReadLine(max)
 
 	if err != nil {
 		return err

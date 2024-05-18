@@ -12,23 +12,13 @@ import (
 
 	cpmccp "github.com/skx/cpmulator/ccp"
 	"github.com/skx/cpmulator/cpm"
-	cpmio "github.com/skx/cpmulator/io"
 )
 
 // log holds our logging handle
 var log *slog.Logger
 
-// restoreEcho is designed to ensure we leave our terminal in a good state,
-// when we terminate, by enabling console-echoing if it had been disabled.
-func restoreEcho() {
-	// Use our I/O package
-	obj := cpmio.New(log)
-	obj.Restore()
-}
-
 func main() {
 
-	defer restoreEcho()
 	//
 	// Parse the command-line flags for this driver-application
 	//
@@ -140,6 +130,8 @@ func main() {
 
 	// Create a new emulator.
 	obj := cpm.New(log, *prnPath)
+
+	defer obj.Cleanup()
 
 	// change directory?
 	if *cd != "" {
