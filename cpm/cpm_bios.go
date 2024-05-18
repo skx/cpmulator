@@ -126,7 +126,7 @@ func (cpm *CPM) BiosHandler(val uint8) {
 			slog.String("syscallHex", fmt.Sprintf("0x%02X", val)))
 
 		// record the error
-		cpm.ioErr = ErrUnimplemented
+		cpm.biosErr = ErrUnimplemented
 		// halt processing.
 		cpm.CPU.HALT = true
 
@@ -158,7 +158,7 @@ func (cpm *CPM) BiosHandler(val uint8) {
 	// If there was an error then record it for later notice.
 	if err != nil {
 		// record the error
-		cpm.ioErr = err
+		cpm.biosErr = err
 		// halt processing.
 		cpm.CPU.HALT = true
 	}

@@ -88,12 +88,12 @@ type FileCache struct {
 // CPM is the object that holds our emulator state.
 type CPM struct {
 
-	// ioErr holds any error received by the IO handler.
+	// biosErr holds any error created by a BIOS handler.
 	//
-	// We need this because the CPU handler we use for IO operations
+	// We need this because the handlers we use for BIOS operations
 	// cannot return an error - due to the interface used in the z80
 	// emulator.
-	ioErr error
+	biosErr error
 
 	// files is the cache we use for File handles.
 	files map[uint16]FileCache
@@ -659,9 +659,9 @@ func (cpm *CPM) Execute(args []string) error {
 		// If we ended up here because the I/O handler received
 		// an error, and then HALTed the emulator we'll process it
 		// here.
-		if cpm.ioErr != nil {
-			err = cpm.ioErr
-			cpm.ioErr = nil
+		if cpm.biosErr != nil {
+			err = cpm.biosErr
+			cpm.biosErr = nil
 		}
 
 		// Reboot?
