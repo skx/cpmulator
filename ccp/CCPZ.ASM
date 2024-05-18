@@ -3,10 +3,10 @@
 	.Z80
 ;	org	0e400h		; For RunCPM 60k
 ;	org	0f400h		; For RunCPM 64k
-	org	0e400h		; For plain CPM 2.2 64k
+	org	0DE00h		; For plain CPM 2.2 64k
 
 ;
-;  CP/M CONSOLE COMMAND PROCESSOR (CCP) Revision 4.1
+;  CP/M CONSOLE COMMAND PROCESSOR (CCP) Revision 4.1skx
 ;  FOR Z80-BASED CP/M 2.X SYSTEMS
 ;
 ;	ORIGINAL CCP DISASSEMBLED BY ????
@@ -25,7 +25,8 @@
 ;	FURTHER MODIFIED BY RLC AS V3.0
 ;	FURTHER MODIFIED BY RLC AS V3.1
 ;	FURTHER MODIFIED BY RLC AS V4.0
-;		SBB V4.1 11/27/81
+;	SBB V4.1 11/27/81
+;	SBB V4.1skx 18/05/24 - Rebased, added QUIT/EXIT/HALT & CLS
 ;
 ;******** Refer to CCPZ-Vxx.NOT File for Revision History ********
 ;
@@ -76,7 +77,8 @@
 ;     5J		GO
 ;     5K		COM	CALLPROG	ERRLOG	ERRJMP
 ;     5L		GET	MEMLOAD	PRNLE
-;
+;     5M                QUIT    Added by skx
+;     5N                CLS     Added by skx
 ;
 FALSE	EQU	0
 TRUE	EQU	NOT FALSE
@@ -421,6 +423,14 @@ CMDTBL:
 	DW	USER
 	DB	'DFU '
 	DW	DFU
+	DB	'QUIT'          ; added by skx
+	DW	QUIT
+	DB	'EXIT'          ; added by skx
+	DW	QUIT
+	DB	'HALT'          ; added by skx
+	DW	QUIT
+	DB	'CLS '          ; added by skx
+	DW	CLS
 ;
 	IF	NOT RAS		;FOR NON-RAS
 	DB	'GO  '
@@ -1788,7 +1798,7 @@ GO:	LD	HL,TPA		;Always to TPA
 COM:
 	LD	A,(FCBFN)	;ANY COMMAND?
 	CP	' '		;' ' MEANS COMMAND WAS 'D:' TO SWITCH
-	JR	NZ,COM1		;NOT <SP>, SO MUST BE TRANSIENT OR ERROR
+q	JR	NZ,COM1		;NOT <SP>, SO MUST BE TRANSIENT OR ERROR
 	LD	A,(TEMPDR)	;LOOK FOR DRIVE SPEC
 	OR	A		;IF ZERO, JUST BLANK
 	JP	Z,RCCPNL
@@ -1981,5 +1991,30 @@ ERRLOG:
 	CALL	DLOGIN		;LOG IN DEFAULT DISK
 ERRJMP:
 	JP	ERROR
+
+
 ;
+;Section 5M
+;Command: QUIT
+;Function:  Terminate the CCP by existing a HALT instruction
+;Forms:
+;	QUIT
+;	HALT
+;	EXIT
+QUIT:
+        HALT
+
+
+;
+;Section 5N
+;Command: CLS
+;Function:  Clear the screen
+;Forms:
+;	CLS
+CLS:
+        CALL PRINTC
+        db 27, '[2J'            ; "clear"
+        db 27, '[', 'H'+80H     ; "home"
+        RET
+
 	END

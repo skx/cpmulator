@@ -44,8 +44,8 @@ func init() {
 
 	ccps = append(ccps, Flavour{
 		Name:        "ccpz",
-		Description: "CCPZ v4.1",
-		Start:       0xE400,
+		Description: "CCPZ v4.1skx",
+		Start:       0xDE00,
 		Bytes:       ccpzBin,
 	})
 }
