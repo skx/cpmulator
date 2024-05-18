@@ -274,6 +274,13 @@ The following environmental variables influence runtime behaviour:
 |-------------|---------------------------------------------------------------|
 | SIMPLE_CHAR | Avoid the attempted VT52 output conversion.                   |
 
+For reference the memory map of our CP/M looks like this:
+
+* 0x0000 - Start of RAM
+* 0xDE00 - The CCP
+* 0xF000 - The BDOS (fake)
+* 0xFE00 - The BIOS (fake)
+
 
 
 
