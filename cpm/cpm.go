@@ -16,6 +16,7 @@ import (
 
 	"github.com/koron-go/z80"
 	"github.com/skx/cpmulator/ccp"
+	"github.com/skx/cpmulator/consolein"
 	"github.com/skx/cpmulator/fcb"
 	"github.com/skx/cpmulator/memory"
 )
@@ -97,6 +98,11 @@ type CPM struct {
 
 	// files is the cache we use for File handles.
 	files map[uint16]FileCache
+
+	// input is our interface for reading from the console.
+	//
+	// This needs to take account of echo/no-echo status.
+	input *consolein.ConsoleIn
 
 	// dma contains the address of the DMA area in RAM.
 	//
@@ -394,6 +400,7 @@ func New(logger *slog.Logger, prn string) *CPM {
 	// Create the emulator object and return it
 	tmp := &CPM{
 		Logger:       logger,
+		input:        consolein.New(),
 		BDOSSyscalls: sys,
 		BIOSSyscalls: b,
 		dma:          0x0080,
@@ -402,6 +409,11 @@ func New(logger *slog.Logger, prn string) *CPM {
 		prnPath:      prn,
 	}
 	return tmp
+}
+
+// Cleanup cleans up the state of the terminal, if necessary.
+func (cpm *CPM) Cleanup() {
+	cpm.input.Reset()
 }
 
 // LoadBinary loads the given CP/M binary at the default address of 0x0100,

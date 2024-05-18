@@ -1,22 +1,17 @@
-// Package io is designed to collect the code that reads from STDIN.
+// Package consolein handles the reading of console input
+// for our emulator.
 //
-// There are three functions we need to care about:
+// The package supports the minimum required functionality
+// we need - which boils down to reading a single character
+// of input, with and without echo, and reading a line of text.
 //
-// * Block for a character, and return it.
-//
-// * Block for a character, and return it, but disable echo first.
-//
-// * Read a single line of input.
-//
-// There are functions for polling console status in CP/M, however it
-// seems to work just fine if we fake their results - which means this
-// package is simpler than it would otherwise need to be.
-package io
+// Note that no output functions are handled by this package,
+// it is exclusively used for input.
+package consolein
 
 import (
 	"bufio"
 	"fmt"
-	"log/slog"
 	"os"
 	"os/exec"
 	"strings"
@@ -24,46 +19,44 @@ import (
 	"golang.org/x/term"
 )
 
-// IO is used to hold our package state
-type IO struct {
-	Logger *slog.Logger
+// Status is used to record our current state
+type Status int
+
+var (
+	// Unknown means we don't know the status of echo/noecho
+	Unknown Status = 0
+
+	// Echo means that input will echo characters.
+	Echo Status = 1
+
+	// NoEcho means that input will not echo characters.
+	NoEcho Status = 2
+)
+
+// ConsoleIn holds our state
+type ConsoleIn struct {
+	// State holds our current state
+	State Status
 }
 
-// New is our package constructor.
-func New(log *slog.Logger) *IO {
-	return &IO{Logger: log}
-}
-
-// disableEcho is the single place where we disable echoing.
-func (io *IO) disableEcho() {
-	err := exec.Command("stty", "-F", "/dev/tty", "-echo").Run()
-	if err != nil {
-		io.Logger.Debug("disableEcho",
-			slog.String("error", err.Error()))
+// New is our constructor
+func New() *ConsoleIn {
+	t := &ConsoleIn{
+		State: Unknown,
 	}
+	return t
 }
 
-// enableEcho is the single place where we enable echoing.
-func (io *IO) enableEcho() {
-	err := exec.Command("stty", "-F", "/dev/tty", "echo").Run()
-	if err != nil {
-		io.Logger.Debug("enableEcho",
-			slog.String("error", err.Error()))
-	}
-}
-
-// Restore enables echoing.
-func (io *IO) Restore() {
-	io.enableEcho()
-}
-
-// BlockForCharacter returns the next character from the console, blocking until
+// BlockForCharacterNoEcho returns the next character from the console, blocking until
 // one is available.
 //
 // NOTE: This function should not echo keystrokes which are entered.
-func (io *IO) BlockForCharacter() (byte, error) {
+func (io *ConsoleIn) BlockForCharacterNoEcho() (byte, error) {
 
-	io.disableEcho()
+	// Do we need to change state?  If so then do it.
+	if io.State != NoEcho {
+		io.disableEcho()
+	}
 
 	// switch stdin into 'raw' mode
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
@@ -92,9 +85,12 @@ func (io *IO) BlockForCharacter() (byte, error) {
 // blocking until one is available.
 //
 // NOTE: Characters should be echo'd as they are input.
-func (io *IO) BlockForCharacterWithEcho() (byte, error) {
+func (io *ConsoleIn) BlockForCharacterWithEcho() (byte, error) {
 
-	io.enableEcho()
+	// Do we need to change state?  If so then do it.
+	if io.State != Echo {
+		io.enableEcho()
+	}
 
 	// switch stdin into 'raw' mode
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
@@ -115,7 +111,6 @@ func (io *IO) BlockForCharacterWithEcho() (byte, error) {
 		return 0x00, fmt.Errorf("error restoring terminal state %s", err)
 	}
 
-	fmt.Printf("%c", b[0])
 	return b[0], nil
 }
 
@@ -124,9 +119,12 @@ func (io *IO) BlockForCharacterWithEcho() (byte, error) {
 // buffer-overruns will occur!)
 //
 // Note: We should enable echo in this function.
-func (io *IO) ReadLine(max uint8) (string, error) {
+func (io *ConsoleIn) ReadLine(max uint8) (string, error) {
 
-	io.enableEcho()
+	// Do we need to change state?  If so then do it.
+	if io.State != Echo {
+		io.enableEcho()
+	}
 
 	// Create a  reader
 	reader := bufio.NewReader(os.Stdin)
@@ -147,4 +145,22 @@ func (io *IO) ReadLine(max uint8) (string, error) {
 
 	// Return the text
 	return text, err
+}
+
+// Reset restores echo.
+func (io *ConsoleIn) Reset() {
+
+	if io.State == NoEcho {
+		io.enableEcho()
+	}
+}
+
+// disableEcho is the single place where we disable echoing.
+func (io *ConsoleIn) disableEcho() {
+	_ = exec.Command("stty", "-F", "/dev/tty", "-echo").Run()
+}
+
+// enableEcho is the single place where we enable echoing.
+func (io *ConsoleIn) enableEcho() {
+	_ = exec.Command("stty", "-F", "/dev/tty", "echo").Run()
 }

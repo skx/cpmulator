@@ -9,8 +9,6 @@ package cpm
 import (
 	"fmt"
 	"log/slog"
-
-	cpmio "github.com/skx/cpmulator/io"
 )
 
 // BiosSysCallBoot handles a warm/cold boot.
@@ -34,11 +32,7 @@ func BiosSysCallConsoleStatus(cpm *CPM) error {
 // and return the character pressed in the A-register.
 func BiosSysCallConsoleInput(cpm *CPM) error {
 
-	// Wait until the keyboard is ready to provide a character, and return it in A.
-	// Use our I/O package
-	obj := cpmio.New(cpm.Logger)
-
-	out, err := obj.BlockForCharacter()
+	out, err := cpm.input.BlockForCharacterWithEcho()
 	if err != nil {
 		return err
 	}
