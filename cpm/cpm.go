@@ -370,6 +370,26 @@ func New(logger *slog.Logger, prn string) *CPM {
 		Handler: BiosSysCallPrintChar,
 		Fake:    true,
 	}
+	b[15] = CPMHandler{
+		Desc:    "LISTST",
+		Handler: BiosSysCallPrinterStatus,
+		Fake:    true,
+	}
+	b[17] = CPMHandler{
+		Desc:    "CONOST",
+		Handler: BiosSysCallScreenOutputStatus,
+		Fake:    true,
+	}
+	b[18] = CPMHandler{
+		Desc:    "AUXIST",
+		Handler: BiosSysCallAuxInputStatus,
+		Fake:    true,
+	}
+	b[19] = CPMHandler{
+		Desc:    "AUXOST",
+		Handler: BiosSysCallAuxOutputStatus,
+		Fake:    true,
+	}
 
 	// Create the emulator object and return it
 	tmp := &CPM{

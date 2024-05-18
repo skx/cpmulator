@@ -70,6 +70,46 @@ func BiosSysCallPrintChar(cpm *CPM) error {
 	return err
 }
 
+// BiosSysCallPrinterStatus returns status of current printer device.
+//
+// This is fake, and always returns "ready".
+func BiosSysCallPrinterStatus(cpm *CPM) error {
+
+	// Ready
+	cpm.CPU.States.AF.Hi = 0xFF
+	return nil
+}
+
+// BiosSysCallScreenOutputStatus returns status of current screen output device.
+//
+// This is fake, and always returns "ready".
+func BiosSysCallScreenOutputStatus(cpm *CPM) error {
+
+	// Ready
+	cpm.CPU.States.AF.Hi = 0xFF
+	return nil
+}
+
+// BiosSysCallAuxInputStatus returns status of current auxiliary input device.
+//
+// This is fake, and always returns "ready".
+func BiosSysCallAuxInputStatus(cpm *CPM) error {
+
+	// Ready
+	cpm.CPU.States.AF.Hi = 0xFF
+	return nil
+}
+
+// BiosSysCallAuxOutputStatus returns status of current auxiliary output device.
+//
+// This is fake, and always returns "ready".
+func BiosSysCallAuxOutputStatus(cpm *CPM) error {
+
+	// Ready
+	cpm.CPU.States.AF.Hi = 0xFF
+	return nil
+}
+
 // BiosHandler is involved when a BIOS syscall needs to be executed,
 // which is handled via a small trampoline.
 //
