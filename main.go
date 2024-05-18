@@ -66,7 +66,7 @@ func main() {
 
 		// Now show them.
 		fmt.Printf("BDOS\n")
-		for id := range ids {
+		for _, id := range ids {
 			ent := c.BDOSSyscalls[uint8(id)]
 			fake := ""
 			if ent.Fake {
@@ -84,7 +84,7 @@ func main() {
 
 		// Now show them.
 		fmt.Printf("BIOS\n")
-		for id := range ids {
+		for _, id := range ids {
 			ent := c.BIOSSyscalls[uint8(id)]
 			fake := ""
 			if ent.Fake {
