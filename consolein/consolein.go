@@ -47,7 +47,7 @@ func New() *ConsoleIn {
 	return t
 }
 
-// BlockForCharacter returns the next character from the console, blocking until
+// BlockForCharacterNoEcho returns the next character from the console, blocking until
 // one is available.
 //
 // NOTE: This function should not echo keystrokes which are entered.
