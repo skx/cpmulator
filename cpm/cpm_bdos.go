@@ -1278,13 +1278,13 @@ func SysCallFileSize(cpm *CPM) error {
 
 	// Store the value in the three fields
 	fcbPtr.R0 = uint8(records & 0xFF)
-	fcbPtr.R1 = uint8(records & 0xFF00)
-	fcbPtr.R2 = uint8(records & 0xFF0000)
+	fcbPtr.R1 = uint8(records >> 8)
+	fcbPtr.R2 = uint8(records >> 16)
 
 	// sanity check because I've messed this up in the past
 	n := int(int(fcbPtr.R2)<<16) | int(int(fcbPtr.R1)<<8) | int(fcbPtr.R0)
 	if n != records {
-		return fmt.Errorf("failed to update because maths is hard")
+		return fmt.Errorf("failed to update because maths is hard %d != %d", n, records)
 	}
 
 	// Update the FCB in memory
