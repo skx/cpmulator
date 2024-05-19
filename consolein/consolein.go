@@ -111,6 +111,7 @@ func (io *ConsoleIn) BlockForCharacterWithEcho() (byte, error) {
 		return 0x00, fmt.Errorf("error restoring terminal state %s", err)
 	}
 
+	fmt.Printf("%c", b[0])
 	return b[0], nil
 }
 
@@ -149,18 +150,17 @@ func (io *ConsoleIn) ReadLine(max uint8) (string, error) {
 
 // Reset restores echo.
 func (io *ConsoleIn) Reset() {
-
-	if io.State == NoEcho {
-		io.enableEcho()
-	}
+	io.enableEcho()
 }
 
 // disableEcho is the single place where we disable echoing.
 func (io *ConsoleIn) disableEcho() {
 	_ = exec.Command("stty", "-F", "/dev/tty", "-echo").Run()
+	io.State = NoEcho
 }
 
 // enableEcho is the single place where we enable echoing.
 func (io *ConsoleIn) enableEcho() {
 	_ = exec.Command("stty", "-F", "/dev/tty", "echo").Run()
+	io.State = Echo
 }

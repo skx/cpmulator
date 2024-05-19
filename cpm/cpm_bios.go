@@ -32,7 +32,7 @@ func BiosSysCallConsoleStatus(cpm *CPM) error {
 // and return the character pressed in the A-register.
 func BiosSysCallConsoleInput(cpm *CPM) error {
 
-	out, err := cpm.input.BlockForCharacterWithEcho()
+	out, err := cpm.input.BlockForCharacterNoEcho()
 	if err != nil {
 		return err
 	}
