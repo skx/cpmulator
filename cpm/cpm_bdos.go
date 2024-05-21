@@ -56,7 +56,7 @@ func SysCallWriteChar(cpm *CPM) error {
 	return nil
 }
 
-// SysCallAuxRead reads a single character from the auxillary input.
+// SysCallAuxRead reads a single character from the auxiliary input.
 //
 // Note: Echo is not enabled in this function.
 func SysCallAuxRead(cpm *CPM) error {
@@ -87,7 +87,7 @@ func SysCallPrinterWrite(cpm *CPM) error {
 }
 
 // SysCallAuxWrite writes the single character in the C register
-// auxillary / punch output.
+// auxiliary / punch output.
 func SysCallAuxWrite(cpm *CPM) error {
 
 	// The character we're going to write

@@ -1,4 +1,4 @@
-// Package ccp contains a pair of embeded CCP binaries, which can
+// Package ccp contains a pair of embedded CCP binaries, which can
 // be used by the emulator as shells.
 package ccp
 

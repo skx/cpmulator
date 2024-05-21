@@ -119,7 +119,7 @@ type CPM struct {
 	// the programs it launches.
 	start uint16
 
-	// auxStatus handles storing the state for the auxilary / punch output
+	// auxStatus handles storing the state for the auxiliary / punch output
 	// device.  This is used by MBASIC amongst other things, and we use it
 	// to basically keep track of multibyte output
 	auxStatus int
