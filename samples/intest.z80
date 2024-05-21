@@ -46,6 +46,10 @@ C_READ_test_loop
         INC HL
         DJNZ C_READ_test_loop
 
+        LD DE, NEWLINE
+        LD C, 0x09
+        CALL 0x0005
+
         LD DE, C_READ_OVER_1
         LD C, 0x09
         CALL 0x0005
@@ -158,6 +162,10 @@ C_RAWIO_Test_loop:
         cp 'q'
         jr nz, C_RAWIO_Test_loop
 
+        LD DE, NEWLINE
+        LD C, 0x09
+        CALL 0x0005
+
         ret
 
 ;; Prompt the user to enter text, and echo it back.
@@ -182,6 +190,10 @@ C_READSTRING_test:
         CALL 0x005
 
         ;; Show the result
+        LD DE, NEWLINE
+        LD C, 0x09
+        CALL 0x0005
+
         LD DE, C_READSTRING_OVER_1
         LD      C,0x09
         CALL    0x0005
@@ -225,7 +237,9 @@ C_READ_PROMPT:
 C_READ_OVER_1:
         DB "  Test complete - you entered '$"
 C_READ_OVER_2:
-        DB "'.", 0x0a, 0x0d, "$"
+        DB "'."   ; fall-through
+NEWLINE:
+        DB 0x0a, 0x0d, "$"
 
 ;; A_READ
 A_READ_PROMPT:
