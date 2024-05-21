@@ -10,11 +10,11 @@
 package consolein
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
+	"unicode"
 
 	"golang.org/x/term"
 )
@@ -31,15 +31,18 @@ var (
 
 	// NoEcho means that input will not echo characters.
 	NoEcho Status = 2
+
+	// ErrInterrupted is returned if the user presses Ctrl-C when in our ReadLine function.
+	ErrInterrupted = fmt.Errorf("INTERRUPTED")
 )
 
 // ConsoleIn holds our state
 type ConsoleIn struct {
-	// State holds our current state
+	// State holds our current echo state; either Echo, NoEcho, or Unknown.
 	State Status
 }
 
-// New is our constructor
+// New is our constructor.
 func New() *ConsoleIn {
 	t := &ConsoleIn{
 		State: Unknown,
@@ -51,11 +54,11 @@ func New() *ConsoleIn {
 // one is available.
 //
 // NOTE: This function should not echo keystrokes which are entered.
-func (io *ConsoleIn) BlockForCharacterNoEcho() (byte, error) {
+func (ci *ConsoleIn) BlockForCharacterNoEcho() (byte, error) {
 
 	// Do we need to change state?  If so then do it.
-	if io.State != NoEcho {
-		io.disableEcho()
+	if ci.State != NoEcho {
+		ci.disableEcho()
 	}
 
 	// switch stdin into 'raw' mode
@@ -85,11 +88,11 @@ func (io *ConsoleIn) BlockForCharacterNoEcho() (byte, error) {
 // blocking until one is available.
 //
 // NOTE: Characters should be echo'd as they are input.
-func (io *ConsoleIn) BlockForCharacterWithEcho() (byte, error) {
+func (ci *ConsoleIn) BlockForCharacterWithEcho() (byte, error) {
 
 	// Do we need to change state?  If so then do it.
-	if io.State != Echo {
-		io.enableEcho()
+	if ci.State != Echo {
+		ci.enableEcho()
 	}
 
 	// switch stdin into 'raw' mode
@@ -120,20 +123,68 @@ func (io *ConsoleIn) BlockForCharacterWithEcho() (byte, error) {
 // buffer-overruns will occur!)
 //
 // Note: We should enable echo in this function.
-func (io *ConsoleIn) ReadLine(max uint8) (string, error) {
+//
+// NOTE: A user pressing Ctrl-C will be caught, and this will trigger the BDOS
+// function to reboot.
+func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 
 	// Do we need to change state?  If so then do it.
-	if io.State != Echo {
-		io.enableEcho()
+	if ci.State != Echo {
+		ci.enableEcho()
 	}
 
-	// Create a  reader
-	reader := bufio.NewReader(os.Stdin)
+	// Text the user entered
+	text := ""
 
-	// Read a line of text
-	text, err := reader.ReadString('\n')
-	if err != nil {
-		return "", fmt.Errorf("error reading from STDIN:%s", err)
+	// count of consecutive Ctrl-C
+	ctrlCount := 0
+
+	// Hacky input-loop
+	for {
+
+		// Get a character, with no echo.
+		x, err := ci.BlockForCharacterNoEcho()
+		if err != nil {
+			return "", err
+		}
+
+		// Ctrl-C ?
+		//
+		if x == 0x03 {
+			ctrlCount += 1
+
+			// Twice in a row will reboot
+			if ctrlCount == 2 {
+				return "", ErrInterrupted
+			}
+			continue
+		}
+
+		// Not a ctrl-c so reset our count
+		ctrlCount = 0
+
+		// Newline?
+		if x == '\n' || x == '\r' {
+			text += "\n"
+			break
+		}
+
+		// Backspace / Delete?
+		if x == '\b' || x == 127 {
+
+			// remove the character from our text, and overwrite on the console
+			if len(text) > 0 {
+				text = text[:len(text)-1]
+				fmt.Printf("\b \b")
+			}
+			continue
+		}
+
+		// Otherwise if it was a printable character we'll keep it.
+		if unicode.IsPrint(rune(x)) {
+			fmt.Printf("%c", x)
+			text += string(x)
+		}
 	}
 
 	// remove any trailing newline
@@ -145,22 +196,22 @@ func (io *ConsoleIn) ReadLine(max uint8) (string, error) {
 	}
 
 	// Return the text
-	return text, err
+	return text, nil
 }
 
 // Reset restores echo.
-func (io *ConsoleIn) Reset() {
-	io.enableEcho()
+func (ci *ConsoleIn) Reset() {
+	ci.enableEcho()
 }
 
 // disableEcho is the single place where we disable echoing.
-func (io *ConsoleIn) disableEcho() {
+func (ci *ConsoleIn) disableEcho() {
 	_ = exec.Command("stty", "-F", "/dev/tty", "-echo").Run()
-	io.State = NoEcho
+	ci.State = NoEcho
 }
 
 // enableEcho is the single place where we enable echoing.
-func (io *ConsoleIn) enableEcho() {
+func (ci *ConsoleIn) enableEcho() {
 	_ = exec.Command("stty", "-F", "/dev/tty", "echo").Run()
-	io.State = Echo
+	ci.State = Echo
 }
