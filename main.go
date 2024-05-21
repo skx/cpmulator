@@ -226,6 +226,8 @@ func main() {
 	// just jump back to the entry-point for that.
 	//
 	for {
+		fmt.Printf("\n%c[2J%c[Hcpmulator %s loaded CCP %s\n", 27, 27, version, *ccp)
+
 		// Load the CCP binary - reseting RAM
 		err := obj.LoadCCP(*ccp)
 		if err != nil {

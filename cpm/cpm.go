@@ -542,8 +542,6 @@ func (cpm *CPM) fixupRAM() {
 // and executed at a higher address than the default of 0x0100.
 func (cpm *CPM) LoadCCP(name string) error {
 
-	fmt.Printf("\n%c[2J%c[Hcpmulator loaded %s\n", 27, 27, name)
-
 	// Create 64K of memory, full of NOPs
 	if cpm.Memory == nil {
 		cpm.Memory = new(memory.Memory)
