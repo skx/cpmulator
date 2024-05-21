@@ -136,9 +136,12 @@ func main() {
 	// Create a new emulator.
 	obj := cpm.New(log, *prnPath)
 
+	// When we're finishing we'll reset some (console) state.
 	defer obj.Cleanup()
 
 	// change directory?
+	//
+	// NOTE: We deliberately do this after setting up the logfile.
 	if *cd != "" {
 		err := os.Chdir(*cd)
 		if err != nil {
@@ -148,6 +151,9 @@ func main() {
 	}
 
 	// Should we create child-directories?  If so, do so.
+	//
+	// NOTE: This is also done deliberately after the changing
+	// of directory.
 	if *createDirectories {
 		for _, d := range []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P"} {
 			if _, err := os.Stat(d); os.IsNotExist(err) {
@@ -170,17 +176,20 @@ func main() {
 			}
 		}
 		if found == 0 {
-			fmt.Printf("WARNING: You've chosen to  directories as drives.\n")
+			fmt.Printf("WARNING: You've chosen to use subdirectories as drives.\n")
 			fmt.Printf("         i.e. A/ would be used for the contents of A:\n")
 			fmt.Printf("         i.e. B/ would be used for the contents of B:\n")
 			fmt.Printf("\n")
-			fmt.Printf("No drive-directories are present, you could fix this:\n")
+			fmt.Printf("         However no drive-directories are present!\n")
+			fmt.Printf("\n")
+			fmt.Printf("You could fix this, like so:\n")
 			fmt.Printf("         mkdir A\n")
 			fmt.Printf("         mkdir B\n")
 			fmt.Printf("         mkdir C\n")
 			fmt.Printf("         etc\n")
 			fmt.Printf("\n")
-			fmt.Printf("Run this program with '-create' to automatically create these directories.\n")
+			fmt.Printf("Or you could launch this program with the '-create' flag.\n")
+			fmt.Printf("That would automatically create directories for drives A-P.\n")
 		}
 	}
 
@@ -198,24 +207,28 @@ func main() {
 
 			// Deliberate stop of execution
 			if err == cpm.ErrHalt {
+				fmt.Printf("\n")
 				return
 			}
 
 			// Reboot attempt, also fine
 			if err == cpm.ErrBoot {
+				fmt.Printf("\n")
 				return
 			}
 
 			// Deliberate stop of execution.
 			if err == cpm.ErrExit {
+				fmt.Printf("\n")
 				return
 			}
 
 			fmt.Printf("Error running %s [%s]: %s\n",
 				program, strings.Join(args, ","), err)
 		}
-		return
 
+		fmt.Printf("\n")
+		return
 	}
 
 	// We load and re-run eternally - because many binaries the CCP
@@ -226,9 +239,10 @@ func main() {
 	// just jump back to the entry-point for that.
 	//
 	for {
+		// Show a startup-banner.
 		fmt.Printf("\n%c[2J%c[Hcpmulator %s loaded CCP %s\n", 27, 27, version, *ccp)
 
-		// Load the CCP binary - reseting RAM
+		// Load the CCP binary - resetting RAM in the process.
 		err := obj.LoadCCP(*ccp)
 		if err != nil {
 			fmt.Printf("error loading CCP: %s\n", err)
@@ -241,11 +255,15 @@ func main() {
 		err = obj.Execute(args)
 		if err != nil {
 
+			// Start the loop again, which will reload the CCP
+			// and jump to it.  Effectively rebooting.
 			if err == cpm.ErrBoot {
 				continue
 			}
+
 			// Deliberate stop of execution.
 			if err == cpm.ErrHalt {
+				fmt.Printf("\n")
 				return
 			}
 
