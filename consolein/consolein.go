@@ -180,6 +180,11 @@ func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 			continue
 		}
 
+		// If the user has entered the maximum then we'll
+		// avoid further input
+		if len(text) >= int(max) {
+			continue
+		}
 		// Otherwise if it was a printable character we'll keep it.
 		if unicode.IsPrint(rune(x)) {
 			fmt.Printf("%c", x)
