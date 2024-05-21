@@ -168,6 +168,11 @@ func SysCallReadString(cpm *CPM) error {
 	// DE points to the buffer
 	addr := cpm.CPU.States.DE.U16()
 
+	// If DE is 0x0000 then the DMA area is used instead.
+	if addr == 0 {
+		addr = cpm.dma
+	}
+
 	// First byte is the max len
 	max := cpm.CPU.Memory.Get(addr)
 
