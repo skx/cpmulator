@@ -542,6 +542,8 @@ func (cpm *CPM) fixupRAM() {
 // and executed at a higher address than the default of 0x0100.
 func (cpm *CPM) LoadCCP(name string) error {
 
+	fmt.Printf("\n%c[2J%c[Hcpmulator loaded %s\n", 27, 27, name)
+
 	// Create 64K of memory, full of NOPs
 	if cpm.Memory == nil {
 		cpm.Memory = new(memory.Memory)
@@ -664,7 +666,6 @@ func (cpm *CPM) Execute(args []string) error {
 
 	// Run forever :)
 	for {
-
 		// Run until we hit an error
 		err := cpm.CPU.Run(context.Background())
 
@@ -744,6 +745,12 @@ func (cpm *CPM) Execute(args []string) error {
 		// Are we being asked to terminate CP/M?  If so return
 		if err == ErrExit {
 			return nil
+		}
+
+		// Are we to reboot?
+		if err == ErrBoot {
+			cpm.CPU.PC = 0x0000
+			continue
 		}
 
 		// Any other error is fatal.

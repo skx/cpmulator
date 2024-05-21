@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/skx/cpmulator/consolein"
 	"github.com/skx/cpmulator/fcb"
 )
 
@@ -174,6 +175,13 @@ func SysCallReadString(cpm *CPM) error {
 	text, err := cpm.input.ReadLine(max)
 
 	if err != nil {
+
+		// Ctrl-C pressed during input.
+		if err == consolein.ErrInterrupted {
+
+			// Reboot the system
+			return ErrBoot
+		}
 		return err
 	}
 
