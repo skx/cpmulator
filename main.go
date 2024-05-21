@@ -14,8 +14,15 @@ import (
 	"github.com/skx/cpmulator/cpm"
 )
 
-// log holds our logging handle
-var log *slog.Logger
+var (
+	// version is populated with our release tag, via a Github Action.
+	//
+	// See .github/build in the source distribution for details.
+	version = "unreleased"
+
+	// log holds our logging handle
+	log *slog.Logger
+)
 
 func main() {
 
@@ -30,6 +37,7 @@ func main() {
 	logPath := flag.String("log-path", "", "Specify the file to write debug logs to.")
 	prnPath := flag.String("prn-path", "print.log", "Specify the file to write printer-output to.")
 	syscalls := flag.Bool("syscalls", false, "List the syscalls we implement.")
+	showVersion := flag.Bool("version", false, "Report our version, and exit.")
 	flag.Parse()
 
 	// Are we dumping CCPs?
@@ -44,44 +52,41 @@ func main() {
 	// Are we dumping syscalls?
 	if *syscalls {
 
+		// dumper is a helper to dump the contents of
+		// the given map in a human readable fashion.
+		dumper := func(name string, arg map[uint8]cpm.CPMHandler) {
+
+			// Get the syscalls in sorted order
+			ids := []int{}
+			for i := range arg {
+				ids = append(ids, int(i))
+			}
+			sort.Ints(ids)
+
+			// Now show them.
+			fmt.Printf("%s\n", name)
+			for _, id := range ids {
+				ent := arg[uint8(id)]
+				fake := ""
+				if ent.Fake {
+					fake = "FAKE"
+				}
+				fmt.Printf("\t%02d %-20s %s\n", int(id), ent.Desc, fake)
+			}
+		}
+
 		// Create helper
 		c := cpm.New(nil, "print.log")
 
-		// Get the BDOS syscalls in sorted order
-		ids := []int{}
-		for i := range c.BDOSSyscalls {
-			ids = append(ids, int(i))
-		}
-		sort.Ints(ids)
+		dumper("BDOS", c.BDOSSyscalls)
+		dumper("BIOS", c.BIOSSyscalls)
+		return
+	}
 
-		// Now show them.
-		fmt.Printf("BDOS\n")
-		for _, id := range ids {
-			ent := c.BDOSSyscalls[uint8(id)]
-			fake := ""
-			if ent.Fake {
-				fake = "FAKE"
-			}
-			fmt.Printf("\t%02d %-20s %s\n", int(id), ent.Desc, fake)
-		}
-
-		// Get the BIOS syscalls in sorted order
-		ids = []int{}
-		for i := range c.BIOSSyscalls {
-			ids = append(ids, int(i))
-		}
-		sort.Ints(ids)
-
-		// Now show them.
-		fmt.Printf("BIOS\n")
-		for _, id := range ids {
-			ent := c.BIOSSyscalls[uint8(id)]
-			fake := ""
-			if ent.Fake {
-				fake = "FAKE"
-			}
-			fmt.Printf("\t%02d %-20s %s\n", int(id), ent.Desc, fake)
-		}
+	// show version
+	if *showVersion {
+		fmt.Printf("cpmulator %s\n", version)
+		fmt.Printf("https://github.com/skx/cpmulator\n")
 		return
 	}
 
