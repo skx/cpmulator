@@ -64,14 +64,14 @@ func main() {
 			sort.Ints(ids)
 
 			// Now show them.
-			fmt.Printf("%s\n", name)
+			fmt.Printf("%s syscalls:\n", name)
 			for _, id := range ids {
 				ent := arg[uint8(id)]
 				fake := ""
 				if ent.Fake {
 					fake = "FAKE"
 				}
-				fmt.Printf("\t%02d %-20s %s\n", int(id), ent.Desc, fake)
+				fmt.Printf("\t%03d %-20s %s\n", int(id), ent.Desc, fake)
 			}
 		}
 
