@@ -450,11 +450,22 @@ func SysCallFileOpen(cpm *CPM) error {
 	return nil
 }
 
-// SysCallFileClose closes the filename that matches the pattern on the FCB supplied in DE
+// SysCallFileClose closes the filename that matches the pattern on the FCB supplied in DE.
+//
+// To handle SUBMIT we need to also do more than close an existing file handle, and remove
+// it from our cache.  It seems that we can also be required to _truncate_ a file. Because
+// I'm unsure exactly how much this is in-use I'm going to only implement it for
+// files with "$" in their name.
 func SysCallFileClose(cpm *CPM) error {
 
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
+
+	// Get the bytes which make up the FCB entry.
+	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
+
+	// Create a structure with the contents
+	fcbPtr := fcb.FromBytes(xxx)
 
 	// Get the file handle from our cache.
 	obj, ok := cpm.files[ptr]
@@ -462,11 +473,39 @@ func SysCallFileClose(cpm *CPM) error {
 		return fmt.Errorf("tried to close a file that wasn't open")
 	}
 
+	// Is this a $-file?
+	if strings.Contains(obj.name, "$") {
+
+		// Get the file size, in records
+		host_size, _ := obj.handle.Seek(0, 2)
+		host_extent := int((host_size) / 16384)
+
+		SEQ_EXT := int(fcbPtr.Ex)*32 + int(0x3F&fcbPtr.S2)
+		SEQ_CR := func(n int64) int {
+			return int(((n) % 16384) / 128)
+		}
+
+		if host_extent == SEQ_EXT {
+			if int(fcbPtr.RC) < SEQ_CR(host_size) {
+				host_size = int64(16384*SEQ_EXT + int(128*fcbPtr.RC))
+				err := obj.handle.Truncate(host_size)
+				if err != nil {
+					return fmt.Errorf("error truncating file %s: %s", obj.name, err)
+				}
+			}
+		}
+	}
+	// close the handle
 	err := obj.handle.Close()
 	if err != nil {
 		return fmt.Errorf("failed to close file %04X:%s", ptr, err)
 	}
+
+	// delete the entry from the cache.
 	delete(cpm.files, ptr)
+
+	// Update the FCB in RAM
+	//	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
 
 	// Record success
 	cpm.CPU.States.AF.Hi = 0x00
@@ -774,6 +813,9 @@ func SysCallWrite(cpm *CPM) error {
 
 	// Update the next write position
 	fcbPtr.IncreaseSequentialOffset()
+
+	// Sigh.
+	fcbPtr.RC++
 
 	// Update the FCB in memory
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)

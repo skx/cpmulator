@@ -155,8 +155,6 @@ func (f *FCB) IncreaseSequentialOffset() {
 		f.Ex = 0
 		f.S2++
 	}
-	f.RC++
-
 }
 
 // FromString returns an FCB entry from the given string.
