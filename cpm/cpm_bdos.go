@@ -1372,6 +1372,17 @@ func SysCallDriveROVec(cpm *CPM) error {
 	return nil
 }
 
+// SysCallDriveReset allows resetting specific drives, via the bits in DE
+// Bit 7 of D corresponds to P: while bit 0 of E corresponds to A:.
+// A bit is set if the corresponding drive should be reset.
+// Resetting a drive removes its software read-only status.
+func SysCallDriveReset(cpm *CPM) error {
+
+	// Fake success
+	cpm.CPU.States.AF.Hi = 0x00
+	return nil
+}
+
 func SysCallTime(cpm *CPM) error {
 	return nil
 }
