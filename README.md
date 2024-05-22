@@ -118,10 +118,6 @@ You can terminate the CCP by typing `EXIT`.  The following built-in commands are
 </details>
 
 
-Traditionally pressing `Ctrl-C` would reload the CCP, via a soft boot.  I think that combination is likely to be entered by accident, so in `cpmulator` pressing Ctrl-C _twice_ will reboot the CCP.
-
-> I've added a binary `samples/ctrlc.com` which lets you change this at runtime, via an internal [BIOS extension](EXTENSIONS.md).  Run `ctrlc 0` to disable the Ctrl-C behaviour, or `ctrlc N` to require N consecutive Ctrl-C keystrokes to trigger the restart-behaviour.  Neat.
-
 There are currently a pair of CCP implementations included within the emulator, and they can be selected via the `-ccp` command-line flag:
 
 * "ccp"
@@ -154,6 +150,24 @@ Other options are shown in the output of `cpmulator -help`, but in brief:
   * Dump the list of implemented BDOS and BIOS syscalls.
 * `-version`
   * Show our version number.
+
+
+
+## Runtime Changes
+
+Traditionally pressing `Ctrl-C` would reload the CCP, via a soft boot.  I think that combination is likely to be entered by accident, so in `cpmulator` we default to requiring you to press Ctrl-C _twice_ to reboot the CCP.
+
+> I've added a binary `samples/ctrlc.com` which lets you change this at runtime, via an internal [BIOS extension](EXTENSIONS.md).
+> Run `ctrlc 0` to disable the Ctrl-C behaviour, or `ctrlc N` to require N consecutive Ctrl-C keystrokes to trigger the restart-behaviour.  Neat.
+
+Similarly we default to using emulation to pretend our output device is an ADM-3A terminal, this can be changed via a command-line flag at startup.
+
+> I've added a binary `samples/console.com` which lets you change this at runtime, via an internal [BIOS extension](EXTENSIONS.md).
+> Run `console ansi` to disable the output emulation, or `console adm-3a` to restore it.
+
+You'll see that the [cpm-dist](https://github.com/skx/cpm-dist) repository contains a version of Wordstar, and that behaves differently depending on the selected output handler.  Changing the handler at run-time is a neat bit of behaviour.
+
+> The `cpm-dist` repository also includes both CTRLC.COM and CONSOLE.COM on the A: drive, for ease of use.
 
 
 
@@ -291,12 +305,6 @@ Error running FOO.COM: UNIMPLEMENTED
 If things are _mostly_ working, but something is not quite producing the correct result then we have some notes on debugging:
 
 * [DEBUGGING.md](DEBUGGING.md)
-
-The following environmental variables influence runtime behaviour:
-
-| Variable    | Purpose                                                       |
-|-------------|---------------------------------------------------------------|
-| SIMPLE_CHAR | Avoid the attempted VT52 output conversion.                   |
 
 For reference the memory map of our CP/M looks like this:
 
