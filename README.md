@@ -120,6 +120,8 @@ You can terminate the CCP by typing `EXIT`.  The following built-in commands are
 
 Traditionally pressing `Ctrl-C` would reload the CCP, via a soft boot.  I think that combination is likely to be entered by accident, so in `cpmulator` pressing Ctrl-C _twice_ will reboot the CCP.
 
+> I've added a binary `samples/ctrlc.com` which lets you change this at runtime, via an internal [BIOS extension](EXTENSIONS.md).  Run `ctrlc 0` to disable the Ctrl-C behaviour, or `ctrlc N` to require N consecutive Ctrl-C keystrokes to trigger the restart-behaviour.  Neat.
+
 There are currently a pair of CCP implementations included within the emulator, and they can be selected via the `-ccp` command-line flag:
 
 * "ccp"
