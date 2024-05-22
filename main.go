@@ -240,7 +240,7 @@ func main() {
 	//
 	for {
 		// Show a startup-banner.
-		fmt.Printf("\n%c[2J%c[Hcpmulator %s loaded CCP %s\n", 27, 27, version, *ccp)
+		fmt.Printf("\ncpmulator %s loaded CCP %s\n", version, *ccp)
 
 		// Load the CCP binary - resetting RAM in the process.
 		err := obj.LoadCCP(*ccp)
