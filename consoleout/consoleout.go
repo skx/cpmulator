@@ -9,21 +9,16 @@ import "fmt"
 
 // ConsoleDriver is the interface that must be implemented by anything
 // that wishes to be used as a console driver.
+//
+// Providing this interface is implemented an object may register itself,
+// by name, via the Register method.
 type ConsoleDriver interface {
 
 	// PutCharacter will output the specified character to STDOUT.
-	PutCharacter(c byte)
+	PutCharacter(c uint8)
 
 	// GetName will return the name of our driver.
 	GetName() string
-}
-
-// ConsoleOut holds our state, which contains a pointer to the object
-// handling the output.
-type ConsoleOut struct {
-
-	// driver is the thing that actually writes our output.
-	driver ConsoleDriver
 }
 
 // This is a map of known-drivers
@@ -31,12 +26,24 @@ var handlers = struct {
 	m map[string]Constructor
 }{m: make(map[string]Constructor)}
 
-// Constructor is the signature of a constructor-function.
+// Constructor is the signature of a constructor-function
+// which is used to instantiate an instance of a driver.
 type Constructor func() ConsoleDriver
 
-// Register a test-type with a constructor.
+// Register makes a console driver available, by name.
+//
+// When one needs to be created the constructor can be called
+// to create an instance of it.
 func Register(name string, obj Constructor) {
 	handlers.m[name] = obj
+}
+
+// ConsoleOut holds our state, which is basically just a
+// pointer to the object handling our output.
+type ConsoleOut struct {
+
+	// driver is the thing that actually writes our output.
+	driver ConsoleDriver
 }
 
 // New is our constructore, it creates an output device which uses
