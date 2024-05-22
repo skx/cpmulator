@@ -9,6 +9,9 @@ The top-level [dist/](../dist) directory contains more useful programs, includin
 
 ## Highlights
 
+* [ctrlc.z80](ctrlc.z80)
+  * I've implemented [a custom BIOS function](../EXTENSIONS.md) to get/set the number of Ctrl-C presses which will reboot the CCP.
+  * This utility invokes that function to get/set the value.
 * [cli-args.z80](cli-args.z80)
   * Shows command-line arguments passed to binaries launched from CCP
 * [create.z80](create.z80)
