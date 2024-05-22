@@ -51,7 +51,7 @@ func SysCallReadChar(cpm *CPM) error {
 // SysCallWriteChar writes the single character in the E register to STDOUT.
 func SysCallWriteChar(cpm *CPM) error {
 
-	cpm.outC(cpm.CPU.States.DE.Lo)
+	cpm.output.PutCharacter(cpm.CPU.States.DE.Lo)
 
 	return nil
 }
@@ -92,7 +92,7 @@ func SysCallAuxWrite(cpm *CPM) error {
 
 	// The character we're going to write
 	c := cpm.CPU.States.BC.Lo
-	cpm.outC(c)
+	cpm.output.PutCharacter(c)
 	return nil
 }
 
@@ -109,7 +109,7 @@ func SysCallRawIO(cpm *CPM) error {
 		cpm.CPU.States.AF.Hi = out
 		return nil
 	default:
-		cpm.outC(cpm.CPU.States.DE.Lo)
+		cpm.output.PutCharacter(cpm.CPU.States.DE.Lo)
 	}
 	return nil
 }

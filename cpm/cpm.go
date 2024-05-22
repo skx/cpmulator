@@ -17,6 +17,7 @@ import (
 	"github.com/koron-go/z80"
 	"github.com/skx/cpmulator/ccp"
 	"github.com/skx/cpmulator/consolein"
+	"github.com/skx/cpmulator/consoleout"
 	"github.com/skx/cpmulator/fcb"
 	"github.com/skx/cpmulator/memory"
 )
@@ -104,6 +105,9 @@ type CPM struct {
 	// This needs to take account of echo/no-echo status.
 	input *consolein.ConsoleIn
 
+	// output is used for writing characters to the conolse
+	output consoleout.ConsoleDriver
+
 	// dma contains the address of the DMA area in RAM.
 	//
 	// The DMA area is used for all file I/O, and is 128 bytes in length.
@@ -118,19 +122,6 @@ type CPM struct {
 	// launch uses a higher location - so that it isn't overwritten by
 	// the programs it launches.
 	start uint16
-
-	// auxStatus handles storing the state for the auxiliary / punch output
-	// device.  This is used by MBASIC amongst other things, and we use it
-	// to basically keep track of multibyte output
-	auxStatus int
-
-	// x holds the character X position, when using AUX I/O.
-	// It is set/used by escape sequences.
-	x uint8
-
-	// y holds the character Y position, when using AUX I/O.
-	// It is set/used by escape sequences.
-	y uint8
 
 	// BDOSSyscalls contains details of the BDOS syscalls we
 	// know how to emulate, indexed by their ID.
@@ -182,7 +173,7 @@ type CPM struct {
 }
 
 // New returns a new emulation object
-func New(logger *slog.Logger, prn string) *CPM {
+func New(logger *slog.Logger, prn string, condriver string) (*CPM, error) {
 
 	//
 	// Create and populate our syscall table for the BDOS syscalls.
@@ -408,10 +399,17 @@ func New(logger *slog.Logger, prn string) *CPM {
 		Fake:    true,
 	}
 
+	// Output driver needs to be created
+	driver, err := consoleout.New(condriver)
+	if err != nil {
+		return nil, err
+	}
+
 	// Create the emulator object and return it
 	tmp := &CPM{
 		Logger:       logger,
 		input:        consolein.New(),
+		output:       driver,
 		BDOSSyscalls: sys,
 		BIOSSyscalls: b,
 		dma:          0x0080,
@@ -419,12 +417,17 @@ func New(logger *slog.Logger, prn string) *CPM {
 		files:        make(map[uint16]FileCache),
 		prnPath:      prn,
 	}
-	return tmp
+	return tmp, nil
 }
 
 // Cleanup cleans up the state of the terminal, if necessary.
 func (cpm *CPM) Cleanup() {
 	cpm.input.Reset()
+}
+
+// GetOutputDriver returns the name of our configured output driver.
+func (cpm *CPM) GetOutputDriver() string {
+	return cpm.output.GetName()
 }
 
 // LoadBinary loads the given CP/M binary at the default address of 0x0100,

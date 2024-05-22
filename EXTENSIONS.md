@@ -15,7 +15,7 @@ Currently we have one function implemented, demonstrated in [samples/ctrlc.z80](
 
 
 
-## Function 01
+## Function 0x01
 
 * If C == 0xFF return the value of the Ctrl-C count in A.
 * IF C != 0xFF set the Ctrl-C count to be C.
@@ -37,6 +37,14 @@ Example:
 
 
 
-## Function 0xx
+## Function 0x02
 
+On entry DE points to a text-string, terminated by NULL, which represents the name of the
+console output driver to use.
+
+Demonstrated in [samples/console.z80](samples/console.z80)
+
+
+
+## Function 0x00
 * TODO

@@ -9,6 +9,9 @@ package cpm
 import (
 	"fmt"
 	"log/slog"
+	"strings"
+
+	"github.com/skx/cpmulator/consoleout"
 )
 
 // BiosSysCallBoot handles a warm/cold boot.
@@ -47,7 +50,7 @@ func BiosSysCallConsoleOutput(cpm *CPM) error {
 
 	// Write the character in C to the screen.
 	c := cpm.CPU.States.BC.Lo
-	cpm.outC(c)
+	cpm.output.PutCharacter(c)
 
 	return nil
 }
@@ -167,8 +170,13 @@ func BiosSysCallReserved1(cpm *CPM) error {
 	// H == 1
 	//    C == 0xff to get the ctrl-c count
 	//    C != 0xff to set the ctrl-c count
+	//
+	// H == 2
+	//    DE points to a string containing the console driver to use.
+	//
 	h := cpm.CPU.States.HL.Hi
 	c := cpm.CPU.States.BC.Lo
+	de := cpm.CPU.States.DE.U16()
 
 	switch h {
 	case 01:
@@ -176,6 +184,35 @@ func BiosSysCallReserved1(cpm *CPM) error {
 			cpm.CPU.States.AF.Hi = uint8(cpm.input.GetInterruptCount())
 		} else {
 			cpm.input.SetInterruptCount(int(c))
+		}
+	case 02:
+		str := ""
+
+		c := cpm.Memory.Get(de)
+		for c != ' ' && c != 0x00 {
+			str += string(c)
+			de++
+			c = cpm.Memory.Get(de)
+		}
+
+		str = strings.ToLower(str)
+
+		// Output driver needs to be created
+		driver, err := consoleout.New(str)
+
+		// If it failed we're not going to terminate the syscall, or
+		// the emulator, just ignore the attempt.
+		if err != nil {
+			fmt.Printf("%s", err)
+			return nil
+		}
+
+		old := cpm.output.GetName()
+		if old != str {
+			fmt.Printf("Console driver changed from %s to %s.\n", cpm.output.GetName(), driver.GetName())
+			cpm.output = driver
+		} else {
+			fmt.Printf("console driver is already %s, making no change.\n", str)
 		}
 	default:
 		return fmt.Errorf("unknown custom BIOS function H:%02X", h)

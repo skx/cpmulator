@@ -31,6 +31,7 @@ func main() {
 	//
 	cd := flag.String("cd", "", "Change to this directory before launching")
 	createDirectories := flag.Bool("create", false, "Create subdirectories on the host computer for each CP/M drive.")
+	console := flag.String("console", "adm-3a", "The name of the console output driver to use (adm-3a or ansi).")
 	ccp := flag.String("ccp", "ccp", "The name of the CCP that we should run (ccp vs. ccpz).")
 	ccps := flag.Bool("ccps", false, "Dump the list of embedded CCPs.")
 	useDirectories := flag.Bool("directories", false, "Use subdirectories on the host computer for CP/M drives.")
@@ -76,7 +77,11 @@ func main() {
 		}
 
 		// Create helper
-		c := cpm.New(nil, "print.log")
+		c, err := cpm.New(nil, "print.log", "ansi")
+		if err != nil {
+			fmt.Printf("error creating CPM object: %s\n", err)
+			return
+		}
 
 		dumper("BDOS", c.BDOSSyscalls)
 		dumper("BIOS", c.BIOSSyscalls)
@@ -134,7 +139,11 @@ func main() {
 			}))
 
 	// Create a new emulator.
-	obj := cpm.New(log, *prnPath)
+	obj, err := cpm.New(log, *prnPath, *console)
+	if err != nil {
+		fmt.Printf("error creating CPM object: %s\n", err)
+		return
+	}
 
 	// When we're finishing we'll reset some (console) state.
 	defer obj.Cleanup()
@@ -240,7 +249,7 @@ func main() {
 	//
 	for {
 		// Show a startup-banner.
-		fmt.Printf("\ncpmulator %s loaded CCP %s\n", version, *ccp)
+		fmt.Printf("\ncpmulator %s loaded CCP %s, with %s output driver\n", version, *ccp, obj.GetOutputDriver())
 
 		// Load the CCP binary - resetting RAM in the process.
 		err := obj.LoadCCP(*ccp)
