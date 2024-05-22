@@ -47,7 +47,7 @@ func BiosSysCallConsoleOutput(cpm *CPM) error {
 
 	// Write the character in C to the screen.
 	c := cpm.CPU.States.BC.Lo
-	cpm.outC(c)
+	cpm.output.PutCharacter(c)
 
 	return nil
 }

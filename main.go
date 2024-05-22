@@ -76,7 +76,11 @@ func main() {
 		}
 
 		// Create helper
-		c := cpm.New(nil, "print.log")
+		c, err := cpm.New(nil, "print.log", "ansi")
+		if err != nil {
+			fmt.Printf("error creating CPM object: %s\n", err)
+			return
+		}
 
 		dumper("BDOS", c.BDOSSyscalls)
 		dumper("BIOS", c.BIOSSyscalls)
@@ -134,7 +138,11 @@ func main() {
 			}))
 
 	// Create a new emulator.
-	obj := cpm.New(log, *prnPath)
+	obj, err := cpm.New(log, *prnPath, "adm-3a")
+	if err != nil {
+		fmt.Printf("error creating CPM object: %s\n", err)
+		return
+	}
 
 	// When we're finishing we'll reset some (console) state.
 	defer obj.Cleanup()
