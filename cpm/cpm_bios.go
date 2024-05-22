@@ -157,3 +157,29 @@ func (cpm *CPM) BiosHandler(val uint8) {
 		cpm.CPU.HALT = true
 	}
 }
+
+// BiosSysCallReserved1 is a helper to get/set the values of the CPM interpreter from
+// within the system.  Neat.
+func BiosSysCallReserved1(cpm *CPM) error {
+
+	// H is used to specify the function.
+	//
+	// H == 1
+	//    C == 0xff to get the ctrl-c count
+	//    C != 0xff to set the ctrl-c count
+	h := cpm.CPU.States.HL.Hi
+	c := cpm.CPU.States.BC.Lo
+
+	switch h {
+	case 01:
+		if c == 0xFF {
+			cpm.CPU.States.AF.Hi = uint8(cpm.input.GetInterruptCount())
+		} else {
+			cpm.input.SetInterruptCount(int(c))
+		}
+	default:
+		return fmt.Errorf("unknown custom BIOS function H:%02X", h)
+	}
+
+	return nil
+}

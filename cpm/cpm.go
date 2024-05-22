@@ -402,6 +402,11 @@ func New(logger *slog.Logger, prn string) *CPM {
 		Handler: BiosSysCallAuxOutputStatus,
 		Fake:    true,
 	}
+	b[31] = CPMHandler{
+		Desc:    "RESERVE1",
+		Handler: BiosSysCallReserved1,
+		Fake:    true,
+	}
 
 	// Create the emulator object and return it
 	tmp := &CPM{

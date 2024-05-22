@@ -1,0 +1,69 @@
+;; ctrlc.asm - Get/Set the number of consecutive Ctrl-Cs required to reboot
+
+FCB1:                 EQU 0x5C
+BDOS_ENTRY_POINT:     EQU 5
+BDOS_OUTPUT_STRING:   EQU 9
+
+        ;;
+        ;; CP/M programs start at 0x100.
+        ;;
+        ORG 100H
+
+        ;; The FCB will be populated with the number/first argument,
+        ;; if the first character of that region is a space-character
+        ;; then we've got nothing specified
+        ld a, (FCB1 + 1)
+        cp 0x20             ; 0x20 = 32 == SPACE
+        jp z, show_value    ; Got a space, just show the value.
+
+        ; convert from number to int
+        sub '0'
+        ld c, a
+
+        ; set the value
+        ld a, 31
+        ld h, 01
+        out (0xff), a
+
+        ;; fall-through to showing the value.
+
+show_value:
+        ;;
+        ;; No argument, so show the value the error and exit
+        ;;
+        ld de, SHOW_PREFIX
+        ld c,  BDOS_OUTPUT_STRING
+        call   BDOS_ENTRY_POINT
+
+        ;; get the value
+        ld a, 31
+        ld h, 01
+        ld c, 0xff
+        out (0xff), a
+
+        ; display it
+        add a, '0'
+        ld e, a
+        ld c, 0x02
+        call 0x0005
+
+        ; finish with a newline.
+        ld DE, NEWLINE
+        ld C, 0x09
+        call 0x0005
+
+        LD      C,0x00
+        CALL    BDOS_ENTRY_POINT
+
+
+;;;
+;;; The message displayed if no command-line argument was present.
+;;;
+SHOW_PREFIX:
+        db "The Ctrl-C count is currently set to $"
+
+        ;; note fall-through here :)
+NEWLINE:
+        db 0xa, 0xd, "$"
+
+END
