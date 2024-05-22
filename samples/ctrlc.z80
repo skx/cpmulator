@@ -1,4 +1,11 @@
 ;; ctrlc.asm - Get/Set the number of consecutive Ctrl-Cs required to reboot
+;;
+;; This uses the custom BIOS function we've added to the BIOS, which was never
+;; present in real CP/M.  Consider it a hook into the emulator.
+;;
+;; TODO:
+;;  I guess we need a custom "is cpmulator" BIOS function too.
+;;
 
 FCB1:                 EQU 0x5C
 BDOS_ENTRY_POINT:     EQU 5
@@ -57,12 +64,10 @@ show_value:
 
 
 ;;;
-;;; The message displayed if no command-line argument was present.
+;;; Text output strings.
 ;;;
 SHOW_PREFIX:
         db "The Ctrl-C count is currently set to $"
-
-        ;; note fall-through here :)
 NEWLINE:
         db 0xa, 0xd, "$"
 
