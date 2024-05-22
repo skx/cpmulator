@@ -199,12 +199,21 @@ func BiosSysCallReserved1(cpm *CPM) error {
 
 		// Output driver needs to be created
 		driver, err := consoleout.New(str)
+
+		// If it failed we're not going to terminate the syscall, or
+		// the emulator, just ignore the attempt.
 		if err != nil {
-			return fmt.Errorf("failed to set output driver to %s:%s", str, err)
+			fmt.Printf("%s", err)
+			return nil
 		}
 
-		fmt.Printf("changed driver to %s\n", driver.GetName())
-		cpm.output = driver
+		old := cpm.output.GetName()
+		if old != str {
+			fmt.Printf("Console driver changed from %s to %s.\n", cpm.output.GetName(), driver.GetName())
+			cpm.output = driver
+		} else {
+			fmt.Printf("console driver is already %s, making no change.\n", str)
+		}
 	default:
 		return fmt.Errorf("unknown custom BIOS function H:%02X", h)
 	}

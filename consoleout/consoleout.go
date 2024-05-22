@@ -17,7 +17,7 @@ type ConsoleDriver interface {
 	// PutCharacter will output the specified character to STDOUT.
 	PutCharacter(c uint8)
 
-	// GetName will return the name of our driver.
+	// GetName will return the name of the driver.
 	GetName() string
 }
 
