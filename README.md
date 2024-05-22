@@ -5,12 +5,10 @@ This repository contains a CP/M emulator, with integrated CCP, which is designed
 * The project was initially created to run [my text-based adventure game](https://github.com/skx/lighthouse-of-doom/), which I wrote a few years ago, to amuse my child.
   * That was written in Z80 assembly language and initially targeted CP/M, although it was later ported to the ZX Spectrum.
 
-Over time this project has become more complete, and more complex, and I've implemented enough functionity to run simple binaries and many of the well-known CP/M programs:
+Over time this project has become more complete, and I've now implemented enough functionity to run many of the well-known CP/M programs:
 
 * The Aztec C-Compiler.
-  * You can edit and compile C code within the emulator, then run it!
 * Borland's Turbo Pascal
-  * You can edit and compile Pascal code within the emulator, then run it!
 * Many early Infocom games:
   * Zork 1, 2, & 3.
   * Planetfall.
@@ -18,9 +16,9 @@ Over time this project has become more complete, and more complex, and I've impl
 * Microsoft BASIC
 * Wordstar
 
-The biggest caveat is that I've not implemented any notion of disk-based access.  This means that, for example, opening, reading/writing, and closing files is absolutely fine, but any API call that refers to tracks, sectors, or disks will fail.
+The biggest caveat is that I've not implemented any notion of disk-based access.  This means that, for example, opening, reading/writing, and closing files is absolutely fine, but any API call that refers to tracks, sectors, or disks will fail (with an "unimplemented syscall" error).
 
-A companion repository contains a collection of vintage CP/M software you can use with this, or any other, emulator:
+A companion repository contains a collection of vintage CP/M software you can use with this, or any other, CP/M emulator:
 
 * [https://github.com/skx/cpm-dist](https://github.com/skx/cpm-dist)
 
@@ -38,14 +36,13 @@ go install github.com/skx/cpmulator@latest
 If you were to clone this repository to your local system you could then build and install by running:
 
 ```
+go build .
 go install .
 ```
 
-If neither of these options are suitable you may download the latest binary from [the release page](https://github.com/skx/cpmulator/releases).
+If neither of these options are suitable you may download a binary from [our release page](https://github.com/skx/cpmulator/releases).
 
-Releases will be made as/when features seem to justify it, but it should be noted that I consider the CLI tool, and the emulator itself, the "product".  That means that the internal APIs will change around as/when necessary.
-
-If you wish to import any of the internal APIs you do so at the risk of changes happening at any time - although so far these have been minor I'm not averse to changing parameters to internal packages, or adding/renaming/removing methods as necessary without any regard for external users.
+Releases will be made as/when features seem to justify it, but it should be noted that I consider the CLI tool, and the emulator itself, the "product".  That means that the internal APIs will change around as/when necessary - so far changes have been minor, but I'm not averse to changing parameters to internal packages, or adding/renaming/removing methods as necessary without any regard for external users.
 
 
 
@@ -53,28 +50,31 @@ If you wish to import any of the internal APIs you do so at the risk of changes 
 # Quick Start
 
 * Build/Install this application.
-* Clone the associated repository of binaries
+* Clone the associated repository of binaries:
   * `git clone https://github.com/skx/cpm-dist.git /tmp/cpm-dist`
-* Launch the emulator, pointing at the binaries
+* Launch the emulator, pointing at the binaries:
   * `cpmulator -cd /tmp/cpm-dist -directories`
 * Start something:
-  * "B:", then "MBASIC" - to run BASIC.  ("SYSTEM" to exit)
+  * "B:", then "MBASIC" - to run BASIC.  (Type "SYSTEM" to exit.)
   * "G:", then "ZORK1" - to play zork1.
   * "P:", then "TURBO" - to run turbo pascal.
-  * "E:", then "WS" - to run worstar.
+  * "E:", then "WS" - to run wordstar.
 
 
 
 
 # Portability
 
-The CP/M input handlers need to disable echoing when reading (single) characters from STDIN.  There isn't a simple and portable solution for this in golang - so I've resorted to the naive approach of executing `stty` when necessary.
+The CP/M input handlers need to disable echoing when reading (single) characters from STDIN.  There isn't a simple and portable solution for this in golang, although the appropriate primitives exist so building such support isn't impossible.
 
-This means the code in this repository isn't 100% portable; it will work on Linux and MacOS hosts, but not Windows.
+Usage of is demonstrated in the standard library:
 
-There _is_ code to set a console into RAW mode, and disable echoing input, for example you can [consider the code in the readPassword function](https://cs.opensource.google/go/x/term/+/refs/tags/v0.20.0:term_unix.go) in `x/term`.  Unfortunately the facilities there are only sufficient for reading a _line_, not a _character_ which means we'll need to essentially copy and paste their implementations inline to take advantage of this, and restore portability.
+* [x/term package](https://pkg.go.dev/golang.org/x/term)
+  * [ReadPassword](https://pkg.go.dev/golang.org/x/term#ReadPassword) - ReadPassword reads a line of input from a terminal without local echo.
 
-This is tracked in #65.
+Unfortunately there is no code there for reading only a _single character_, rather than a complete line.  In the interest of expediency I resort to executing the `stty` binary, rather than attempting to use the `x/term` package to manage echo/noecho state myself, and this means the code in this repository isn't 100% portable; it will work on Linux and MacOS hosts, but not Windows.
+
+I've got an open bug about fixing the console (input), [#65](https://github.com/skx/cpmulator/issues/65).
 
 
 
@@ -96,7 +96,7 @@ The MIT License (MIT)
 A>
 ```
 
-You can terminate the CCP by pressing Ctrl-C, or typing `EXIT`.  The following built-in commands are available:
+You can terminate the CCP by typing `EXIT`.  The following built-in commands are available:
 
 <details>
 <summary>Show the built-in commands of the default CCP:</summary>
@@ -117,6 +117,8 @@ You can terminate the CCP by pressing Ctrl-C, or typing `EXIT`.  The following b
 
 </details>
 
+
+Traditionally pressing `Ctrl-C` would reload the CCP, via a soft boot.  I think that combination is likely to be entered by accident, so in `cpmulator` pressing Ctrl-C _twice_ will reboot the CCP.
 
 There are currently a pair of CCP implementations included within the emulator, and they can be selected via the `-ccp` command-line flag:
 
@@ -146,6 +148,10 @@ Other options are shown in the output of `cpmulator -help`, but in brief:
   * Output debug-logs to the given file, creating it if necessary.
 * `-prn-path /path/to/file`
   * All output which CP/M sends to the "printer" will be written to the given file.
+* `-syscalls`
+  * Dump the list of implemented BDOS and BIOS syscalls.
+* `-version`
+  * Show our version number.
 
 
 
@@ -330,8 +336,6 @@ When I was uncertain of how to implement a specific system call the following tw
 
 * [Digital Research - CP/M Operating System Manual](http://www.gaby.de/cpm/manuals/archive/cpm22htm/)
   * Particularly the syscall reference in [Section 5: CP/M 2 System Interface](http://www.gaby.de/cpm/manuals/archive/cpm22htm/ch5.htm).
-* Sample code
-  * https://github.com/Laci1953/RC2014-CPM/tree/main
 
 
 
@@ -353,8 +357,9 @@ The testing that I should do before a release:
   * [ ] Test SAVE and RESTORE commands, and confirm they work.
 * [ ] Test BE.COM
 * [ ] Test STAT.COM
-* [ ] Test some built-in shell-commands; ERA TYPE, and EXIT.
+* [ ] Test some built-in shell-commands; ERA, TYPE, and EXIT.
 * [ ] Test `samples/INTEST.COM` `samples/READ.COM`, `samples/WRITE.COM`.
+  * These demonstrate core primitives are not broken.
 
 
 
