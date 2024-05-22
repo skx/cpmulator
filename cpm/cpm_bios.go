@@ -9,6 +9,9 @@ package cpm
 import (
 	"fmt"
 	"log/slog"
+	"strings"
+
+	"github.com/skx/cpmulator/consoleout"
 )
 
 // BiosSysCallBoot handles a warm/cold boot.
@@ -167,8 +170,13 @@ func BiosSysCallReserved1(cpm *CPM) error {
 	// H == 1
 	//    C == 0xff to get the ctrl-c count
 	//    C != 0xff to set the ctrl-c count
+	//
+	// H == 2
+	//    DE points to a string containing the console driver to use.
+	//
 	h := cpm.CPU.States.HL.Hi
 	c := cpm.CPU.States.BC.Lo
+	de := cpm.CPU.States.DE.U16()
 
 	switch h {
 	case 01:
@@ -177,6 +185,26 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		} else {
 			cpm.input.SetInterruptCount(int(c))
 		}
+	case 02:
+		str := ""
+
+		c := cpm.Memory.Get(de)
+		for c != ' ' && c != 0x00 {
+			str += string(c)
+			de++
+			c = cpm.Memory.Get(de)
+		}
+
+		str = strings.ToLower(str)
+
+		// Output driver needs to be created
+		driver, err := consoleout.New(str)
+		if err != nil {
+			return fmt.Errorf("failed to set output driver to %s:%s", str, err)
+		}
+
+		fmt.Printf("changed driver to %s\n", driver.GetName())
+		cpm.output = driver
 	default:
 		return fmt.Errorf("unknown custom BIOS function H:%02X", h)
 	}

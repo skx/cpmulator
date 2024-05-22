@@ -425,6 +425,11 @@ func (cpm *CPM) Cleanup() {
 	cpm.input.Reset()
 }
 
+// GetOutputDriver returns the name of our configured output driver.
+func (cpm *CPM) GetOutputDriver() string {
+	return cpm.output.GetName()
+}
+
 // LoadBinary loads the given CP/M binary at the default address of 0x0100,
 // where it can then be launched by Execute.
 func (cpm *CPM) LoadBinary(filename string) error {
