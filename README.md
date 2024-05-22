@@ -362,14 +362,4 @@ The testing that I should do before a release:
 
 Let me know by filing an issue.  If your program is "real" then it is highly likely it will try to invoke an unimplemented BIOS function.
 
-Known issues:
-
-* Wordstar is broken.
-  * Don't care, because I have no strong attachment to it.
-  * Seems to be related to console I/O via "`RST xx`" instructions.
-* SUBMIT.COM doesn't work.
-  * I suspect at least part of this is CCP-related.
-  * It can _print_ the last record of a file, but not execute it.
-  * I think it also doesn't work in reverse like it is supposed to.
-
 Steve
