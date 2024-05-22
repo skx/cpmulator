@@ -40,14 +40,31 @@ var (
 type ConsoleIn struct {
 	// State holds our current echo state; either Echo, NoEcho, or Unknown.
 	State Status
+
+	// InterruptCount holds the number of consecutive Ctrl-Cs which are necessary
+	// to trigger an interrupt response from ReadLine
+	InterruptCount int
 }
 
 // New is our constructor.
 func New() *ConsoleIn {
 	t := &ConsoleIn{
-		State: Unknown,
+		State:          Unknown,
+		InterruptCount: 2,
 	}
 	return t
+}
+
+// SetInterruptCount updates the number of consecutive Ctrl-Cs which are necessary
+// to trigger an interrupt in ReadLine.
+func (ci *ConsoleIn) SetInterruptCount(val int) {
+	ci.InterruptCount = val
+}
+
+// GetInterruptCount returns the number of consecutive Ctrl-Cs which are necessary
+// to trigger an interrupt in ReadLine.
+func (ci *ConsoleIn) GetInterruptCount() int {
+	return ci.InterruptCount
 }
 
 // BlockForCharacterNoEcho returns the next character from the console, blocking until
@@ -153,8 +170,9 @@ func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 		if x == 0x03 {
 			ctrlCount += 1
 
-			// Twice in a row will reboot
-			if ctrlCount == 2 {
+			// If we've hit our limit of consecutive Ctrl-Cs
+			// then we return the interrupted error-code
+			if ctrlCount == ci.InterruptCount {
 				return "", ErrInterrupted
 			}
 			continue
@@ -169,7 +187,7 @@ func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 			break
 		}
 
-		// Backspace / Delete?
+		// Backspace / Delete? Remove a single character.
 		if x == '\b' || x == 127 {
 
 			// remove the character from our text, and overwrite on the console
