@@ -482,18 +482,18 @@ func SysCallFileClose(cpm *CPM) error {
 	if strings.Contains(obj.name, "$") {
 
 		// Get the file size, in records
-		host_size, _ := obj.handle.Seek(0, 2)
-		host_extent := int((host_size) / 16384)
+		hostSize, _ := obj.handle.Seek(0, 2)
+		hostExtent := int((hostSize) / 16384)
 
-		SEQ_EXT := int(fcbPtr.Ex)*32 + int(0x3F&fcbPtr.S2)
-		SEQ_CR := func(n int64) int {
+		seqEXT := int(fcbPtr.Ex)*32 + int(0x3F&fcbPtr.S2)
+		seqCR := func(n int64) int {
 			return int(((n) % 16384) / 128)
 		}
 
-		if host_extent == SEQ_EXT {
-			if int(fcbPtr.RC) < SEQ_CR(host_size) {
-				host_size = int64(16384*SEQ_EXT + int(128*fcbPtr.RC))
-				err := obj.handle.Truncate(host_size)
+		if hostExtent == seqEXT {
+			if int(fcbPtr.RC) < seqCR(hostSize) {
+				hostSize = int64(16384*seqEXT + int(128*fcbPtr.RC))
+				err := obj.handle.Truncate(hostSize)
 				if err != nil {
 					return fmt.Errorf("error truncating file %s: %s", obj.name, err)
 				}
