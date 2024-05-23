@@ -492,7 +492,7 @@ func SysCallFileClose(cpm *CPM) error {
 
 		if hostExtent == seqEXT {
 			if int(fcbPtr.RC) < seqCR(hostSize) {
-				hostSize = int64(16384*seqEXT + int(128*fcbPtr.RC))
+				hostSize = int64(16384*seqEXT + int(128*int(fcbPtr.RC)))
 				err := obj.handle.Truncate(hostSize)
 				if err != nil {
 					return fmt.Errorf("error truncating file %s: %s", obj.name, err)
