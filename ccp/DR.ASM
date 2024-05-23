@@ -273,9 +273,9 @@ GETINP:
 	LD	DE,BATCHFCB
 	CALL	OPEN		;look for it.
 	JP	Z,GETINP1	;if not there, use normal input.
-	LD	A,(BATCHFCB+15)	;get last record number+1.
-	DEC	A
-	LD	(BATCHFCB+32),A
+	LD	A,(subrc)	;get last record number+1.
+	DEC	A               ;
+	LD	(subcr),A
 	LD	DE,BATCHFCB
 	CALL	RDREC		;read last record.
 	JP	NZ,GETINP1	;quit on end of file.
@@ -286,7 +286,7 @@ GETINP:
 	LD	HL,TBUFF	;data was read into buffer here.
 	LD	B,128		;all 128 characters may be used.
 	CALL	HL2DE		;(HL) to (DE), (B) bytes.
-	LD	HL,BATCHFCB+14
+	LD	HL,submod
 	LD	(HL),0		;zero out the 's2' byte.
 	INC	HL		;and decrement the record count.
 	DEC	(HL)
@@ -301,7 +301,6 @@ GETINP:
 ;
 	LD	HL,INBUFF+2
 	CALL	PLINE2
-	CALL	CHKCON		;check console, quit on a key.
 	JP	Z,GETINP2	;jump if no key is pressed.
 ;
 ;   Terminate the submit job on any keyboard input. Delete this
@@ -337,13 +336,6 @@ GETINP3:INC	HL
 GETINP4:LD	(HL),A		;add trailing null.
 	LD	HL,INBUFF+2
 	LD	(INPOINT),HL	;reset input line pointer.
-	RET
-;
-;   Routine to check the console for a key pressed. The zero
-; flag is set is none, else the character is returned in (A).
-;
-CHKCON:	LD      A, FF
-	OR	A		;clear zero flag and return.
 	RET
 ;
 ;   Routine to get the currently active drive number.
@@ -879,8 +871,6 @@ DRECT65:
 DIRECT7:
 	POP	AF		;get the next file name.
 DIRECT8:
-	;CALL	CHKCON		;first check console, quit on anything.
-	;JP	NZ,DIRECT9
 	CALL	SRCHNXT		;get next name.
 	JP	DIRECT3		;and continue with our list.
 DIRECT9:
@@ -1287,7 +1277,21 @@ CCPSTACK:
 ;   Batch (or SUBMIT) processing information storage.
 ;
 BATCH:	DEFB	0		;batch mode flag (0=not active).
-BATCHFCB: DEFB	0,'$$$     SUB',0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+BATCHFCB:
+        DEFB	0               ; drive
+        DEFB    '$$$     SUB'   ; name + ext
+        DEFB    0               ; ex
+        DEFB    0               ; s1
+submod:
+        DEFB 0                  ; s2
+subrc:
+        DEFB 1                  ; rc
+        DEFB 0,0,0,0 ,0,0,0,0, 0,0,0,0, 0,0,0,0 ; Al
+subcr:
+        DEFB 1                ; CR
+        DEFB 0                ; r0
+        DEFB 0                ; r1
+        DEFB 0                ; r2
 ;
 ;   File control block setup by the CCP.
 ;
