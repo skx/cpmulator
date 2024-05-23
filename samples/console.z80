@@ -20,7 +20,7 @@ BDOS_OUTPUT_STRING:   EQU 9
         cp 0x20                  ; 0x20 = 32 == SPACE
         jp z, missing_argument   ; Got a space, report the error
 
-        ld H, 02
+        ld HL, 02
         ld de, FCB1 + 1
         ld a, 31
         out (0xff), a
@@ -31,7 +31,7 @@ exit:
 
 missing_argument:
         LD DE, MISSING_ARGUMENT_STR
-        LD C, 0x09
+        LD C, BDOS_OUTPUT_STRING
         call BDOS_ENTRY_POINT
         jr exit
 

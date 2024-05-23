@@ -165,27 +165,27 @@ func (cpm *CPM) BiosHandler(val uint8) {
 // within the system.  Neat.
 func BiosSysCallReserved1(cpm *CPM) error {
 
-	// H is used to specify the function.
+	// HL is used to specify the function.
 	//
-	// H == 1
+	// HL == 1
 	//    C == 0xff to get the ctrl-c count
 	//    C != 0xff to set the ctrl-c count
 	//
-	// H == 2
+	// HL == 2
 	//    DE points to a string containing the console driver to use.
 	//
-	h := cpm.CPU.States.HL.Hi
-	c := cpm.CPU.States.BC.Lo
+	hl := cpm.CPU.States.HL.U16()
 	de := cpm.CPU.States.DE.U16()
+	c := cpm.CPU.States.BC.Lo
 
-	switch h {
-	case 01:
+	switch hl {
+	case 0x0001:
 		if c == 0xFF {
 			cpm.CPU.States.AF.Hi = uint8(cpm.input.GetInterruptCount())
 		} else {
 			cpm.input.SetInterruptCount(int(c))
 		}
-	case 02:
+	case 0x0002:
 		str := ""
 
 		c := cpm.Memory.Get(de)
@@ -215,7 +215,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 			fmt.Printf("console driver is already %s, making no change.\n", str)
 		}
 	default:
-		return fmt.Errorf("unknown custom BIOS function H:%02X", h)
+		return fmt.Errorf("unknown custom BIOS function HL:%04X", hl)
 	}
 
 	return nil
