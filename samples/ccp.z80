@@ -1,4 +1,4 @@
-;; console.z80 - Set the name of the console driver to use for output
+;; ccp.z80 - Set the name of the CCP to load.
 ;;
 ;; This uses the custom BIOS function we've added to the BIOS, which was never
 ;; present in real CP/M.  Consider it a hook into the emulator.
@@ -6,7 +6,7 @@
 
 FCB1:                 EQU 0x5C
 BDOS_ENTRY_POINT:     EQU 5
-BDOS_OUTPUT_STRING:   EQU 9
+
 
         ;;
         ;; CP/M programs start at 0x100.
@@ -20,7 +20,7 @@ BDOS_OUTPUT_STRING:   EQU 9
         cp 0x20                  ; 0x20 = 32 == SPACE
         jp z, missing_argument   ; Got a space, report the error
 
-        ld HL, 02
+        ld HL, 03
         ld de, FCB1 + 1
         ld a, 31
         out (0xff), a
@@ -31,7 +31,7 @@ exit:
 
 missing_argument:
         LD DE, MISSING_ARGUMENT_STR
-        LD C, BDOS_OUTPUT_STRING
+        LD C, 0x09
         call BDOS_ENTRY_POINT
         jr exit
 
@@ -40,6 +40,6 @@ missing_argument:
 ;;; Text output strings.
 ;;;
 MISSING_ARGUMENT_STR:
-        db "Usage: console [adm-3a|ansi]", 0x0a, 0x0d, "$"
+        db "Usage: CCP [CCP|CCPZ]", 0x0a, 0x0d, "$"
 
 END

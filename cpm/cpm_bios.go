@@ -11,7 +11,9 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/skx/cpmulator/ccp"
 	"github.com/skx/cpmulator/consoleout"
+	"github.com/skx/cpmulator/version"
 )
 
 // BiosSysCallBoot handles a warm/cold boot.
@@ -167,25 +169,58 @@ func BiosSysCallReserved1(cpm *CPM) error {
 
 	// H is used to specify the function.
 	//
-	// H == 1
+	// HL == 0
+	//    Are we running under CPMUlater?  We always say yes!
+	//
+	// HL == 1
 	//    C == 0xff to get the ctrl-c count
 	//    C != 0xff to set the ctrl-c count
 	//
-	// H == 2
+	// HL == 2
 	//    DE points to a string containing the console driver to use.
 	//
-	h := cpm.CPU.States.HL.Hi
+	// HL == 3
+	//    DE points to a string containing the CCP to use.
+	//
+	// HL == 4
+	//    C == 0 - Quiet mode on.
+	//    C != 0 - Quiet mode off
+	//
+	hl := cpm.CPU.States.HL.U16()
 	c := cpm.CPU.States.BC.Lo
 	de := cpm.CPU.States.DE.U16()
 
-	switch h {
-	case 01:
+	switch hl {
+	case 0x0000:
+		// Magic values in the registers
+		cpm.CPU.States.HL.Hi = 'S'
+		cpm.CPU.States.HL.Lo = 'K'
+		cpm.CPU.States.AF.Hi = 'X'
+
+		// Get our version
+		vers := version.GetVersionBanner()
+
+		// Fill the DMA area with NULL bytes
+		addr := cpm.dma
+
+		end := addr + uint16(127)
+		for end > addr {
+			cpm.Memory.Set(end, 0x00)
+			end--
+		}
+
+		for i, c := range vers {
+			cpm.Memory.Set(addr+uint16(i), uint8(c))
+		}
+		return nil
+
+	case 0x0001:
 		if c == 0xFF {
 			cpm.CPU.States.AF.Hi = uint8(cpm.input.GetInterruptCount())
 		} else {
 			cpm.input.SetInterruptCount(int(c))
 		}
-	case 02:
+	case 0x0002:
 		str := ""
 
 		c := cpm.Memory.Get(de)
@@ -214,8 +249,43 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		} else {
 			fmt.Printf("console driver is already %s, making no change.\n", str)
 		}
+	case 0x0003:
+		str := ""
+
+		c := cpm.Memory.Get(de)
+		for c != ' ' && c != 0x00 {
+			str += string(c)
+			de++
+			c = cpm.Memory.Get(de)
+		}
+
+		// CP/M will upper-case command-lines (and therefor their arguments)
+		str = strings.ToLower(str)
+
+		// See if the CCP exists
+		_, err := ccp.Get(str)
+		if err != nil {
+			fmt.Printf("Invalid CCP name %s\n", str)
+			return nil
+		}
+
+		// old value
+		old := cpm.ccp
+
+		if old != str {
+			fmt.Printf("CCP changed from %s to %s.\n", old, str)
+			cpm.ccp = str
+		} else {
+			fmt.Printf("CCP is already %s, making no change.\n", str)
+		}
+	case 0x0004:
+		if c == 0x00 {
+			cpm.quiet = true
+		} else {
+			cpm.quiet = false
+		}
 	default:
-		return fmt.Errorf("unknown custom BIOS function H:%02X", h)
+		return fmt.Errorf("unknown custom BIOS function HL:%04X", hl)
 	}
 
 	return nil

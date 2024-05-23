@@ -45,7 +45,8 @@ for OS in ${BUILD_PLATFORMS[@]}; do
         export GOOS=${OS}
         export CGO_ENABLED=0
 
-        go build -ldflags "-X main.version=$(git describe --tags)" -o "${BASE}-${SUFFIX}"
+
+        go build -ldflags "-X github.com/skx/cpmulator/version.version=$(git describe --tags)" -o "${BASE}-${SUFFIX}"
 
     done
 done

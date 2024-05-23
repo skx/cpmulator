@@ -153,21 +153,37 @@ Other options are shown in the output of `cpmulator -help`, but in brief:
 
 
 
-## Runtime Changes
+## Runtime Behaviour Changes
 
-Traditionally pressing `Ctrl-C` would reload the CCP, via a soft boot.  I think that combination is likely to be entered by accident, so in `cpmulator` we default to requiring you to press Ctrl-C _twice_ to reboot the CCP.
+There are a small number of [extensions](EXTENSIONS.md) added to the BIOS functionality we provide, and these extensions allow changing the behaviour of the emulator at runtime.
 
-> I've added a binary `samples/ctrlc.com` which lets you change this at runtime, via an internal [BIOS extension](EXTENSIONS.md).
-> Run `ctrlc 0` to disable the Ctrl-C behaviour, or `ctrlc N` to require N consecutive Ctrl-C keystrokes to trigger the restart-behaviour.  Neat.
 
-Similarly we default to using emulation to pretend our output device is an ADM-3A terminal, this can be changed via a command-line flag at startup.
+### CCP Handling
 
-> I've added a binary `samples/console.com` which lets you change this at runtime, via an internal [BIOS extension](EXTENSIONS.md).
-> Run `console ansi` to disable the output emulation, or `console adm-3a` to restore it.
+We default to loading the Digital Research CCP, but allow the CCPZ to be selected via the `-ccp` command-line flag.   The binary `samples/ccp.com` lets you change CCP at runtime.
+
+
+### Ctrl-C Handling
+
+Traditionally pressing `Ctrl-C` would reload the CCP, via a soft boot.  I think that combination is likely to be entered by accident, so in `cpmulator` we default to requiring you to press Ctrl-C _twice_ in a row to reboot the CCP.
+
+I've added a binary `samples/ctrlc.com` which lets you change this at runtime.  Run `ctrlc 0` to disable the Ctrl-C behaviour, or `ctrlc N` to require N consecutive Ctrl-C keystrokes to trigger the restart-behaviour (max: 9).
+
+
+### Console Output
+
+We default to pretending our output device is an ADM-3A terminal, this can be changed via the `-console` command-line flag at startup.  Additionally it can be changed at runtime via the `samples/console.com` command.
+
+Run `console ansi` to disable the output emulation, or `console adm-3a` to restore it.
 
 You'll see that the [cpm-dist](https://github.com/skx/cpm-dist) repository contains a version of Wordstar, and that behaves differently depending on the selected output handler.  Changing the handler at run-time is a neat bit of behaviour.
 
-> The `cpm-dist` repository also includes both CTRLC.COM and CONSOLE.COM on the A: drive, for ease of use.
+
+### Quiet Mode
+
+When CCP is soft/warm-booted it prints a banner showing the currently active CCP, and the console-output device which is in-use.
+
+Running `samples/quiet.com` will silence this output, essentially enabling "quiet mode".
 
 
 

@@ -20,6 +20,7 @@ import (
 	"github.com/skx/cpmulator/consoleout"
 	"github.com/skx/cpmulator/fcb"
 	"github.com/skx/cpmulator/memory"
+	cpmver "github.com/skx/cpmulator/version"
 )
 
 var (
@@ -97,6 +98,12 @@ type CPM struct {
 	// emulator.
 	biosErr error
 
+	// ccp contains the name of the CCP we should load
+	ccp string
+
+	// Should we be quiet?
+	quiet bool
+
 	// files is the cache we use for File handles.
 	files map[uint16]FileCache
 
@@ -173,7 +180,7 @@ type CPM struct {
 }
 
 // New returns a new emulation object
-func New(logger *slog.Logger, prn string, condriver string) (*CPM, error) {
+func New(logger *slog.Logger, prn string, condriver string, ccp string) (*CPM, error) {
 
 	//
 	// Create and populate our syscall table for the BDOS syscalls.
@@ -407,15 +414,16 @@ func New(logger *slog.Logger, prn string, condriver string) (*CPM, error) {
 
 	// Create the emulator object and return it
 	tmp := &CPM{
-		Logger:       logger,
-		input:        consolein.New(),
-		output:       driver,
 		BDOSSyscalls: sys,
 		BIOSSyscalls: b,
+		Logger:       logger,
+		ccp:          ccp,
 		dma:          0x0080,
-		start:        0x0100,
 		files:        make(map[uint16]FileCache),
+		input:        consolein.New(),
+		output:       driver,
 		prnPath:      prn,
+		start:        0x0100,
 	}
 	return tmp, nil
 }
@@ -428,6 +436,11 @@ func (cpm *CPM) Cleanup() {
 // GetOutputDriver returns the name of our configured output driver.
 func (cpm *CPM) GetOutputDriver() string {
 	return cpm.output.GetName()
+}
+
+// GetCCPName returns the name of the CCP we've been configured to load.
+func (cpm *CPM) GetCCPName() string {
+	return cpm.ccp
 }
 
 // LoadBinary loads the given CP/M binary at the default address of 0x0100,
@@ -554,7 +567,12 @@ func (cpm *CPM) fixupRAM() {
 //
 // This function modifies the "start" attribute, to ensure the CCP is loaded
 // and executed at a higher address than the default of 0x0100.
-func (cpm *CPM) LoadCCP(name string) error {
+func (cpm *CPM) LoadCCP() error {
+
+	// Show a startup-banner.
+	if !cpm.quiet {
+		fmt.Printf("\ncpmulator %s loaded CCP %s, with %s output driver\n", cpmver.GetVersionString(), cpm.GetCCPName(), cpm.GetOutputDriver())
+	}
 
 	// Create 64K of memory, full of NOPs
 	if cpm.Memory == nil {
@@ -564,7 +582,7 @@ func (cpm *CPM) LoadCCP(name string) error {
 	//
 	// Get our helper to find the CCP to load
 	//
-	helper, err := ccp.Get(name)
+	helper, err := ccp.Get(cpm.ccp)
 
 	if err != nil {
 		return fmt.Errorf("error retrieving CCP by name: %s", err)

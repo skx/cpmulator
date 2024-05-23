@@ -12,13 +12,10 @@ import (
 
 	cpmccp "github.com/skx/cpmulator/ccp"
 	"github.com/skx/cpmulator/cpm"
+	cpmver "github.com/skx/cpmulator/version"
 )
 
 var (
-	// version is populated with our release tag, via a Github Action.
-	//
-	// See .github/build in the source distribution for details.
-	version = "unreleased"
 
 	// log holds our logging handle
 	log *slog.Logger
@@ -77,7 +74,7 @@ func main() {
 		}
 
 		// Create helper
-		c, err := cpm.New(nil, "print.log", "ansi")
+		c, err := cpm.New(nil, "print.log", "ansi", "ccp")
 		if err != nil {
 			fmt.Printf("error creating CPM object: %s\n", err)
 			return
@@ -90,8 +87,7 @@ func main() {
 
 	// show version
 	if *showVersion {
-		fmt.Printf("cpmulator %s\n", version)
-		fmt.Printf("https://github.com/skx/cpmulator\n")
+		fmt.Printf("%s\n", cpmver.GetVersionBanner())
 		return
 	}
 
@@ -139,7 +135,7 @@ func main() {
 			}))
 
 	// Create a new emulator.
-	obj, err := cpm.New(log, *prnPath, *console)
+	obj, err := cpm.New(log, *prnPath, *console, *ccp)
 	if err != nil {
 		fmt.Printf("error creating CPM object: %s\n", err)
 		return
@@ -248,11 +244,8 @@ func main() {
 	// just jump back to the entry-point for that.
 	//
 	for {
-		// Show a startup-banner.
-		fmt.Printf("\ncpmulator %s loaded CCP %s, with %s output driver\n", version, *ccp, obj.GetOutputDriver())
-
 		// Load the CCP binary - resetting RAM in the process.
-		err := obj.LoadCCP(*ccp)
+		err := obj.LoadCCP()
 		if err != nil {
 			fmt.Printf("error loading CCP: %s\n", err)
 			return

@@ -29,7 +29,7 @@ BDOS_OUTPUT_STRING:   EQU 9
 
         ; set the value
         ld a, 31
-        ld h, 01
+        ld HL, 01
         out (0xff), a
 
         ;; fall-through to showing the value.
@@ -44,7 +44,7 @@ show_value:
 
         ;; get the value
         ld a, 31
-        ld h, 01
+        ld HL, 01
         ld c, 0xff
         out (0xff), a
 

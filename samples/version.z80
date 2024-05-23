@@ -27,6 +27,7 @@ MACRO POP_ALL
 
    ; Get the version
    ld c, 12
+   call 0x0005
    call DispHL
 
    ; Terminate
