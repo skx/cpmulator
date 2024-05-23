@@ -97,7 +97,7 @@ type CPM struct {
 	// emulator.
 	biosErr error
 
-	// ccp contains the name of the CCP we're running
+	// ccp contains the name of the CCP we should load
 	ccp string
 
 	// files is the cache we use for File handles.
@@ -410,16 +410,16 @@ func New(logger *slog.Logger, prn string, condriver string, ccp string) (*CPM, e
 
 	// Create the emulator object and return it
 	tmp := &CPM{
-		Logger:       logger,
-		input:        consolein.New(),
-		output:       driver,
 		BDOSSyscalls: sys,
 		BIOSSyscalls: b,
-		dma:          0x0080,
+		Logger:       logger,
 		ccp:          ccp,
-		start:        0x0100,
+		dma:          0x0080,
 		files:        make(map[uint16]FileCache),
+		input:        consolein.New(),
+		output:       driver,
 		prnPath:      prn,
+		start:        0x0100,
 	}
 	return tmp, nil
 }
@@ -429,14 +429,14 @@ func (cpm *CPM) Cleanup() {
 	cpm.input.Reset()
 }
 
-// GetCCPName returns the name of the CCP we're configured to load.
-func (cpm *CPM) GetCCPName() string {
-	return cpm.ccp
-}
-
 // GetOutputDriver returns the name of our configured output driver.
 func (cpm *CPM) GetOutputDriver() string {
 	return cpm.output.GetName()
+}
+
+// GetCCPName returns the name of the CCP we've been configured to load.
+func (cpm *CPM) GetCCPName() string {
+	return cpm.ccp
 }
 
 // LoadBinary loads the given CP/M binary at the default address of 0x0100,

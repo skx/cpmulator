@@ -12,13 +12,10 @@ import (
 
 	cpmccp "github.com/skx/cpmulator/ccp"
 	"github.com/skx/cpmulator/cpm"
+	cpmver "github.com/skx/cpmulator/version"
 )
 
 var (
-	// version is populated with our release tag, via a Github Action.
-	//
-	// See .github/build in the source distribution for details.
-	version = "unreleased"
 
 	// log holds our logging handle
 	log *slog.Logger
@@ -90,8 +87,7 @@ func main() {
 
 	// show version
 	if *showVersion {
-		fmt.Printf("cpmulator %s\n", version)
-		fmt.Printf("https://github.com/skx/cpmulator\n")
+		fmt.Printf("%s\n", cpmver.GetVersionBanner())
 		return
 	}
 
@@ -249,7 +245,7 @@ func main() {
 	//
 	for {
 		// Show a startup-banner.
-		fmt.Printf("\ncpmulator %s loaded CCP %s, with %s output driver\n", version, obj.GetCCPName(), obj.GetOutputDriver())
+		fmt.Printf("\ncpmulator %s loaded CCP %s, with %s output driver\n", cpmver.GetVersionString(), obj.GetCCPName(), obj.GetOutputDriver())
 
 		// Load the CCP binary - resetting RAM in the process.
 		err := obj.LoadCCP()
