@@ -97,6 +97,9 @@ type CPM struct {
 	// emulator.
 	biosErr error
 
+	// ccp contains the name of the CCP we're running
+	ccp string
+
 	// files is the cache we use for File handles.
 	files map[uint16]FileCache
 
@@ -173,7 +176,7 @@ type CPM struct {
 }
 
 // New returns a new emulation object
-func New(logger *slog.Logger, prn string, condriver string) (*CPM, error) {
+func New(logger *slog.Logger, prn string, condriver string, ccp string) (*CPM, error) {
 
 	//
 	// Create and populate our syscall table for the BDOS syscalls.
@@ -413,6 +416,7 @@ func New(logger *slog.Logger, prn string, condriver string) (*CPM, error) {
 		BDOSSyscalls: sys,
 		BIOSSyscalls: b,
 		dma:          0x0080,
+		ccp:          ccp,
 		start:        0x0100,
 		files:        make(map[uint16]FileCache),
 		prnPath:      prn,
@@ -423,6 +427,11 @@ func New(logger *slog.Logger, prn string, condriver string) (*CPM, error) {
 // Cleanup cleans up the state of the terminal, if necessary.
 func (cpm *CPM) Cleanup() {
 	cpm.input.Reset()
+}
+
+// GetCCPName returns the name of the CCP we're configured to load.
+func (cpm *CPM) GetCCPName() string {
+	return cpm.ccp
 }
 
 // GetOutputDriver returns the name of our configured output driver.
@@ -554,7 +563,7 @@ func (cpm *CPM) fixupRAM() {
 //
 // This function modifies the "start" attribute, to ensure the CCP is loaded
 // and executed at a higher address than the default of 0x0100.
-func (cpm *CPM) LoadCCP(name string) error {
+func (cpm *CPM) LoadCCP() error {
 
 	// Create 64K of memory, full of NOPs
 	if cpm.Memory == nil {
@@ -564,7 +573,7 @@ func (cpm *CPM) LoadCCP(name string) error {
 	//
 	// Get our helper to find the CCP to load
 	//
-	helper, err := ccp.Get(name)
+	helper, err := ccp.Get(cpm.ccp)
 
 	if err != nil {
 		return fmt.Errorf("error retrieving CCP by name: %s", err)
