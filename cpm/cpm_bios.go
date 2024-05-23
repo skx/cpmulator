@@ -182,6 +182,10 @@ func BiosSysCallReserved1(cpm *CPM) error {
 	// HL == 3
 	//    DE points to a string containing the CCP to use.
 	//
+	// HL == 4
+	//    C == 0 - Quiet mode on.
+	//    C != 0 - Quiet mode off
+	//
 	hl := cpm.CPU.States.HL.U16()
 	c := cpm.CPU.States.BC.Lo
 	de := cpm.CPU.States.DE.U16()
@@ -273,6 +277,12 @@ func BiosSysCallReserved1(cpm *CPM) error {
 			cpm.ccp = str
 		} else {
 			fmt.Printf("CCP is already %s, making no change.\n", str)
+		}
+	case 0x0004:
+		if c == 0x00 {
+			cpm.quiet = true
+		} else {
+			cpm.quiet = false
 		}
 	default:
 		return fmt.Errorf("unknown custom BIOS function HL:%04X", hl)

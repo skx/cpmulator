@@ -20,6 +20,7 @@ import (
 	"github.com/skx/cpmulator/consoleout"
 	"github.com/skx/cpmulator/fcb"
 	"github.com/skx/cpmulator/memory"
+	cpmver "github.com/skx/cpmulator/version"
 )
 
 var (
@@ -99,6 +100,9 @@ type CPM struct {
 
 	// ccp contains the name of the CCP we should load
 	ccp string
+
+	// Should we be quiet?
+	quiet bool
 
 	// files is the cache we use for File handles.
 	files map[uint16]FileCache
@@ -564,6 +568,11 @@ func (cpm *CPM) fixupRAM() {
 // This function modifies the "start" attribute, to ensure the CCP is loaded
 // and executed at a higher address than the default of 0x0100.
 func (cpm *CPM) LoadCCP() error {
+
+	// Show a startup-banner.
+	if cpm.quiet == false {
+		fmt.Printf("\ncpmulator %s loaded CCP %s, with %s output driver\n", cpmver.GetVersionString(), cpm.GetCCPName(), cpm.GetOutputDriver())
+	}
 
 	// Create 64K of memory, full of NOPs
 	if cpm.Memory == nil {

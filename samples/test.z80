@@ -1,0 +1,64 @@
+;; test.z80 - Test that we are running cpmulator
+
+BDOS_ENTRY_POINT:     EQU 5
+BDOS_OUTPUT_STRING:   EQU 9
+
+        ;;
+        ;; CP/M programs start at 0x100.
+        ;;
+        ORG 100H
+
+
+        ;; Call the functions
+        ld HL, 0x0000
+        ld a, 31
+        out (0xff), a
+
+        CP 'X'
+        jr nz, not_cpmulator
+
+        LD A, H
+        CP 'S'
+        jr nz, not_cpmulator
+
+        LD A, L
+        CP 'K'
+        jr nz, not_cpmulator
+
+        ; show the successful version
+        LD DE, yes_cpmulator_message
+        LD C,  BDOS_OUTPUT_STRING
+        CALL   BDOS_ENTRY_POINT
+
+        ; now dump the DMA area
+        LD HL, 0x80
+loop:
+        LD A, (HL)
+        CP 0
+        JR Z, exit
+        push hl
+          ld E, A
+          ld C, 0x02
+          CALL BDOS_ENTRY_POINT
+        pop hl
+        inc hl
+        jr loop
+
+
+exit:
+        ;; Exit
+        LD C, 0x00
+        CALL BDOS_ENTRY_POINT
+
+
+not_cpmulator:
+        LD DE, not_cpmulator_message
+        LD C,  BDOS_OUTPUT_STRING
+        call   BDOS_ENTRY_POINT
+        jr exit
+
+
+not_cpmulator_message:
+        DB "No, this binary is not running under cpmulator.", 0x0a, 0x0d, "$"
+yes_cpmulator_message:
+        DB "This binary is running under cpmulator:", 0x0a, 0x0d, 0x0a, 0x0d, "$"

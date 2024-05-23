@@ -244,9 +244,6 @@ func main() {
 	// just jump back to the entry-point for that.
 	//
 	for {
-		// Show a startup-banner.
-		fmt.Printf("\ncpmulator %s loaded CCP %s, with %s output driver\n", cpmver.GetVersionString(), obj.GetCCPName(), obj.GetOutputDriver())
-
 		// Load the CCP binary - resetting RAM in the process.
 		err := obj.LoadCCP()
 		if err != nil {
