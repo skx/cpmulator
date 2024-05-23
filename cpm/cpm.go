@@ -570,7 +570,7 @@ func (cpm *CPM) fixupRAM() {
 func (cpm *CPM) LoadCCP() error {
 
 	// Show a startup-banner.
-	if cpm.quiet == false {
+	if !cpm.quiet {
 		fmt.Printf("\ncpmulator %s loaded CCP %s, with %s output driver\n", cpmver.GetVersionString(), cpm.GetCCPName(), cpm.GetOutputDriver())
 	}
 
