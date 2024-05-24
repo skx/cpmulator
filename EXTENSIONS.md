@@ -35,14 +35,14 @@ Test to see if the code is running under cpmulator, the return value is split in
 Example:
 
     ;: get the value
-    LD H, 0x01
+    LD HL, 0x01
     LD C, 0xFF
     LD A, 31
     OUT (0xFF), A
     ;; Now A has the result
 
     ;; Set the value to 4
-    LD H, 0x01
+    LD HL, 0x01
     LD C, 0x04
     LD A, 31
     OUT (0xFF), A
