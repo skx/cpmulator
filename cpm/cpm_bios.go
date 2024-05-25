@@ -220,6 +220,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		} else {
 			cpm.input.SetInterruptCount(int(c))
 		}
+
 	case 0x0002:
 		str := ""
 
@@ -249,6 +250,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		} else {
 			fmt.Printf("console driver is already %s, making no change.\n", str)
 		}
+
 	case 0x0003:
 		str := ""
 
@@ -263,7 +265,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		str = strings.ToLower(str)
 
 		// See if the CCP exists
-		_, err := ccp.Get(str)
+		entry, err := ccp.Get(str)
 		if err != nil {
 			fmt.Printf("Invalid CCP name %s\n", str)
 			return nil
@@ -273,11 +275,12 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		old := cpm.ccp
 
 		if old != str {
-			fmt.Printf("CCP changed from %s to %s.\n", old, str)
+			fmt.Printf("CCP changed to %s [%s] Size:0x%04X Entry-Point:0x%04X\n", str, entry.Description, len(entry.Bytes), entry.Start)
 			cpm.ccp = str
 		} else {
 			fmt.Printf("CCP is already %s, making no change.\n", str)
 		}
+
 	case 0x0004:
 		if c == 0x00 {
 			cpm.quiet = true
