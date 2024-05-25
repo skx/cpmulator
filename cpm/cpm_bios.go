@@ -245,6 +245,25 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		}
 
 	case 0x0002:
+
+		if de == 0x0000 {
+			// Fill the DMA area with NULL bytes
+			addr := cpm.dma
+
+			end := addr + uint16(127)
+			for end > addr {
+				cpm.Memory.Set(end, 0x00)
+				end--
+			}
+
+			// now populate with our console driver
+			str := cpm.output.GetName()
+			for i, c := range str {
+				cpm.Memory.Set(addr+uint16(i), uint8(c))
+			}
+			return nil
+		}
+
 		// Get the string pointed to by DE
 		str := getStringFromMemory(de)
 
@@ -273,6 +292,24 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		}
 
 	case 0x0003:
+
+		if de == 0x0000 {
+			// Fill the DMA area with NULL bytes
+			addr := cpm.dma
+
+			end := addr + uint16(127)
+			for end > addr {
+				cpm.Memory.Set(end, 0x00)
+				end--
+			}
+
+			// now populate with our CCP
+			str := cpm.ccp
+			for i, c := range str {
+				cpm.Memory.Set(addr+uint16(i), uint8(c))
+			}
+			return nil
+		}
 
 		// Get the string pointed to by DE
 		str := getStringFromMemory(de)

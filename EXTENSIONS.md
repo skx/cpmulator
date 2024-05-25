@@ -51,25 +51,29 @@ Demonstrated in [samples/ctrlc.z80](samples/ctrlc.z80).
 
 
 
-## Function 0x02: Change Console Driver
+## Function 0x02: Get/Set Console Driver
 
 On entry DE points to a text-string, terminated by NULL, which represents the name of the
 console output driver to use.
+
+If DE is 0x0000 then the DMA area is filled with the name of the current driver, NULL-terminated.
 
 Demonstrated in [samples/console.z80](samples/console.z80)
 
 
 
-## Function 0x03: Change CCP Driver
+## Function 0x03: Get/Set CCP
 
 On entry DE points to a text-string, terminated by NULL, which represents the name of the
 CCP to use.
+
+If DE is 0x0000 then the DMA area is filled with the name of the currently active CCP, NULL-terminated.
 
 Demonstrated in [samples/ccp.z80](samples/ccp.z80)
 
 
 
-## Function 0x04: Set Quiet
+## Function 0x04: Get/Set Quiet
 
 * If C is 0x00 quiet-mode is enabled.
 * If C is 0x01 quiet-mode is disabled.

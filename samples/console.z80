@@ -36,7 +36,7 @@ BDOS_OUTPUT_STRING:   EQU 9
         ;; then we've got nothing specified
         ld a, (FCB1 + 1)
         cp 0x20                  ; 0x20 = 32 == SPACE
-        jp z, missing_argument   ; Got a space, report the error
+        jp z, show_driver        ; Got a space, show the console driver name
 
 
         ;; OK we're running under cpmulator
@@ -50,14 +50,38 @@ exit:
         LD      C,0x00
         CALL    BDOS_ENTRY_POINT
 
+;; Show the current console driver
+show_driver:
+        LD DE, CONSOLE_PREFIX
+        LD C, BDOS_OUTPUT_STRING
+        CALL BDOS_ENTRY_POINT
+
+        ld HL, 02
+        ld de, 0x0000
+        ld a, 31
+        out (0xff), a
+
+        LD HL, 0x0080
+loopy:
+        LD A, (HL)
+        cp 0
+        JR Z, finished_loop
+        push HL
+             ld e,a
+             ld c, 0x02
+             call 0x0005
+        pop HL
+        inc hl
+        jr loopy
+finished_loop:
+        LD DE, CONSOLE_SUFFIX
+        LD C, BDOS_OUTPUT_STRING
+        CALL BDOS_ENTRY_POINT
+        jr exit
+
 ;;
 ;; Error Routines
 ;;
-missing_argument:
-        LD DE, MISSING_ARGUMENT_STR
-        LD C, BDOS_OUTPUT_STRING
-        call BDOS_ENTRY_POINT
-        jr exit
 
 not_cpmulator:
         LD DE, WRONG_EMULATOR
@@ -69,8 +93,10 @@ not_cpmulator:
 ;;
 ;; Text output strings.
 ;;
-MISSING_ARGUMENT_STR:
-        db "Usage: console [adm-3a|ansi]", 0x0a, 0x0d, "$"
+CONSOLE_PREFIX:
+        db "Console driver is set to '$"
+CONSOLE_SUFFIX:
+        db "'", 0x0a, 0x0d, "$"
 WRONG_EMULATOR:
         db "This binary is not running under cpmulator, aborting.", 0x0a, 0x0d, "$"
 END
