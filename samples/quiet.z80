@@ -33,21 +33,81 @@ BDOS_OUTPUT_STRING:   EQU 9
         CP 'K'
         jr nz, not_cpmulator
 
-        ;; OK we're running under cpmulator, invoke the
-        ;; quiet-function.
-        ld HL, 0x04
+        ;; The FCB will be populated with the number/first argument,
+        ;; if the first character of that region is a space-character
+        ;; then we've got nothing specified
+        ld a, (FCB1 + 1)
+        cp 0x20             ; 0x20 = 32 == SPACE
+        jp z, show_value    ; Got a space, just show the value.
+
+        ;; Otherwise we set
+        cp '1'
+        jr z, set_quiet
+        cp '0'
+        jr z, set_non_quiet
+
+        jr unknown_argument
+
+
+set_non_quiet:
+        ld c, 0x01
+        jr set_quiet_middle
+
+set_quiet:
         ld  c, 0x00
+set_quiet_middle:
+        ld HL, 0x04
         ld  a, 31
         out (0xff), a
+        jr exit
+
+;; get the value of the quiet flag
+show_value:
+        ld  c, 0xff
+        ld HL, 0x04
+        ld  a, 31
+        out (0xff), a
+
+        ld a,c
+        cp 0x00
+        jr z,show_quiet_on
+        cp 0x01
+        jr z, show_quiet_off
+        jr show_quiet_wtf
 
         ;; Exit
 exit:
         LD      C,0x00
         CALL    BDOS_ENTRY_POINT
 
+
+show_quiet_off:
+        LD DE, QUIET_MODE_OFF
+        LD C, BDOS_OUTPUT_STRING
+        call BDOS_ENTRY_POINT
+        jr exit
+
+show_quiet_on:
+        LD DE, QUIET_MODE_ON
+        LD C, BDOS_OUTPUT_STRING
+        call BDOS_ENTRY_POINT
+        jr exit
+
+show_quiet_wtf:
+        LD DE, QUIET_MODE_UNKNOWN
+        LD C, BDOS_OUTPUT_STRING
+        call BDOS_ENTRY_POINT
+        jr exit
+
 ;;
 ;; Error Routines
 ;;
+unknown_argument:
+        LD DE, WRONG_ARGUMENT
+        LD C, BDOS_OUTPUT_STRING
+        call BDOS_ENTRY_POINT
+        jr exit
+
 not_cpmulator:
         LD DE, WRONG_EMULATOR
         LD C, BDOS_OUTPUT_STRING
@@ -57,7 +117,14 @@ not_cpmulator:
 ;;
 ;; Text output strings.
 ;;
+WRONG_ARGUMENT:
+        db "Usage: QUIET [0|1]", 0x0a, 0x0d, "$"
 WRONG_EMULATOR:
         db "This binary is not running under cpmulator, aborting.", 0x0a, 0x0d, "$"
-
+QUIET_MODE_ON:
+        db "Quiet mode is on.", 0x0a, 0x0d, "$"
+QUIET_MODE_OFF:
+        db "Quiet mode is off.", 0x0a, 0x0d, "$"
+QUIET_MODE_UNKNOWN:
+        db "Failed to determine the state of quiet mode", 0x0a, 0x0d, "$"
 END

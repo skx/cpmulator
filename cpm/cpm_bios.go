@@ -301,8 +301,27 @@ func BiosSysCallReserved1(cpm *CPM) error {
 
 	case 0x0004:
 
+		// if C == 00
+		//   Set the quiet flag to be true
+		//
+		// If C == 0xFF
+		//   Return the statues of the flag in C (0 = quiet, 1 = non-quiet)
+		//
 		// Set the quiet flag
-		cpm.SetQuiet(c == 0x00)
+		if c == 0x00 {
+			cpm.SetQuiet(true)
+		}
+		if c == 0x01 {
+			cpm.SetQuiet(false)
+		}
+		if c == 0xFF {
+			if cpm.GetQuiet() {
+				cpm.CPU.States.BC.Lo = 0x00
+			} else {
+				cpm.CPU.States.BC.Lo = 0x01
+			}
+
+		}
 
 	default:
 		fmt.Printf("Unknown custom BIOS function HL:%04X, ignoring", hl)
