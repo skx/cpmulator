@@ -443,6 +443,16 @@ func (cpm *CPM) GetCCPName() string {
 	return cpm.ccp
 }
 
+// GetQuiet returns the status of the quiet-flag.
+func (cpm *CPM) GetQuiet() bool {
+	return cpm.quiet
+}
+
+// SetQuiet updates the state of the quiet-flag.
+func (cpm *CPM) SetQuiet(state bool) {
+	cpm.quiet = state
+}
+
 // LoadBinary loads the given CP/M binary at the default address of 0x0100,
 // where it can then be launched by Execute.
 func (cpm *CPM) LoadBinary(filename string) error {
@@ -570,7 +580,7 @@ func (cpm *CPM) fixupRAM() {
 func (cpm *CPM) LoadCCP() error {
 
 	// Show a startup-banner.
-	if !cpm.quiet {
+	if !cpm.GetQuiet() {
 		fmt.Printf("\ncpmulator %s loaded CCP %s, with %s output driver\n", cpmver.GetVersionString(), cpm.GetCCPName(), cpm.GetOutputDriver())
 	}
 

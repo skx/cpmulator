@@ -35,6 +35,7 @@ func main() {
 	logPath := flag.String("log-path", "", "Specify the file to write debug logs to.")
 	prnPath := flag.String("prn-path", "print.log", "Specify the file to write printer-output to.")
 	syscalls := flag.Bool("syscalls", false, "List the syscalls we implement.")
+	quiet := flag.Bool("quiet", false, "Avoid showing the startup-banner when CCP is reloaded.")
 	showVersion := flag.Bool("version", false, "Report our version, and exit.")
 	flag.Parse()
 
@@ -139,6 +140,11 @@ func main() {
 	if err != nil {
 		fmt.Printf("error creating CPM object: %s\n", err)
 		return
+	}
+
+	// Set the quiet behaviour
+	if *quiet {
+		obj.SetQuiet(*quiet)
 	}
 
 	// When we're finishing we'll reset some (console) state.
