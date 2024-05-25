@@ -267,7 +267,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		}
 
 		if old != str {
-			fmt.Printf("Console driver changed from %s to %s.\n", cpm.output.GetName(), driver.GetName())
+			fmt.Printf("Console driver changed from %s to %s.\n", old, driver.GetName())
 		} else {
 			fmt.Printf("Console driver is already %s, making no change.\n", str)
 		}
