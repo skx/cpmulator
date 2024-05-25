@@ -21,7 +21,7 @@ func TestCCPTrivial(t *testing.T) {
 
 		// The CCPs are small, but bigger than 1k and smaller than 8k
 		if len(bytes) < 1024 {
-			t.Fatalf("CCP %s is too small", n.Name)
+			t.Fatalf("CCP %s is too small got %d bytes", n.Name, len(bytes))
 		}
 
 		if len(bytes) > 8192 {
