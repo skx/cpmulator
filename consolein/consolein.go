@@ -44,6 +44,10 @@ type ConsoleIn struct {
 	// InterruptCount holds the number of consecutive Ctrl-Cs which are necessary
 	// to trigger an interrupt response from ReadLine
 	InterruptCount int
+
+	// stuffed holds fake input which has been forced into the buffer used
+	// by ReadLine
+	stuffed string
 }
 
 // New is our constructor.
@@ -53,6 +57,12 @@ func New() *ConsoleIn {
 		InterruptCount: 2,
 	}
 	return t
+}
+
+// StuffInput forces input into the buffer which our ReadLine function will
+// return.  It is used solely for the AUTOEXEC.SUB behaviour by our driver.
+func (ci *ConsoleIn) StuffInput(text string) {
+	ci.stuffed = text
 }
 
 // SetInterruptCount updates the number of consecutive Ctrl-Cs which are necessary
@@ -136,14 +146,24 @@ func (ci *ConsoleIn) BlockForCharacterWithEcho() (byte, error) {
 }
 
 // ReadLine reads a line of input from the console, truncating to the
-// length specified.  (The user can enter more than is allowed but no
-// buffer-overruns will occur!)
+// length specified.
 //
 // Note: We should enable echo in this function.
 //
 // NOTE: A user pressing Ctrl-C will be caught, and this will trigger the BDOS
-// function to reboot.
+// function to reboot.  We have a variable holding the number of consecutive
+// Ctrl-C characters are required to trigger this behaviour.
 func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
+
+	// Do we have faked/stuffed input to process?
+	if len(ci.stuffed) > 0 {
+
+		// If so return that fake output, and remove it
+		// to ensure it is only processed once.
+		text := ci.stuffed
+		ci.stuffed = ""
+		return text, nil
+	}
 
 	// Do we need to change state?  If so then do it.
 	if ci.State != Echo {

@@ -242,6 +242,11 @@ func main() {
 		return
 	}
 
+	// We will load AUTOEXEC.SUB, once, if it exists (*)
+	//
+	// * - Terms and conditions apply.
+	autoexec := false
+
 	// We load and re-run eternally - because many binaries the CCP
 	// would launch would end with "exit" which would otherwise cause
 	// our emulation to terminate
@@ -250,6 +255,13 @@ func main() {
 	// just jump back to the entry-point for that.
 	//
 	for {
+
+		// Run the autoexec behaviour, once only
+		if !autoexec {
+			obj.RunAutoExec()
+			autoexec = true
+		}
+
 		// Load the CCP binary - resetting RAM in the process.
 		err := obj.LoadCCP()
 		if err != nil {

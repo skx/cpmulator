@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/koron-go/z80"
@@ -806,6 +807,39 @@ func (cpm *CPM) Execute(args []string) error {
 		// We need to remove the entry from the stack to cleanup
 		cpm.CPU.SP += 2
 	}
+}
+
+// RunAutoExec is called once, if we're running in CCP-mode, rather than running
+// a simple binary.
+//
+// If A:SUBMIT.COM and A:AUTOEXEC.SUB exist then we stuff the input-buffer with
+// a command to process them.
+func (cpm *CPM) RunAutoExec() {
+
+	// These files must be present
+	files := []string{"SUBMIT.COM", "AUTOEXEC.SUB"}
+
+	// If one of the files is missing we return
+	// without doing anything.
+	for _, name := range files {
+
+		path := "."
+		if cpm.Drives {
+			path = string(cpm.currentDrive + 'A')
+		}
+
+		dst := filepath.Join(path, name)
+
+		handle, err := os.OpenFile(dst, os.O_RDONLY, 0644)
+		if err != nil {
+			return
+		}
+
+		handle.Close()
+	}
+
+	// OK we have both files
+	cpm.input.StuffInput("SUBMIT AUTOEXEC")
 }
 
 // SetDrives enables/disables the use of subdirectories upon the host system
