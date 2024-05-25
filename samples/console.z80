@@ -13,6 +13,24 @@ BDOS_OUTPUT_STRING:   EQU 9
         ;;
         ORG 100H
 
+        ;; Test that we're running under cpmulator by calling the
+        ;; "is cpmulator" function.
+        ld HL, 0x0000
+        ld a, 31
+        out (0xff), a
+
+        ;; We expect SKX to appear in registers HLA
+        CP 'X'
+        jr nz, not_cpmulator
+
+        LD A, H
+        CP 'S'
+        jr nz, not_cpmulator
+
+        LD A, L
+        CP 'K'
+        jr nz, not_cpmulator
+
         ;; The FCB will be populated with the first argument,
         ;; if the first character of that region is a space-character
         ;; then we've got nothing specified
@@ -20,6 +38,9 @@ BDOS_OUTPUT_STRING:   EQU 9
         cp 0x20                  ; 0x20 = 32 == SPACE
         jp z, missing_argument   ; Got a space, report the error
 
+
+        ;; OK we're running under cpmulator
+        ;; Point DE to the console-string to set, and invoke the function.
         ld HL, 02
         ld de, FCB1 + 1
         ld a, 31
@@ -29,17 +50,27 @@ exit:
         LD      C,0x00
         CALL    BDOS_ENTRY_POINT
 
+;;
+;; Error Routines
+;;
 missing_argument:
         LD DE, MISSING_ARGUMENT_STR
         LD C, BDOS_OUTPUT_STRING
         call BDOS_ENTRY_POINT
         jr exit
 
+not_cpmulator:
+        LD DE, WRONG_EMULATOR
+        LD C, BDOS_OUTPUT_STRING
+        call BDOS_ENTRY_POINT
+        jr exit
 
-;;;
-;;; Text output strings.
-;;;
+
+;;
+;; Text output strings.
+;;
 MISSING_ARGUMENT_STR:
         db "Usage: console [adm-3a|ansi]", 0x0a, 0x0d, "$"
-
+WRONG_EMULATOR:
+        db "This binary is not running under cpmulator, aborting.", 0x0a, 0x0d, "$"
 END
