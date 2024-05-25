@@ -2,7 +2,9 @@
 
 This directory contains some sample code, written in Z80 assembly.
 
-The top-level [dist/](../dist) directory contains more useful programs, including the various ZORK games, although some binaries here are useful for users.
+The top-level [dist/](../dist) directory contains a complete program used to test the emulator, and our sister repository contains a curated collection of binaries known to work well under this emulator:
+
+* https://github.com/skx/cpm-dist
 
 
 
