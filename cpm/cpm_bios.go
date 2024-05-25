@@ -190,6 +190,27 @@ func BiosSysCallReserved1(cpm *CPM) error {
 	c := cpm.CPU.States.BC.Lo
 	de := cpm.CPU.States.DE.U16()
 
+	//
+	// Helper to read a null/space terminated string from
+	// memory.
+	//
+	// Here because our custom syscalls read a string when
+	// setting both CCP and DisplayDriver.
+	//
+	getStringFromMemory := func(addr uint16) string {
+		str := ""
+		c := cpm.Memory.Get(addr)
+		for c != ' ' && c != 0x00 {
+			str += string(c)
+			addr++
+			c = cpm.Memory.Get(addr)
+		}
+
+		// Useful when the CCP has passed a string, because
+		// that uppercases all input
+		return strings.ToLower(str)
+	}
+
 	switch hl {
 	case 0x0000:
 		// Magic values in the registers
@@ -209,6 +230,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 			end--
 		}
 
+		// now populate with our name/version/information
 		for i, c := range vers {
 			cpm.Memory.Set(addr+uint16(i), uint8(c))
 		}
@@ -222,16 +244,8 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		}
 
 	case 0x0002:
-		str := ""
-
-		c := cpm.Memory.Get(de)
-		for c != ' ' && c != 0x00 {
-			str += string(c)
-			de++
-			c = cpm.Memory.Get(de)
-		}
-
-		str = strings.ToLower(str)
+		// Get the string pointed to by DE
+		str := getStringFromMemory(de)
 
 		// Output driver needs to be created
 		driver, err := consoleout.New(str)
@@ -258,17 +272,9 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		}
 
 	case 0x0003:
-		str := ""
 
-		c := cpm.Memory.Get(de)
-		for c != ' ' && c != 0x00 {
-			str += string(c)
-			de++
-			c = cpm.Memory.Get(de)
-		}
-
-		// CP/M will upper-case command-lines (and therefor their arguments)
-		str = strings.ToLower(str)
+		// Get the string pointed to by DE
+		str := getStringFromMemory(de)
 
 		// See if the CCP exists
 		entry, err := ccp.Get(str)
