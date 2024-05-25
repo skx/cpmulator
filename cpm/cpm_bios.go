@@ -244,9 +244,15 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		}
 
 		old := cpm.output.GetName()
+		cpm.output = driver
+
+		// when running quietly don't show any output
+		if cpm.quiet {
+			return nil
+		}
+
 		if old != str {
 			fmt.Printf("Console driver changed from %s to %s.\n", cpm.output.GetName(), driver.GetName())
-			cpm.output = driver
 		} else {
 			fmt.Printf("console driver is already %s, making no change.\n", str)
 		}
@@ -273,10 +279,15 @@ func BiosSysCallReserved1(cpm *CPM) error {
 
 		// old value
 		old := cpm.ccp
+		cpm.ccp = str
+
+		// when running quietly don't show any output
+		if cpm.quiet {
+			return nil
+		}
 
 		if old != str {
 			fmt.Printf("CCP changed to %s [%s] Size:0x%04X Entry-Point:0x%04X\n", str, entry.Description, len(entry.Bytes), entry.Start)
-			cpm.ccp = str
 		} else {
 			fmt.Printf("CCP is already %s, making no change.\n", str)
 		}
