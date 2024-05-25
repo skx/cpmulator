@@ -212,6 +212,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 	}
 
 	switch hl {
+
 	case 0x0000:
 		// Magic values in the registers
 		cpm.CPU.States.HL.Hi = 'S'
@@ -268,7 +269,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		if old != str {
 			fmt.Printf("Console driver changed from %s to %s.\n", cpm.output.GetName(), driver.GetName())
 		} else {
-			fmt.Printf("console driver is already %s, making no change.\n", str)
+			fmt.Printf("Console driver is already %s, making no change.\n", str)
 		}
 
 	case 0x0003:
@@ -304,8 +305,9 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		} else {
 			cpm.quiet = false
 		}
+
 	default:
-		return fmt.Errorf("unknown custom BIOS function HL:%04X", hl)
+		fmt.Printf("Unknown custom BIOS function HL:%04X, ignoring", hl)
 	}
 
 	return nil
