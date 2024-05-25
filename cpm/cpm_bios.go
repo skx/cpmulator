@@ -190,6 +190,27 @@ func BiosSysCallReserved1(cpm *CPM) error {
 	c := cpm.CPU.States.BC.Lo
 	de := cpm.CPU.States.DE.U16()
 
+	//
+	// Helper to read a null/space terminated string from
+	// memory.
+	//
+	// Here because our custom syscalls read a string when
+	// setting both CCP and DisplayDriver.
+	//
+	getStringFromMemory := func(addr uint16) string {
+		str := ""
+		c := cpm.Memory.Get(addr)
+		for c != ' ' && c != 0x00 {
+			str += string(c)
+			addr++
+			c = cpm.Memory.Get(addr)
+		}
+
+		// Useful when the CCP has passed a string, because
+		// that uppercases all input
+		return strings.ToLower(str)
+	}
+
 	switch hl {
 	case 0x0000:
 		// Magic values in the registers
@@ -209,6 +230,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 			end--
 		}
 
+		// now populate with our name/version/information
 		for i, c := range vers {
 			cpm.Memory.Set(addr+uint16(i), uint8(c))
 		}
@@ -220,17 +242,10 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		} else {
 			cpm.input.SetInterruptCount(int(c))
 		}
+
 	case 0x0002:
-		str := ""
-
-		c := cpm.Memory.Get(de)
-		for c != ' ' && c != 0x00 {
-			str += string(c)
-			de++
-			c = cpm.Memory.Get(de)
-		}
-
-		str = strings.ToLower(str)
+		// Get the string pointed to by DE
+		str := getStringFromMemory(de)
 
 		// Output driver needs to be created
 		driver, err := consoleout.New(str)
@@ -243,27 +258,26 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		}
 
 		old := cpm.output.GetName()
+		cpm.output = driver
+
+		// when running quietly don't show any output
+		if cpm.quiet {
+			return nil
+		}
+
 		if old != str {
 			fmt.Printf("Console driver changed from %s to %s.\n", cpm.output.GetName(), driver.GetName())
-			cpm.output = driver
 		} else {
 			fmt.Printf("console driver is already %s, making no change.\n", str)
 		}
+
 	case 0x0003:
-		str := ""
 
-		c := cpm.Memory.Get(de)
-		for c != ' ' && c != 0x00 {
-			str += string(c)
-			de++
-			c = cpm.Memory.Get(de)
-		}
-
-		// CP/M will upper-case command-lines (and therefor their arguments)
-		str = strings.ToLower(str)
+		// Get the string pointed to by DE
+		str := getStringFromMemory(de)
 
 		// See if the CCP exists
-		_, err := ccp.Get(str)
+		entry, err := ccp.Get(str)
 		if err != nil {
 			fmt.Printf("Invalid CCP name %s\n", str)
 			return nil
@@ -271,13 +285,19 @@ func BiosSysCallReserved1(cpm *CPM) error {
 
 		// old value
 		old := cpm.ccp
+		cpm.ccp = str
+
+		// when running quietly don't show any output
+		if cpm.quiet {
+			return nil
+		}
 
 		if old != str {
-			fmt.Printf("CCP changed from %s to %s.\n", old, str)
-			cpm.ccp = str
+			fmt.Printf("CCP changed to %s [%s] Size:0x%04X Entry-Point:0x%04X\n", str, entry.Description, len(entry.Bytes), entry.Start)
 		} else {
 			fmt.Printf("CCP is already %s, making no change.\n", str)
 		}
+
 	case 0x0004:
 		if c == 0x00 {
 			cpm.quiet = true
