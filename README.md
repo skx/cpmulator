@@ -146,10 +146,24 @@ Other options are shown in the output of `cpmulator -help`, but in brief:
   * Output debug-logs to the given file, creating it if necessary.
 * `-prn-path /path/to/file`
   * All output which CP/M sends to the "printer" will be written to the given file.
+* `-quiet`
+  * Enable quiet-mode, which cuts down on output.
 * `-syscalls`
   * Dump the list of implemented BDOS and BIOS syscalls.
 * `-version`
   * Show our version number.
+
+
+
+## Startup Processing
+
+When the CCP is launched for interactive execution, we allow commands to be executed at startup:
+
+* If `SUBMIT.COM` **and** `AUTOEXEC.SUB` exist on A:
+* Then the contents of `AUTOEXEC.SUB` will be executed.
+* We secretly run "`SUBMIT AUTOEXEC`" to achieve this.
+
+This allows you to customize the emulator, or perform other "one-time" setup via the options described in the next section.
 
 
 
