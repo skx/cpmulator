@@ -16,6 +16,24 @@ BDOS_OUTPUT_STRING:   EQU 9
         ;;
         ORG 100H
 
+        ;; Test that we're running under cpmulator by calling the
+        ;; "is cpmulator" function.
+        ld HL, 0x0000
+        ld a, 31
+        out (0xff), a
+
+        ;; We expect SKX to appear in registers HLA
+        CP 'X'
+        jr nz, not_cpmulator
+
+        LD A, H
+        CP 'S'
+        jr nz, not_cpmulator
+
+        LD A, L
+        CP 'K'
+        jr nz, not_cpmulator
+
         ;; The FCB will be populated with the number/first argument,
         ;; if the first character of that region is a space-character
         ;; then we've got nothing specified
@@ -58,17 +76,28 @@ show_value:
         ld DE, NEWLINE
         ld C, 0x09
         call 0x0005
-
+exit:
         LD      C,0x00
         CALL    BDOS_ENTRY_POINT
 
 
-;;;
-;;; Text output strings.
-;;;
+;;
+;; Error Routines
+;;
+not_cpmulator:
+        LD DE, WRONG_EMULATOR
+        LD C, BDOS_OUTPUT_STRING
+        call BDOS_ENTRY_POINT
+        jr exit
+
+;;
+;; Text output strings.
+;;
 SHOW_PREFIX:
         db "The Ctrl-C count is currently set to $"
 NEWLINE:
         db 0xa, 0xd, "$"
+WRONG_EMULATOR:
+        db "This binary is not running under cpmulator, aborting.", 0x0a, 0x0d, "$"
 
 END
