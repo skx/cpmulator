@@ -199,11 +199,11 @@ func BiosSysCallReserved1(cpm *CPM) error {
 	//
 	getStringFromMemory := func(addr uint16) string {
 		str := ""
-		c := cpm.Memory.Get(addr)
-		for c != ' ' && c != 0x00 {
-			str += string(c)
+		x := cpm.Memory.Get(addr)
+		for x != ' ' && x != 0x00 {
+			str += string(x)
 			addr++
-			c = cpm.Memory.Get(addr)
+			x = cpm.Memory.Get(addr)
 		}
 
 		// Useful when the CCP has passed a string, because

@@ -267,13 +267,10 @@ func SysCallDriveAllReset(cpm *CPM) error {
 	var ret uint8 = 0
 
 	// drive will default to our current drive, if the FCB drive field is 0
-	drive := cpm.currentDrive + 'A'
+	drive := string(cpm.currentDrive + 'A')
 
-	// Should we remap drives?
-	path := "."
-	if cpm.Drives {
-		path = string(drive)
-	}
+	// Remap to the place we're supposed to use.
+	path := cpm.drives[drive]
 
 	// Look for a file with $ in its name
 	files, err := os.ReadDir(path)
@@ -354,11 +351,8 @@ func SysCallFileOpen(cpm *CPM) error {
 		drive = fcbPtr.Drive + 'A' - 1
 	}
 
-	// Should we remap drives?
-	path := "."
-	if cpm.Drives {
-		path = string(drive)
-	}
+	// Remap to the place we're supposed to use.
+	path := cpm.drives[string(drive)]
 
 	//
 	// Ok we have a filename, but we probably have an upper-case
@@ -384,16 +378,8 @@ func SysCallFileOpen(cpm *CPM) error {
 		slog.String("drive", string(cpm.currentDrive+'A')),
 		slog.String("result", fileName))
 
-	// Should we remap drives?
-	if cpm.Drives {
-		before := fileName
-
-		fileName = filepath.Join(string(drive), fileName)
-
-		l.Debug("SysCallFileOpen remapped path",
-			slog.String("before", before),
-			slog.String("after", fileName))
-	}
+	// Ensure the filename is qualified
+	fileName = filepath.Join(path, fileName)
 
 	// Now we open..
 	file, err := os.OpenFile(fileName, os.O_RDWR, 0644)
@@ -531,10 +517,8 @@ func SysCallFindFirst(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
-	dir := "."
-	if cpm.Drives {
-		dir = string(cpm.currentDrive + 'A')
-	}
+	// Look in the correct location.
+	dir := cpm.drives[string(cpm.currentDrive+'A')]
 
 	// Find files in the FCB.
 	res, err := fcbPtr.GetMatches(dir)
@@ -651,10 +635,8 @@ func SysCallDeleteFile(cpm *CPM) error {
 		drive = fcbPtr.Drive + 'A' - 1
 	}
 
-	path := "."
-	if cpm.Drives {
-		path = string(drive)
-	}
+	// Remap to the place we're supposed to use.
+	path := cpm.drives[string(drive)]
 
 	// Find files in the FCB.
 	res, err := fcbPtr.GetMatches(path)
@@ -857,11 +839,8 @@ func SysCallMakeFile(cpm *CPM) error {
 		drive = fcbPtr.Drive + 'A' - 1
 	}
 
-	// Should we remap drives?
-	path := "."
-	if cpm.Drives {
-		path = string(drive)
-	}
+	// Remap to the place we're supposed to use.
+	path := cpm.drives[string(drive)]
 
 	//
 	// Ok we have a filename, but we probably have an upper-case
@@ -887,16 +866,8 @@ func SysCallMakeFile(cpm *CPM) error {
 		slog.String("drive", string(cpm.currentDrive+'A')),
 		slog.String("result", fileName))
 
-	// Should we remap drives?
-	if cpm.Drives {
-		before := fileName
-
-		fileName = filepath.Join(string(drive), fileName)
-
-		l.Debug("SysCallMakeFile remapped path",
-			slog.String("before", before),
-			slog.String("after", fileName))
-	}
+	// Qualify the path
+	fileName = filepath.Join(path, fileName)
 
 	// Create the file
 	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_RDWR, 0644)
@@ -967,11 +938,8 @@ func SysCallRenameFile(cpm *CPM) error {
 		fileName += ext
 	}
 
-	// Should we remap drives?
-	path := "."
-	if cpm.Drives {
-		path = string(cpm.currentDrive + 'A')
-	}
+	// Point to the directory
+	path := cpm.drives[string(cpm.currentDrive+'A')]
 
 	//
 	// Ok we have a filename, but we probably have an upper-case
@@ -989,10 +957,8 @@ func SysCallRenameFile(cpm *CPM) error {
 		}
 	}
 
-	// Should we remap drives?
-	if cpm.Drives {
-		fileName = filepath.Join(string(cpm.currentDrive+'A'), fileName)
-	}
+	// Ensure the filename is qualified
+	fileName = filepath.Join(path, fileName)
 
 	// 2. DEST
 	// The pointer to the FCB
@@ -1011,10 +977,8 @@ func SysCallRenameFile(cpm *CPM) error {
 		dstName += dExt
 	}
 
-	// Should we remap drives?
-	if cpm.Drives {
-		dstName = filepath.Join(string(cpm.currentDrive+'A'), dstName)
-	}
+	// ensure the name is qualified
+	dstName = filepath.Join(path, dstName)
 
 	cpm.Logger.Debug("Renaming file",
 		slog.String("src", fileName),
@@ -1287,10 +1251,7 @@ func SysCallFileSize(cpm *CPM) error {
 	}
 
 	// Should we remap drives?
-	path := "."
-	if cpm.Drives {
-		path = string(cpm.currentDrive + 'A')
-	}
+	path := cpm.drives[string(cpm.currentDrive+'A')]
 
 	//
 	// Ok we have a filename, but we probably have an upper-case
@@ -1308,10 +1269,8 @@ func SysCallFileSize(cpm *CPM) error {
 		}
 	}
 
-	// Should we remap drives?
-	if cpm.Drives {
-		fileName = filepath.Join(string(cpm.currentDrive+'A'), fileName)
-	}
+	// esnure the path is qualified
+	fileName = filepath.Join(path, fileName)
 
 	file, err := os.OpenFile(fileName, os.O_RDONLY, 0644)
 	if err != nil {
