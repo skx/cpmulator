@@ -147,9 +147,8 @@ type CPM struct {
 	// be able to emulate that.
 	CPU z80.CPU
 
-	// Drives specifies whether we use sub-directories for the
-	// CP/M drives we emulate, instead of the current working directory.
-	Drives bool
+	// Drives specifies the local paths for each directory.
+	drives map[string]string
 
 	// currentDrive contains the currently selected drive.
 	// Valid values are 0-15, where they work in the obvious way:
@@ -420,6 +419,7 @@ func New(logger *slog.Logger, prn string, condriver string, ccp string) (*CPM, e
 		Logger:       logger,
 		ccp:          ccp,
 		dma:          0x0080,
+		drives:       make(map[string]string),
 		files:        make(map[uint16]FileCache),
 		input:        consolein.New(),
 		output:       driver,
@@ -823,12 +823,11 @@ func (cpm *CPM) RunAutoExec() {
 	// without doing anything.
 	for _, name := range files {
 
-		path := "."
-		if cpm.Drives {
-			path = string(cpm.currentDrive + 'A')
-		}
+		// Get the local prefix.
+		prefix := cpm.drives[string(cpm.currentDrive+'A')]
 
-		dst := filepath.Join(path, name)
+		// Add the name
+		dst := filepath.Join(prefix, name)
 
 		handle, err := os.OpenFile(dst, os.O_RDONLY, 0644)
 		if err != nil {
@@ -843,9 +842,19 @@ func (cpm *CPM) RunAutoExec() {
 }
 
 // SetDrives enables/disables the use of subdirectories upon the host system
-// to represent CP/M drives
+// to represent CP/M drives.
+//
+// We use a map to handle the drive->path mappings, and if directories are
+// not used we just store "." in the appropriate entry.
 func (cpm *CPM) SetDrives(enabled bool) {
-	cpm.Drives = true
+
+	for _, c := range []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P"} {
+		if enabled {
+			cpm.drives[c] = c
+		} else {
+			cpm.drives[c] = "."
+		}
+	}
 }
 
 // In is called to handle the I/O reading of a Z80 port.

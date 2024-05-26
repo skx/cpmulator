@@ -173,10 +173,13 @@ func main() {
 		}
 	}
 
+	// Default to not using subdirectories for drives
+	obj.SetDrives(false)
+
 	// Are we using drives?
 	if *useDirectories {
 
-		// Enable drives
+		// Enable the use of directories.
 		obj.SetDrives(true)
 
 		// Count how many drives exist - if zero show a warning
