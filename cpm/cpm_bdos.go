@@ -579,11 +579,15 @@ func SysCallFindFirst(cpm *CPM) error {
 				return nil
 			}
 
-			// TODO: Add "DoesMatch?" and only append if
-			// the item does match.
-			res = append(res, fcb.FCBFind{
-				Host: path,
-				Name: filepath.Base(path)})
+			// Does the entry match the glob?
+			if fcbPtr.DoesMatch(filepath.Base(path)) {
+
+				// If so append
+				res = append(res, fcb.FCBFind{
+					Host: path,
+					Name: filepath.Base(path)})
+			}
+
 			return nil
 		})
 

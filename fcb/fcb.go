@@ -274,6 +274,52 @@ func FromBytes(bytes []uint8) FCB {
 	return tmp
 }
 
+// DoesMatch returns true if the filename specified matches the pattern in the FCB.
+func (f *FCB) DoesMatch(name string) bool {
+	t := string(f.Type[0]) + string(f.Type[1]) + string(f.Type[2])
+	if t == "" || t == "   " {
+		t = "???"
+	}
+
+	// Having a .extension is fine, but if the
+	// suffix is longer than three characters we're
+	// not going to use it.
+	parts := strings.Split(name, ".")
+	if len(parts) == 2 {
+		// filename is over 8 characters
+		if len(parts[0]) > 8 {
+			return false
+		}
+		// suffix is over 3 characters
+		if len(parts[1]) > 3 {
+			return false
+		}
+	}
+
+	// Create a temporary FCB for the specified filename.
+	tmp := FromString(name)
+
+	// Now test if the name we've got matches that in the
+	// search-pattern: Name.
+	//
+	// Either a literal match, or a wildcard match with "?".
+	for i, c := range f.Name {
+		if (tmp.Name[i] != c) && (f.Name[i] != '?') {
+			return false
+		}
+	}
+
+	// Repeat for the suffix.
+	for i, c := range f.Type {
+		if (tmp.Type[i] != c) && (f.Type[i] != '?') {
+			return false
+		}
+	}
+
+	// Got a match
+	return true
+}
+
 // GetMatches returns the files matching the pattern in the given FCB record.
 //
 // We try to do this by converting the entries of the named directory into FCBs
