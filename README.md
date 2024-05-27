@@ -161,7 +161,7 @@ When the CCP is launched for interactive execution, we allow commands to be exec
 
 * If `SUBMIT.COM` **and** `AUTOEXEC.SUB` exist on A:
 * Then the contents of `AUTOEXEC.SUB` will be executed.
-* We secretly run "`SUBMIT AUTOEXEC`" to achieve this.
+  * We secretly run "`SUBMIT AUTOEXEC`" to achieve this.
 
 This allows you to customize the emulator, or perform other "one-time" setup via the options described in the next section.
 
@@ -171,24 +171,26 @@ This allows you to customize the emulator, or perform other "one-time" setup via
 
 There are a small number of [extensions](EXTENSIONS.md) added to the BIOS functionality we provide, and these extensions allow changing the behaviour of the emulator at runtime.
 
+The behaviour changing is achieved by having a small number of .COM files invoke the extension functions, and these binaries are embedded within our emulator to improve ease of use, via the [static/](static/) directory in our source-tree - This means no matter what you'll always find some binaries installed on A:, despite not being present in reality.
+
 
 ### CCP Handling
 
-We default to loading the Digital Research CCP, but allow the CCPZ to be selected via the `-ccp` command-line flag.   The binary `samples/ccp.com` lets you change CCP at runtime.
+We default to loading the Digital Research CCP, but allow the CCPZ to be selected via the `-ccp` command-line flag.   The binary `A:CCP.COM` lets you change CCP at runtime.
 
 
 ### Ctrl-C Handling
 
 Traditionally pressing `Ctrl-C` would reload the CCP, via a soft boot.  I think that combination is likely to be entered by accident, so in `cpmulator` we default to requiring you to press Ctrl-C _twice_ in a row to reboot the CCP.
 
-I've added a binary `samples/ctrlc.com` which lets you change this at runtime.  Run `ctrlc 0` to disable the Ctrl-C behaviour, or `ctrlc N` to require N consecutive Ctrl-C keystrokes to trigger the restart-behaviour (max: 9).
+The binary `A:CTRLC.COM` which lets you change this at runtime.  Run `A:CTRLC 0` to disable the Ctrl-C behaviour, or `A:CTRLC N` to require N consecutive Ctrl-C keystrokes to trigger the restart-behaviour (max: 9).
 
 
 ### Console Output
 
-We default to pretending our output device is an ADM-3A terminal, this can be changed via the `-console` command-line flag at startup.  Additionally it can be changed at runtime via the `samples/console.com` command.
+We default to pretending our output device is an ADM-3A terminal, this can be changed via the `-console` command-line flag at startup.  Additionally it can be changed at runtime via `A:CONSOLE.COM`.
 
-Run `console ansi` to disable the output emulation, or `console adm-3a` to restore it.
+Run `A:CONSOLE ansi` to disable the output emulation, or `A:CONSOLE adm-3a` to restore it.
 
 You'll see that the [cpm-dist](https://github.com/skx/cpm-dist) repository contains a version of Wordstar, and that behaves differently depending on the selected output handler.  Changing the handler at run-time is a neat bit of behaviour.
 
@@ -197,7 +199,7 @@ You'll see that the [cpm-dist](https://github.com/skx/cpm-dist) repository conta
 
 When CCP is soft/warm-booted it prints a banner showing the currently active CCP, and the console-output device which is in-use.
 
-Running `samples/quiet.com` will silence this output, essentially enabling "quiet mode".
+Running `A:QUIET 1` will silence this output, essentially enabling "quiet mode", running with no arguments will show the current state, and running `A:QUIET 0` will disable it.
 
 
 
