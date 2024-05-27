@@ -12,6 +12,7 @@ import (
 
 	cpmccp "github.com/skx/cpmulator/ccp"
 	"github.com/skx/cpmulator/cpm"
+	"github.com/skx/cpmulator/static"
 	cpmver "github.com/skx/cpmulator/version"
 )
 
@@ -172,6 +173,10 @@ func main() {
 			}
 		}
 	}
+
+	// Load any embedded files within our binary
+	files := static.Content
+	obj.SetStaticFilesystem(files)
 
 	// Default to not using subdirectories for drives
 	obj.SetDrives(false)

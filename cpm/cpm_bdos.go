@@ -9,6 +9,7 @@ package cpm
 import (
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -381,7 +382,37 @@ func SysCallFileOpen(cpm *CPM) error {
 	// Ensure the filename is qualified
 	fileName = filepath.Join(path, fileName)
 
-	// Now we open..
+	// Remapped file
+	x := filepath.Base(fileName)
+	x = filepath.Join(string(cpm.currentDrive+'A'), x)
+
+	// Can we open this file from our embedded filesystem?
+	virt, er := cpm.static.ReadFile(x)
+	if er == nil {
+
+		// Yes we can!
+		// Save the file handle in our cache.
+		cpm.files[ptr] = FileCache{name: fileName, handle: nil}
+
+		// Get file size, in blocks
+		fLen := uint8(len(virt) / blkSize)
+
+		// Set record-count
+		if fLen > maxRC {
+			fcbPtr.RC = maxRC
+		} else {
+			fcbPtr.RC = fLen
+		}
+
+		// Update the FCB in memory.
+		cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
+
+		// Return success
+		cpm.CPU.States.AF.Hi = 0x00
+		return nil
+	}
+
+	// Now we open from the filesystem
 	file, err := os.OpenFile(fileName, os.O_RDWR, 0644)
 	if err != nil {
 
@@ -464,6 +495,13 @@ func SysCallFileClose(cpm *CPM) error {
 		return fmt.Errorf("tried to close a file that wasn't open")
 	}
 
+	// Close of a virtual file
+	if obj.handle == nil {
+		// Record success
+		cpm.CPU.States.AF.Hi = 0x00
+		return nil
+	}
+
 	// Is this a $-file?
 	if strings.Contains(obj.name, "$") {
 
@@ -530,6 +568,24 @@ func SysCallFindFirst(cpm *CPM) error {
 		cpm.CPU.States.AF.Hi = 0xFF
 		return nil
 	}
+
+	// Add on any virtual files, by merging the drive.
+	fs.WalkDir(cpm.static, string(cpm.currentDrive+'A'),
+		func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return nil
+			}
+			if d.IsDir() {
+				return nil
+			}
+
+			// TODO: Add "DoesMatch?" and only append if
+			// the item does match.
+			res = append(res, fcb.FCBFind{
+				Host: path,
+				Name: filepath.Base(path)})
+			return nil
+		})
 
 	// No matches?  Return an error
 	if len(res) < 1 {
@@ -706,20 +762,59 @@ func SysCallRead(cpm *CPM) error {
 		return nil
 	}
 
-	// Get the next read position
-	offset := fcbPtr.GetSequentialOffset()
-
-	_, err := obj.handle.Seek(int64(offset), io.SeekStart)
-	if err != nil {
-		return fmt.Errorf("cannot seek to position %d: %s", offset, err)
-	}
-
 	// Temporary area to read into
 	data := make([]byte, blkSize)
 
 	// Fill the area with data
 	for i := range data {
 		data[i] = 0x1A
+	}
+
+	// Get the next read position
+	offset := fcbPtr.GetSequentialOffset()
+
+	// Are we reading from a virtual file?
+	if obj.handle == nil {
+
+		// Remap
+		p := filepath.Join(string(cpm.currentDrive+'A'), filepath.Base(obj.name))
+
+		// open
+		file, err := fs.ReadFile(cpm.static, p)
+		if err != nil {
+			fmt.Printf("error on readfile for virtual path (%s):%s\n", p, err)
+		}
+		i := 0
+
+		// default to being successful
+		cpm.CPU.States.AF.Hi = 0x00
+
+		// copy each appropriate byte into the data-area
+		for i < blkSize {
+			if int(offset)+i < len(file) {
+				data[i] = file[int(offset)+i]
+			} else {
+				cpm.CPU.States.AF.Hi = 0x01
+			}
+			i++
+		}
+
+		// Copy the data to the DMA area
+		cpm.Memory.SetRange(cpm.dma, data...)
+
+		// Update the next read position
+		fcbPtr.IncreaseSequentialOffset()
+
+		// Update the FCB in memory
+		cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
+
+		// All done
+		return nil
+	}
+
+	_, err := obj.handle.Seek(int64(offset), io.SeekStart)
+	if err != nil {
+		return fmt.Errorf("cannot seek to position %d: %s", offset, err)
 	}
 
 	// Read from the file, now we're in the right place
