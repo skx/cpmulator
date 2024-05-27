@@ -570,7 +570,7 @@ func SysCallFindFirst(cpm *CPM) error {
 	}
 
 	// Add on any virtual files, by merging the drive.
-	fs.WalkDir(cpm.static, string(cpm.currentDrive+'A'),
+	_ = fs.WalkDir(cpm.static, string(cpm.currentDrive+'A'),
 		func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return nil
