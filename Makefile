@@ -1,5 +1,10 @@
 ###
-##  Hacky makefile which does too much recompilation
+##  Hacky makefile which does too much recompilation.
+##
+##  "go build" / "go install" will do the right thing, unless
+## you're changing the CCP or modifying the static binaries we
+## added.
+##
 ###
 
 
