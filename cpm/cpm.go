@@ -8,6 +8,7 @@ package cpm
 
 import (
 	"context"
+	"embed"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -107,6 +108,10 @@ type CPM struct {
 
 	// files is the cache we use for File handles.
 	files map[uint16]FileCache
+
+	// virtual contains a reference to a static filesystem which
+	// is embedded within our binary, if any.
+	static embed.FS
 
 	// input is our interface for reading from the console.
 	//
@@ -839,6 +844,11 @@ func (cpm *CPM) RunAutoExec() {
 
 	// OK we have both files
 	cpm.input.StuffInput("SUBMIT AUTOEXEC")
+}
+
+// SetStaticFilesystem allows adding a reference to an embedded filesyste,.
+func (cpm *CPM) SetStaticFilesystem(fs embed.FS) {
+	cpm.static = fs
 }
 
 // SetDrives enables/disables the use of subdirectories upon the host system

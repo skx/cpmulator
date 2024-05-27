@@ -4,8 +4,10 @@ This directory contains a single binary which is used to test the emulator:
 
 * [The lighthouse of Doom](https://github.com/skx/lighthouse-of-doom/)
 
-The top-level [samples/](../samples) directory contains some sample code,
-along with the corresponding Z80 assembly-language source code.
+Other CP/M code within the repository includes:
+
+* The top-level [samples/](../samples/) directory contains some code which was useful to me to test my understanding, when writing the emulator.
+* The top-level [static/](../static/) directory contains some binaries which are always available when launching our emulator.
 
 
 

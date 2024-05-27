@@ -33,7 +33,7 @@ This emulator is written using golang, so if you have a working golang toolchain
 go install github.com/skx/cpmulator@latest
 ```
 
-If you were to clone this repository to your local system you could then build and install by running:
+If you were to clone this repository to your local system you could build, and install it, by running:
 
 ```
 go build .
@@ -104,8 +104,7 @@ You can terminate the CCP by typing `EXIT`.  The following built-in commands are
 * `CLS`
   * Clear the screen.
 * `DIR`
-  * List files, by default this uses "`*.*`".
-    * Try "`DIR *.COM`" if you want to see something more specific, for example.
+  * Try "`DIR *.COM`" if you want to see only executables, for example.
 * `EXIT` / `HALT` / `QUIT`
   * Terminate the CCP.
 * `ERA`
@@ -122,7 +121,7 @@ There are currently a pair of CCP implementations included within the emulator, 
 
 * "ccp"
   * This is the default, but you can choose it explicitly via `cpmulator -ccp=ccp ..`.
-  * The original/default one, from Digital Research
+  * The original/default one, from Digital Research.
 * "ccpz"
   * Launch this via `cpmulate -ccp=ccpz ..`
   * An enhanced one with extra built-in commands.
@@ -136,7 +135,11 @@ You can also launch a binary directly by specifying it's path upon the command-l
 $ cpmulator /path/to/binary [optional-args]
 ```
 
-Other options are shown in the output of `cpmulator -help`, but in brief:
+
+
+## Command Line Flags
+
+There are several command-line options which are shown in the output of `cpmulator -help`, but in brief:
 
 * `-cd /path/to/directory`
   * Change to the given directory before running.
@@ -151,7 +154,9 @@ Other options are shown in the output of `cpmulator -help`, but in brief:
 * `-syscalls`
   * Dump the list of implemented BDOS and BIOS syscalls.
 * `-version`
-  * Show our version number.
+  * Show the version number of the emulator, and exit.
+
+Note that some of these options can be changed at runtime.
 
 
 
@@ -161,7 +166,7 @@ When the CCP is launched for interactive execution, we allow commands to be exec
 
 * If `SUBMIT.COM` **and** `AUTOEXEC.SUB` exist on A:
 * Then the contents of `AUTOEXEC.SUB` will be executed.
-* We secretly run "`SUBMIT AUTOEXEC`" to achieve this.
+  * We secretly run "`SUBMIT AUTOEXEC`" to achieve this.
 
 This allows you to customize the emulator, or perform other "one-time" setup via the options described in the next section.
 
@@ -171,24 +176,26 @@ This allows you to customize the emulator, or perform other "one-time" setup via
 
 There are a small number of [extensions](EXTENSIONS.md) added to the BIOS functionality we provide, and these extensions allow changing the behaviour of the emulator at runtime.
 
+The behaviour changing is achieved by having a small number of .COM files invoke the extension functions, and these binaries are embedded within our emulator to improve ease of use, via the [static/](static/) directory in our source-tree - This means no matter what you'll always find some binaries installed on A:, despite not being present in reality.
+
 
 ### CCP Handling
 
-We default to loading the Digital Research CCP, but allow the CCPZ to be selected via the `-ccp` command-line flag.   The binary `samples/ccp.com` lets you change CCP at runtime.
+We default to loading the Digital Research CCP, but allow the CCPZ to be selected via the `-ccp` command-line flag.   The binary `A:CCP.COM` lets you change CCP at runtime.
 
 
 ### Ctrl-C Handling
 
 Traditionally pressing `Ctrl-C` would reload the CCP, via a soft boot.  I think that combination is likely to be entered by accident, so in `cpmulator` we default to requiring you to press Ctrl-C _twice_ in a row to reboot the CCP.
 
-I've added a binary `samples/ctrlc.com` which lets you change this at runtime.  Run `ctrlc 0` to disable the Ctrl-C behaviour, or `ctrlc N` to require N consecutive Ctrl-C keystrokes to trigger the restart-behaviour (max: 9).
+The binary `A:CTRLC.COM` which lets you change this at runtime.  Run `A:CTRLC 0` to disable the Ctrl-C behaviour, or `A:CTRLC N` to require N consecutive Ctrl-C keystrokes to trigger the restart-behaviour (max: 9).
 
 
 ### Console Output
 
-We default to pretending our output device is an ADM-3A terminal, this can be changed via the `-console` command-line flag at startup.  Additionally it can be changed at runtime via the `samples/console.com` command.
+We default to pretending our output device is an ADM-3A terminal, this can be changed via the `-console` command-line flag at startup.  Additionally it can be changed at runtime via `A:CONSOLE.COM`.
 
-Run `console ansi` to disable the output emulation, or `console adm-3a` to restore it.
+Run `A:CONSOLE ansi` to disable the output emulation, or `A:CONSOLE adm-3a` to restore it.
 
 You'll see that the [cpm-dist](https://github.com/skx/cpm-dist) repository contains a version of Wordstar, and that behaves differently depending on the selected output handler.  Changing the handler at run-time is a neat bit of behaviour.
 
@@ -197,7 +204,7 @@ You'll see that the [cpm-dist](https://github.com/skx/cpm-dist) repository conta
 
 When CCP is soft/warm-booted it prints a banner showing the currently active CCP, and the console-output device which is in-use.
 
-Running `samples/quiet.com` will silence this output, essentially enabling "quiet mode".
+Running `A:QUIET 1` will silence this output, essentially enabling "quiet mode", running with no arguments will show the current state, and running `A:QUIET 0` will restore the default behaviour.
 
 
 
@@ -342,36 +349,23 @@ For reference the memory map of our CP/M looks like this:
 
 
 
-# Sample Programs
+# Credits and References
 
-You'll see some Z80 assembly programs beneath [samples](samples/) which are used to check my understanding.  If you have the `pasmo` compiler enabled you can build them all by running "make", in case you don't I've also committed the generated binaries.
-
-
-
-
-# Credits
 
 * Much of the functionality of this repository comes from the [excellent Z80 emulator library](https://github.com/koron-go/z80) it is using, written by [@koron-go](https://github.com/koron-go).
-* The CCP comes from [my fork](https://github.com/skx/z80-playground-cpm-fat/) of the original [cpm-fat](https://github.com/z80playground/cpm-fat/)
+* The default CCP comes from [my fork](https://github.com/skx/z80-playground-cpm-fat/) of the original [cpm-fat](https://github.com/z80playground/cpm-fat/)
   * However this is largely unchanged from the [original CCP](http://www.cpm.z80.de/source.html) from Digital Research, although I did add the `CLS`, `EXIT`, `HALT` & `QUIT` built-in commands.
-
-When I was uncertain of how to implement a specific system call the following two emulators were also useful:
-
-* [https://github.com/ivanizag/iz-cpm](https://github.com/ivanizag/iz-cpm)
-  * Portable CP/M emulation to run CP/M 2.2 binaries for Z80.
+* Reference Documentation
+  * [CP/M BDOS function reference](https://www.seasip.info/Cpm/bdos.html).
+  * [CP/M BIOS function reference](https://www.seasip.info/Cpm/bios.html).
+* Other emulators which were useful resources when some functionality was unclear:
+  * [https://github.com/ivanizag/iz-cpm](https://github.com/ivanizag/iz-cpm)
+    * Portable CP/M emulation to run CP/M 2.2 binaries for Z80.
     * Has a handy "download" script to fetch some CP/M binaries, including BASIC, Turbo Pascal, and WordStar.
-  * Written in Rust.
-* [https://github.com/jhallen/cpm](https://github.com/jhallen/cpm)
-  * Run CP/M commands in Linux/Cygwin with this Z80 / BDOS / ADM-3A emulator.
-  * Written in C.
-
-
-
-
-# References
-
-* [Digital Research - CP/M Operating System Manual](http://www.gaby.de/cpm/manuals/archive/cpm22htm/)
-  * Particularly the syscall reference in [Section 5: CP/M 2 System Interface](http://www.gaby.de/cpm/manuals/archive/cpm22htm/ch5.htm).
+    * Written in Rust.
+  * [https://github.com/jhallen/cpm](https://github.com/jhallen/cpm)
+    * Run CP/M commands in Linux/Cygwin with this Z80 / BDOS / ADM-3A emulator.
+    * Written in C.
 
 
 
@@ -394,8 +388,6 @@ The testing that I should do before a release:
 * [ ] Test BE.COM
 * [ ] Test STAT.COM
 * [ ] Test some built-in shell-commands; ERA, TYPE, and EXIT.
-* [ ] Test `samples/INTEST.COM` `samples/READ.COM`, `samples/WRITE.COM`.
-  * These demonstrate core primitives are not broken.
 
 
 
