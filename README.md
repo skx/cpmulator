@@ -33,7 +33,7 @@ This emulator is written using golang, so if you have a working golang toolchain
 go install github.com/skx/cpmulator@latest
 ```
 
-If you were to clone this repository to your local system you could then build and install by running:
+If you were to clone this repository to your local system you could build, and install it, by running:
 
 ```
 go build .
@@ -104,8 +104,7 @@ You can terminate the CCP by typing `EXIT`.  The following built-in commands are
 * `CLS`
   * Clear the screen.
 * `DIR`
-  * List files, by default this uses "`*.*`".
-    * Try "`DIR *.COM`" if you want to see something more specific, for example.
+  * Try "`DIR *.COM`" if you want to see only executables, for example.
 * `EXIT` / `HALT` / `QUIT`
   * Terminate the CCP.
 * `ERA`
@@ -122,7 +121,7 @@ There are currently a pair of CCP implementations included within the emulator, 
 
 * "ccp"
   * This is the default, but you can choose it explicitly via `cpmulator -ccp=ccp ..`.
-  * The original/default one, from Digital Research
+  * The original/default one, from Digital Research.
 * "ccpz"
   * Launch this via `cpmulate -ccp=ccpz ..`
   * An enhanced one with extra built-in commands.
@@ -136,7 +135,11 @@ You can also launch a binary directly by specifying it's path upon the command-l
 $ cpmulator /path/to/binary [optional-args]
 ```
 
-Other options are shown in the output of `cpmulator -help`, but in brief:
+
+
+## Command Line Flags
+
+There are several command-line options which are shown in the output of `cpmulator -help`, but in brief:
 
 * `-cd /path/to/directory`
   * Change to the given directory before running.
@@ -151,7 +154,9 @@ Other options are shown in the output of `cpmulator -help`, but in brief:
 * `-syscalls`
   * Dump the list of implemented BDOS and BIOS syscalls.
 * `-version`
-  * Show our version number.
+  * Show the version number of the emulator, and exit.
+
+Note that some of these options can be changed at runtime.
 
 
 
@@ -199,7 +204,7 @@ You'll see that the [cpm-dist](https://github.com/skx/cpm-dist) repository conta
 
 When CCP is soft/warm-booted it prints a banner showing the currently active CCP, and the console-output device which is in-use.
 
-Running `A:QUIET 1` will silence this output, essentially enabling "quiet mode", running with no arguments will show the current state, and running `A:QUIET 0` will disable it.
+Running `A:QUIET 1` will silence this output, essentially enabling "quiet mode", running with no arguments will show the current state, and running `A:QUIET 0` will restore the default behaviour.
 
 
 
@@ -344,36 +349,23 @@ For reference the memory map of our CP/M looks like this:
 
 
 
-# Sample Programs
+# Credits and References
 
-You'll see some Z80 assembly programs beneath [samples](samples/) which are used to check my understanding.  If you have the `pasmo` compiler enabled you can build them all by running "make", in case you don't I've also committed the generated binaries.
-
-
-
-
-# Credits
 
 * Much of the functionality of this repository comes from the [excellent Z80 emulator library](https://github.com/koron-go/z80) it is using, written by [@koron-go](https://github.com/koron-go).
-* The CCP comes from [my fork](https://github.com/skx/z80-playground-cpm-fat/) of the original [cpm-fat](https://github.com/z80playground/cpm-fat/)
+* The default CCP comes from [my fork](https://github.com/skx/z80-playground-cpm-fat/) of the original [cpm-fat](https://github.com/z80playground/cpm-fat/)
   * However this is largely unchanged from the [original CCP](http://www.cpm.z80.de/source.html) from Digital Research, although I did add the `CLS`, `EXIT`, `HALT` & `QUIT` built-in commands.
-
-When I was uncertain of how to implement a specific system call the following two emulators were also useful:
-
-* [https://github.com/ivanizag/iz-cpm](https://github.com/ivanizag/iz-cpm)
-  * Portable CP/M emulation to run CP/M 2.2 binaries for Z80.
+* Reference Documentation
+  * [CP/M BDOS function reference](https://www.seasip.info/Cpm/bdos.html).
+  * [CP/M BIOS function reference](https://www.seasip.info/Cpm/bios.html).
+* Other emulators which were useful resources when some functionality was unclear:
+  * [https://github.com/ivanizag/iz-cpm](https://github.com/ivanizag/iz-cpm)
+    * Portable CP/M emulation to run CP/M 2.2 binaries for Z80.
     * Has a handy "download" script to fetch some CP/M binaries, including BASIC, Turbo Pascal, and WordStar.
-  * Written in Rust.
-* [https://github.com/jhallen/cpm](https://github.com/jhallen/cpm)
-  * Run CP/M commands in Linux/Cygwin with this Z80 / BDOS / ADM-3A emulator.
-  * Written in C.
-
-
-
-
-# References
-
-* [Digital Research - CP/M Operating System Manual](http://www.gaby.de/cpm/manuals/archive/cpm22htm/)
-  * Particularly the syscall reference in [Section 5: CP/M 2 System Interface](http://www.gaby.de/cpm/manuals/archive/cpm22htm/ch5.htm).
+    * Written in Rust.
+  * [https://github.com/jhallen/cpm](https://github.com/jhallen/cpm)
+    * Run CP/M commands in Linux/Cygwin with this Z80 / BDOS / ADM-3A emulator.
+    * Written in C.
 
 
 
@@ -396,8 +388,6 @@ The testing that I should do before a release:
 * [ ] Test BE.COM
 * [ ] Test STAT.COM
 * [ ] Test some built-in shell-commands; ERA, TYPE, and EXIT.
-* [ ] Test `samples/INTEST.COM` `samples/READ.COM`, `samples/WRITE.COM`.
-  * These demonstrate core primitives are not broken.
 
 
 
