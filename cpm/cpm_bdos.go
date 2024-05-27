@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/skx/cpmulator/consolein"
@@ -495,7 +496,7 @@ func SysCallFileClose(cpm *CPM) error {
 		return fmt.Errorf("tried to close a file that wasn't open")
 	}
 
-	// Close of a virtual file
+	// Close of a virtual file.
 	if obj.handle == nil {
 		// Record success
 		cpm.CPU.States.AF.Hi = 0x00
@@ -596,6 +597,12 @@ func SysCallFindFirst(cpm *CPM) error {
 		cpm.CPU.States.AF.Hi = 0xFF
 		return nil
 	}
+
+	// Sort the list, since we've added the embedded files
+	// onto the end and that will look weird.
+	sort.Slice(res, func(i, j int) bool {
+		return res[i].Name < res[j].Name
+	})
 
 	// Here we save the results in our cache,
 	// dropping the first
@@ -870,6 +877,11 @@ func SysCallWrite(cpm *CPM) error {
 		cpm.Logger.Error("SysCallWrite: Attempting to write to a file that isn't open")
 		cpm.CPU.States.AF.Hi = 0xFF
 		return nil
+	}
+
+	// A virtual handle, from our embedded resources.
+	if obj.handle == nil {
+		return fmt.Errorf("fatal error SysCallWrite against an embedded resource %v", obj)
 	}
 
 	// Get the next write position
@@ -1217,6 +1229,11 @@ func SysCallReadRand(cpm *CPM) error {
 		return nil
 	}
 
+	// A virtual handle, from our embedded resources.
+	if obj.handle == nil {
+		return fmt.Errorf("fatal error SysCallReadRand against an embedded resource %v", obj)
+	}
+
 	// Get the record to read
 	record := int(int(fcbPtr.R2)<<16) | int(int(fcbPtr.R1)<<8) | int(fcbPtr.R0)
 
@@ -1260,6 +1277,11 @@ func SysCallWriteRand(cpm *CPM) error {
 		cpm.Logger.Error("SysCallWriteRand: Attempting to write to a file that isn't open")
 		cpm.CPU.States.AF.Hi = 0xFF
 		return nil
+	}
+
+	// A virtual handle, from our embedded resources.
+	if obj.handle == nil {
+		return fmt.Errorf("fatal error SysCallWriteRand against an embedded resource %v", obj)
 	}
 
 	// Get the data range from the DMA area
