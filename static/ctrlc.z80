@@ -1,0 +1,103 @@
+;; ctrlc.asm - Get/Set the number of consecutive Ctrl-Cs required to reboot
+;;
+;; This uses the custom BIOS function we've added to the BIOS, which was never
+;; present in real CP/M.  Consider it a hook into the emulator.
+;;
+;; TODO:
+;;  I guess we need a custom "is cpmulator" BIOS function too.
+;;
+
+FCB1:                 EQU 0x5C
+BDOS_ENTRY_POINT:     EQU 5
+BDOS_OUTPUT_STRING:   EQU 9
+
+        ;;
+        ;; CP/M programs start at 0x100.
+        ;;
+        ORG 100H
+
+        ;; Test that we're running under cpmulator by calling the
+        ;; "is cpmulator" function.
+        ld HL, 0x0000
+        ld a, 31
+        out (0xff), a
+
+        ;; We expect SKX to appear in registers HLA
+        CP 'X'
+        jr nz, not_cpmulator
+
+        LD A, H
+        CP 'S'
+        jr nz, not_cpmulator
+
+        LD A, L
+        CP 'K'
+        jr nz, not_cpmulator
+
+        ;; The FCB will be populated with the number/first argument,
+        ;; if the first character of that region is a space-character
+        ;; then we've got nothing specified
+        ld a, (FCB1 + 1)
+        cp 0x20             ; 0x20 = 32 == SPACE
+        jp z, show_value    ; Got a space, just show the value.
+
+        ; convert from number to int
+        sub '0'
+        ld c, a
+
+        ; set the value
+        ld a, 31
+        ld HL, 01
+        out (0xff), a
+
+        ;; fall-through to showing the value.
+
+show_value:
+        ;;
+        ;; No argument, so show the value the error and exit
+        ;;
+        ld de, SHOW_PREFIX
+        ld c,  BDOS_OUTPUT_STRING
+        call   BDOS_ENTRY_POINT
+
+        ;; get the value
+        ld a, 31
+        ld HL, 01
+        ld c, 0xff
+        out (0xff), a
+
+        ; display it
+        add a, '0'
+        ld e, a
+        ld c, 0x02
+        call 0x0005
+
+        ; finish with a newline.
+        ld DE, NEWLINE
+        ld C, 0x09
+        call 0x0005
+exit:
+        LD      C,0x00
+        CALL    BDOS_ENTRY_POINT
+
+
+;;
+;; Error Routines
+;;
+not_cpmulator:
+        LD DE, WRONG_EMULATOR
+        LD C, BDOS_OUTPUT_STRING
+        call BDOS_ENTRY_POINT
+        jr exit
+
+;;
+;; Text output strings.
+;;
+SHOW_PREFIX:
+        db "The Ctrl-C count is currently set to $"
+NEWLINE:
+        db 0xa, 0xd, "$"
+WRONG_EMULATOR:
+        db "This binary is not running under cpmulator, aborting.", 0x0a, 0x0d, "$"
+
+END
