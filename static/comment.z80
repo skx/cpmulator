@@ -1,0 +1,26 @@
+;; comment.z80 - A "do nothing" binary.
+;;
+;; This binary is useful because it allows SUBMIT-files
+;; to contain comments.  As everything is a binary in
+;; CP/M we can implement comments by just creating a command
+;; named "#" then the following will do nothing:
+;;
+;;    # FOO BAR
+;;
+;; In reality the #.COM binary is loaded and "FOO BAR" are passed
+;; to it as arguments.  But the end result is "nothing" as this
+;; binary immediately terminates.
+;;
+
+
+        ;;
+        ;; CP/M programs start at 0x100.
+        ;;
+        ORG 100H
+
+        ;;
+        ;; JP 0x0000, but shorter
+        ;;
+        rst 0
+
+END
