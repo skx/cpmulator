@@ -311,7 +311,7 @@ func (f *FCB) DoesMatch(name string) bool {
 
 	// Repeat for the suffix.
 	for i, c := range f.Type {
-		if (tmp.Type[i] != c) && (f.Type[i] != '?') {
+		if (t[i] != c) && (t[i] != '?') {
 			return false
 		}
 	}
