@@ -2,11 +2,14 @@
 #
 # The files we wish to generate.
 #
-all: A/CCP.COM A/CONSOLE.COM A/CTRLC.COM A/QUIET.COM
+all: A/\#.COM A/CCP.COM A/CONSOLE.COM A/CTRLC.COM A/QUIET.COM
 
 #
 # How to build them all - repetitive.
 #
+A/\#.COM:
+	pasmo comment.z80 A/#.COM
+
 A/CCP.COM:
 	pasmo ccp.z80 A/CCP.COM
 
