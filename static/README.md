@@ -21,6 +21,9 @@ The embedded resources do not have 100% full functionality, you cannot bundle a 
 
 * [ccp.z80](ccp.z80)
   * Change the CCP in-use at runtime.
+* [comment.z80](comment.z80)
+  * Source to a program that does nothing, output to "`#.COM`".
+  * This is used to allow "`# FOO`" to act as a comment inside submit-files.
 * [console.z80](console.z80)
   * Toggle between ADM-3A and ANSI console output.
 * [ctrlc.z80](ctrlc.z80)
