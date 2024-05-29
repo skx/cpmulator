@@ -261,9 +261,11 @@ func SysCallSetDMA(cpm *CPM) error {
 // which will be read by the CCP - as created by SUBMIT.COM
 func SysCallDriveAllReset(cpm *CPM) error {
 
-	// Reset disk and user-number
+	// Reset disk - but leave the user-number alone
 	cpm.currentDrive = 0
-	cpm.userNumber = 0
+
+	// Update RAM
+	cpm.Memory.Set(0x0004, (cpm.userNumber<<4 | cpm.currentDrive))
 
 	// Default return value
 	var ret uint8 = 0
@@ -312,7 +314,7 @@ func SysCallDriveSet(cpm *CPM) error {
 	cpm.currentDrive = drv
 
 	// Update RAM
-	cpm.Memory.Set(0x0004, cpm.currentDrive)
+	cpm.Memory.Set(0x0004, (cpm.userNumber<<4 | cpm.currentDrive))
 
 	// Return values:
 	// HL = 0, B=0, A=0
@@ -1151,6 +1153,9 @@ func SysCallUserNumber(cpm *CPM) error {
 
 		// Set the number - masked, because valid values are 0-15
 		cpm.userNumber = (cpm.CPU.States.DE.Lo & 0x0F)
+
+		// Update RAM
+		cpm.Memory.Set(0x0004, (cpm.userNumber<<4 | cpm.currentDrive))
 	}
 
 	// Return values:

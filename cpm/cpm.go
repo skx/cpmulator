@@ -544,9 +544,6 @@ func (cpm *CPM) fixupRAM() {
 	// Now we setup the initial values of the I/O byte
 	SETMEM(0x0003, 0x00)
 
-	// Finally the current drive and usernumber.
-	SETMEM(0x0004, 0x00)
-
 	// fake BIOS entry points for 30 syscalls.
 	//
 	// These are setup so that the RST instructions magically
@@ -669,7 +666,10 @@ func (cpm *CPM) Execute(args []string) error {
 	// this processing object - so drive-changes will update that
 	// value from the default when it is changed.
 	//
-	cpm.CPU.States.BC.Lo = cpm.currentDrive
+	cpm.CPU.States.BC.Lo = cpm.userNumber<<4 | cpm.currentDrive
+
+	// Set the same value in RAM
+	cpm.Memory.Set(0x0004, cpm.CPU.States.BC.Lo)
 
 	// Setup our breakpoints.
 	//
