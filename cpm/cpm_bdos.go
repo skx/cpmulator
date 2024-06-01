@@ -495,7 +495,10 @@ func SysCallFileClose(cpm *CPM) error {
 	// Get the file handle from our cache.
 	obj, ok := cpm.files[ptr]
 	if !ok {
-		return fmt.Errorf("tried to close a file that wasn't open")
+		cpm.Logger.Debug("SysCallFileClose tried to close a file that wasn't open",
+			slog.Int("fcb", int(ptr)))
+		cpm.CPU.States.AF.Hi = 0x00
+		return nil
 	}
 
 	// Close of a virtual file.
