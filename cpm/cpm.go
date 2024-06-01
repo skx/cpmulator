@@ -671,6 +671,9 @@ func (cpm *CPM) Execute(args []string) error {
 	// Set the same value in RAM
 	cpm.Memory.Set(0x0004, cpm.CPU.States.BC.Lo)
 
+	CBIOS := uint16(0xFE00)
+	BDOS := uint16(0xF000)
+
 	// Setup our breakpoints.
 	//
 	// We configure two:
@@ -679,7 +682,10 @@ func (cpm *CPM) Execute(args []string) error {
 	//  0x0005 - The CPM BDOS entrypoint.
 	//
 	cpm.CPU.BreakPoints = make(map[uint16]struct{})
-	cpm.CPU.BreakPoints[0x0000] = struct{}{}
+	cpm.CPU.BreakPoints[CBIOS] = struct{}{}
+	cpm.CPU.BreakPoints[CBIOS+3] = struct{}{}
+	cpm.CPU.BreakPoints[BDOS] = struct{}{}
+	cpm.CPU.BreakPoints[BDOS+6] = struct{}{}
 	cpm.CPU.BreakPoints[0x0005] = struct{}{}
 
 	// Convert our array of CLI arguments to a string.
@@ -834,8 +840,12 @@ func (cpm *CPM) RunAutoExec() {
 		// Add the name
 		dst := filepath.Join(prefix, name)
 
+		// Open it to see if it exists.
 		handle, err := os.OpenFile(dst, os.O_RDONLY, 0644)
 		if err != nil {
+
+			// We're assuming "file not found",
+			// or similar, here.
 			return
 		}
 
