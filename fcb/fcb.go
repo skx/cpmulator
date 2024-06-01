@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode"
 )
 
 // SIZE contains the size of the FCB structure
@@ -90,11 +91,13 @@ func (f *FCB) GetType() string {
 	t := ""
 
 	for _, c := range f.Type {
-		if c != 0x00 {
+		if unicode.IsPrint(rune(c)) {
 			t += string(c)
+		} else {
+			t += " "
 		}
 	}
-	return strings.TrimSpace(t)
+	return t
 }
 
 // AsBytes returns the entry of the FCB in a format suitable
@@ -276,10 +279,6 @@ func FromBytes(bytes []uint8) FCB {
 
 // DoesMatch returns true if the filename specified matches the pattern in the FCB.
 func (f *FCB) DoesMatch(name string) bool {
-	t := string(f.Type[0]) + string(f.Type[1]) + string(f.Type[2])
-	if t == "" || t == "   " {
-		t = "???"
-	}
 
 	// Having a .extension is fine, but if the
 	// suffix is longer than three characters we're
@@ -311,7 +310,7 @@ func (f *FCB) DoesMatch(name string) bool {
 
 	// Repeat for the suffix.
 	for i, c := range f.Type {
-		if (t[i] != c) && (t[i] != '?') {
+		if (tmp.Type[i] != c) && (f.Type[i] != '?') {
 			return false
 		}
 	}
@@ -327,11 +326,6 @@ func (f *FCB) DoesMatch(name string) bool {
 func (f *FCB) GetMatches(prefix string) ([]FCBFind, error) {
 	var ret []FCBFind
 
-	t := string(f.Type[0]) + string(f.Type[1]) + string(f.Type[2])
-	if t == "" || t == "   " {
-		t = "???"
-	}
-
 	// Find files in the directory
 	files, err := os.ReadDir(prefix)
 	if err != nil {
@@ -346,65 +340,15 @@ func (f *FCB) GetMatches(prefix string) ([]FCBFind, error) {
 			continue
 		}
 
-		// Create the new record, in case this entry matches.
-		var ent FCBFind
-
-		// Populate the host-path before we do anything else.
-		ent.Host = filepath.Join(prefix, file.Name())
-
-		// Name needs to be upper-cased
 		name := strings.ToUpper(file.Name())
+		if f.DoesMatch(name) {
 
-		// is the name too long?
-		if len(name) > 8+3 {
-			continue
-		}
+			var ent FCBFind
 
-		// Having a .extension is fine, but if the
-		// suffix is longer than three characters we're
-		// not going to use it.
-		parts := strings.Split(name, ".")
-		if len(parts) == 2 {
-			// filename is over 8 characters
-			if len(parts[0]) > 8 {
-				continue
-			}
-			// suffix is over 3 characters
-			if len(parts[1]) > 3 {
-				continue
-			}
-		}
+			// Populate the host-path before we do anything else.
+			ent.Host = filepath.Join(prefix, file.Name())
 
-		// Default to included the file, now the basics
-		// have matched - filename/extension lengths and
-		// being a non-directory.
-		include := true
-
-		// OK make an fcb
-		tmp := FromString(name)
-
-		// Now test if the name we've got matches that in the
-		// search-pattern: Name.
-		//
-		// Either a literal match, or a wildcard match with "?".
-		for i, c := range tmp.Name {
-			if (f.Name[i] != c) && (f.Name[i] != '?') {
-				include = false
-			}
-		}
-
-		// Repeat for the suffix.
-		for i, c := range tmp.Type {
-			if (t[i] != c) && (t[i] != '?') {
-				include = false
-			}
-		}
-
-		// Does it match? Then add the entry, with the
-		// CP/M visible name.
-		if include {
-
-			// populate
+			// populate the name, but note it needs to be upper-cased
 			ent.Name = name
 
 			// append
