@@ -5,6 +5,7 @@ import (
 	"testing"
 )
 
+// TestFCBSize ensures our size matches expectations.
 func TestFCBSize(t *testing.T) {
 	x := FromString("blah")
 	b := x.AsBytes()
@@ -70,7 +71,7 @@ func TestFCBFromString(t *testing.T) {
 	if f.GetName() != "FOO" {
 		t.Fatalf("name wrong, got '%v'", f.GetName())
 	}
-	if f.GetType() != "" {
+	if f.GetType() != "   " {
 		t.Fatalf("unexpected suffix '%v'", f.GetType())
 	}
 
@@ -82,7 +83,7 @@ func TestFCBFromString(t *testing.T) {
 	if f.GetName() != "THIS-IS-" {
 		t.Fatalf("name wrong, got '%v'", f.GetName())
 	}
-	if f.GetType() != "" {
+	if f.GetType() != "   " {
 		t.Fatalf("unexpected suffix '%v'", f.GetType())
 	}
 
@@ -99,12 +100,15 @@ func TestFCBFromString(t *testing.T) {
 	}
 
 	// wildcard
-	f = FromString("c:steve*")
+	f = FromString("c:steve*.*")
 	if f.Drive != 2 {
 		t.Fatalf("drive wrong")
 	}
 	if f.GetName() != "STEVE???" {
 		t.Fatalf("name wrong, got '%v'", f.GetName())
+	}
+	if f.GetType() != "???" {
+		t.Fatalf("type wrong, got '%v'", f.GetName())
 	}
 
 	f = FromString("c:test.C*")
@@ -118,4 +122,55 @@ func TestFCBFromString(t *testing.T) {
 		t.Fatalf("name wrong, got '%v'", f.GetName())
 	}
 
+}
+
+func TestDoesMatch(t *testing.T) {
+
+	type testcase struct {
+		// pattern contains a pattern
+		pattern string
+
+		// yes contains a list of filenames that should match that pattern
+		yes []string
+
+		// no contains a list of filenames that should NOT match that pattern
+		no []string
+	}
+
+	tests := []testcase{
+		{
+			pattern: "*.com",
+			yes:     []string{"A.COM", "B:FOO.COM"},
+			no:      []string{"A", "BOB", "C.GO"},
+		},
+		{
+			pattern: "A*",
+			yes:     []string{"ANIMAL", "B:AUGUST"},
+			no:      []string{"ANIMAL.COM", "BOB", "AURORA.COM"},
+		},
+		{
+			pattern: "A*.*",
+			yes:     []string{"ANIMAL.com", "B:AUGUST.com", "AURORA"},
+			no:      []string{"Test", "BOB"},
+		},
+	}
+
+	for _, test := range tests {
+
+		f := FromString(test.pattern)
+
+		for _, ei := range test.no {
+
+			if f.DoesMatch(ei) {
+				t.Fatalf("file %s matched pattern %s and it should not have done", ei, test.pattern)
+			}
+		}
+
+		for _, joo := range test.yes {
+
+			if !f.DoesMatch(joo) {
+				t.Fatalf("file %s did not match pattern %s and it should have done", joo, test.pattern)
+			}
+		}
+	}
 }

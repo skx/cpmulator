@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode"
 )
 
 // SIZE contains the size of the FCB structure
@@ -90,11 +91,13 @@ func (f *FCB) GetType() string {
 	t := ""
 
 	for _, c := range f.Type {
-		if c != 0x00 {
+		if unicode.IsPrint(rune(c)) {
 			t += string(c)
+		} else {
+			t += " "
 		}
 	}
-	return strings.TrimSpace(t)
+	return t
 }
 
 // AsBytes returns the entry of the FCB in a format suitable
@@ -276,10 +279,6 @@ func FromBytes(bytes []uint8) FCB {
 
 // DoesMatch returns true if the filename specified matches the pattern in the FCB.
 func (f *FCB) DoesMatch(name string) bool {
-	t := string(f.Type[0]) + string(f.Type[1]) + string(f.Type[2])
-	if t == "" || t == "   " {
-		t = "???"
-	}
 
 	// Having a .extension is fine, but if the
 	// suffix is longer than three characters we're
@@ -311,7 +310,7 @@ func (f *FCB) DoesMatch(name string) bool {
 
 	// Repeat for the suffix.
 	for i, c := range f.Type {
-		if (t[i] != c) && (t[i] != '?') {
+		if (tmp.Type[i] != c) && (f.Type[i] != '?') {
 			return false
 		}
 	}
