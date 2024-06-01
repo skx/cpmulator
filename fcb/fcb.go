@@ -295,6 +295,11 @@ func (f *FCB) DoesMatch(name string) bool {
 		}
 	}
 
+	// If the name is too long that's a nope too
+	if len(name) > 8+3 {
+		return false
+	}
+
 	// Create a temporary FCB for the specified filename.
 	tmp := FromString(name)
 
