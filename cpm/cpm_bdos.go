@@ -1441,3 +1441,10 @@ func SysCallDriveReset(cpm *CPM) error {
 func SysCallTime(cpm *CPM) error {
 	return nil
 }
+
+// SysCallDirectScreenFunctions receives a pointer in DE to a parameter block,
+// which specifies which function to run.  I've only seen this invoked in
+// TurboPascal when choosing the "Execute" or "Run" options.
+func SysCallDirectScreenFunctions(cpm *CPM) error {
+	return nil
+}

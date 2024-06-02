@@ -354,6 +354,11 @@ func New(logger *slog.Logger, prn string, condriver string, ccp string) (*CPM, e
 		Handler: SysCallTime,
 		Fake:    true,
 	}
+	sys[113] = CPMHandler{ // used by Turbo Pascal
+		Desc:    "DirectScreenFunctions",
+		Handler: SysCallDirectScreenFunctions,
+		Fake:    true,
+	}
 
 	//
 	// Create and populate our syscall table for the BIOS syscalls.
