@@ -338,16 +338,8 @@ func SysCallFileOpen(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
-	// Get the parts of the name
-	name := fcbPtr.GetName()
-	ext := fcbPtr.GetType()
-
 	// Get the actual name
-	fileName := name
-	if ext != "" && ext != "   " {
-		fileName += "."
-		fileName += ext
-	}
+	fileName := fcbPtr.GetFileName()
 
 	// drive will default to our current drive, if the FCB drive field is 0
 	drive := cpm.currentDrive + 'A'
@@ -377,8 +369,7 @@ func SysCallFileOpen(cpm *CPM) error {
 	// child logger with more details.
 	l := cpm.Logger.With(
 		slog.String("function", "SysCallFileOpen"),
-		slog.String("name", name),
-		slog.String("ext", ext),
+		slog.String("name", fileName),
 		slog.String("drive", string(cpm.currentDrive+'A')),
 		slog.String("result", fileName))
 
@@ -939,15 +930,8 @@ func SysCallMakeFile(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
-	// Get the name
-	name := fcbPtr.GetName()
-	ext := fcbPtr.GetType()
-
-	fileName := name
-	if ext != "" && ext != "   " {
-		fileName += "."
-		fileName += ext
-	}
+	// Get the actual name
+	fileName := fcbPtr.GetFileName()
 
 	// drive will default to our current drive, if the FCB drive field is 0
 	drive := cpm.currentDrive + 'A'
@@ -977,8 +961,7 @@ func SysCallMakeFile(cpm *CPM) error {
 	// child logger with more details.
 	l := cpm.Logger.With(
 		slog.String("function", "SysCallMakeFile"),
-		slog.String("name", name),
-		slog.String("ext", ext),
+		slog.String("name", fileName),
 		slog.String("drive", string(cpm.currentDrive+'A')),
 		slog.String("result", fileName))
 
@@ -1044,15 +1027,8 @@ func SysCallRenameFile(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
-	// Get the name
-	name := fcbPtr.GetName()
-	ext := fcbPtr.GetType()
-
-	fileName := name
-	if ext != "" && ext != "   " {
-		fileName += "."
-		fileName += ext
-	}
+	// Get the actual name
+	fileName := fcbPtr.GetFileName()
 
 	// Point to the directory
 	path := cpm.drives[string(cpm.currentDrive+'A')]
@@ -1084,14 +1060,7 @@ func SysCallRenameFile(cpm *CPM) error {
 	dstPtr := fcb.FromBytes(xxx2)
 
 	// Get the name
-	dName := dstPtr.GetName()
-	dExt := dstPtr.GetType()
-
-	dstName := dName
-	if dExt != "" && dExt != "   " {
-		dstName += "."
-		dstName += dExt
-	}
+	dstName := dstPtr.GetFileName()
 
 	// ensure the name is qualified
 	dstName = filepath.Join(path, dstName)
@@ -1369,15 +1338,8 @@ func SysCallFileSize(cpm *CPM) error {
 	// So we have to go through the dance of getting the filename.
 	//
 
-	// Get the name
-	name := fcbPtr.GetName()
-	ext := fcbPtr.GetType()
-
-	fileName := name
-	if ext != "" && ext != "   " {
-		fileName += "."
-		fileName += ext
-	}
+	// Get the actual name
+	fileName := fcbPtr.GetFileName()
 
 	// Should we remap drives?
 	path := cpm.drives[string(cpm.currentDrive+'A')]

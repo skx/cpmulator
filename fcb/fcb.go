@@ -100,6 +100,20 @@ func (f *FCB) GetType() string {
 	return t
 }
 
+// GetFileName returns the name and suffix, but importantly it removes
+// any trailing spaces.
+func (f *FCB) GetFileName() string {
+	name := f.GetName()
+	ext := f.GetType()
+
+	if ext != "" && ext != "   " {
+		name += "."
+		name += ext
+	}
+
+	return strings.TrimSpace(name)
+}
+
 // AsBytes returns the entry of the FCB in a format suitable
 // for copying to RAM.
 func (f *FCB) AsBytes() []uint8 {
