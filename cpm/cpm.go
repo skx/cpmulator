@@ -343,7 +343,10 @@ func New(logger *slog.Logger, prn string, condriver string, ccp string) (*CPM, e
 		Desc:    "F_SIZE",
 		Handler: SysCallFileSize,
 	}
-	// TODO: 36 F_RANDREC
+	sys[36] = CPMHandler{
+		Desc:    "F_RANDREC",
+		Handler: SysCallRandRecord,
+	}
 	sys[37] = CPMHandler{
 		Desc:    "DRV_RESET",
 		Handler: SysCallDriveReset,

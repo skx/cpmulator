@@ -1427,6 +1427,42 @@ func SysCallDriveROVec(cpm *CPM) error {
 	return nil
 }
 
+// SysCallRandRecord Sets the random record count bytes of the FCB to the number
+// of the last record read/written by the sequential I/O calls.
+func SysCallRandRecord(cpm *CPM) error {
+
+	// The pointer to the FCB
+	ptr := cpm.CPU.States.DE.U16()
+
+	// Get the bytes which make up the FCB entry.
+	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
+
+	// Create a structure with the contents
+	fcbPtr := fcb.FromBytes(xxx)
+
+	// So the sequential offset is found here
+	offset := int(fcbPtr.GetSequentialOffset())
+
+	// Now we set the "random record" which is R0,R1,R2
+	fcbPtr.R0 = uint8(offset & 0xFF)
+	fcbPtr.R1 = uint8(offset >> 8)
+	fcbPtr.R2 = uint8(offset >> 16)
+
+	// sanity check because I've messed this up in the past
+	n := int(int(fcbPtr.R2)<<16) | int(int(fcbPtr.R1)<<8) | int(fcbPtr.R0)
+	if n != offset {
+		return fmt.Errorf("failed to update because maths is hard %d != %d", n, offset)
+	}
+
+	// Update the FCB in memory.
+	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
+
+	// Return success
+	cpm.CPU.States.AF.Hi = 0x00
+
+	return nil
+}
+
 // SysCallDriveReset allows resetting specific drives, via the bits in DE
 // Bit 7 of D corresponds to P: while bit 0 of E corresponds to A:.
 // A bit is set if the corresponding drive should be reset.
