@@ -26,9 +26,14 @@ func BiosSysCallBoot(cpm *CPM) error {
 }
 
 // BiosSysCallConsoleStatus should return 0x00 if there is no input
-// pending, otherwise 0xFF.  We fake it
+// pending, otherwise 0xFF.
 func BiosSysCallConsoleStatus(cpm *CPM) error {
-	cpm.CPU.States.AF.Hi = 0x00
+
+	if cpm.input.PendingInput() {
+		cpm.CPU.States.AF.Hi = 0xFF
+	} else {
+		cpm.CPU.States.AF.Hi = 0x00
+	}
 
 	return nil
 }

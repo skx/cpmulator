@@ -80,6 +80,31 @@ func (ci *ConsoleIn) GetInterruptCount() int {
 	return ci.InterruptCount
 }
 
+// PendingInput returns true if there is pending input from STDIN..
+//
+// Note that we have to set RAW mode, without this input is laggy
+// and zork doesn't run.
+func (ci *ConsoleIn) PendingInput() bool {
+
+	// switch stdin into 'raw' mode
+	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+	if err != nil {
+		return false
+	}
+
+	// Platform-specific code in select_XXXX.go
+	res := canSelect()
+
+	// restore the state of the terminal to avoid mixing RAW/Cooked
+	err = term.Restore(int(os.Stdin.Fd()), oldState)
+	if err != nil {
+		return false
+	}
+
+	// Return true if we have something ready to read.
+	return res
+}
+
 // BlockForCharacterNoEcho returns the next character from the console, blocking until
 // one is available.
 //

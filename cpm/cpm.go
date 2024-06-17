@@ -239,7 +239,6 @@ func New(logger *slog.Logger, prn string, condriver string, ccp string) (*CPM, e
 	sys[11] = CPMHandler{
 		Desc:    "C_STAT",
 		Handler: SysCallConsoleStatus,
-		Fake:    true,
 	}
 	sys[12] = CPMHandler{
 		Desc:    "S_BDOSVER",
@@ -378,7 +377,6 @@ func New(logger *slog.Logger, prn string, condriver string, ccp string) (*CPM, e
 	b[2] = CPMHandler{
 		Desc:    "CONST",
 		Handler: BiosSysCallConsoleStatus,
-		Fake:    true,
 	}
 	b[3] = CPMHandler{
 		Desc:    "CONIN",
