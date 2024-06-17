@@ -48,6 +48,9 @@ type ConsoleIn struct {
 	// stuffed holds fake input which has been forced into the buffer used
 	// by ReadLine
 	stuffed string
+
+	// history holds previous (line) input.
+	history []string
 }
 
 // New is our constructor.
@@ -153,6 +156,9 @@ func (ci *ConsoleIn) BlockForCharacterWithEcho() (byte, error) {
 // NOTE: A user pressing Ctrl-C will be caught, and this will trigger the BDOS
 // function to reboot.  We have a variable holding the number of consecutive
 // Ctrl-C characters are required to trigger this behaviour.
+//
+// NOTE: We erase the input buffer with ESC, and allow history movement via
+// Ctrl-p and Ctrl-n.
 func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 
 	// Do we have faked/stuffed input to process?
@@ -176,6 +182,9 @@ func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 	// count of consecutive Ctrl-C
 	ctrlCount := 0
 
+	// offset from history
+	offset := 0
+
 	// Hacky input-loop
 	for {
 
@@ -183,6 +192,60 @@ func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 		x, err := ci.BlockForCharacterNoEcho()
 		if err != nil {
 			return "", err
+		}
+
+		// Esc
+		if x == 27 {
+			// remove the character from our text, and overwrite on the console
+			for len(text) > 0 {
+				text = text[:len(text)-1]
+				fmt.Printf("\b \b")
+			}
+
+			// erase the input so far
+			text = ""
+			continue
+		}
+
+		// Ctrl-N
+		if x == 14 {
+			if offset >= 1 {
+
+				offset--
+
+				// remove the character from our text, and overwrite on the console
+				for len(text) > 0 {
+					text = text[:len(text)-1]
+					fmt.Printf("\b \b")
+				}
+
+				if len(ci.history)-offset < len(ci.history) {
+					// replace with a suitable value, and show it
+					text = ci.history[len(ci.history)-offset]
+					fmt.Printf("%s", text)
+				}
+			}
+			continue
+		}
+
+		// Ctrl-P ?
+		if x == 16 {
+			if offset >= len(ci.history) {
+				continue
+			}
+			offset += 1
+
+			// remove the character from our text, and overwrite on the console
+			for len(text) > 0 {
+				text = text[:len(text)-1]
+				fmt.Printf("\b \b")
+			}
+
+			// replace with a suitable value, and show it
+			text = ci.history[len(ci.history)-offset]
+			fmt.Printf("%s", text)
+
+			continue
 		}
 
 		// Ctrl-C ?
@@ -203,6 +266,20 @@ func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 
 		// Newline?
 		if x == '\n' || x == '\r' {
+
+			if text != "" {
+				// If we have no history, save it.
+				if len(ci.history) == 0 {
+					ci.history = append(ci.history, text)
+				} else {
+					// otherwise only add if different to previous entry
+					if text != ci.history[len(ci.history)-1] {
+						ci.history = append(ci.history, text)
+					}
+				}
+			}
+
+			// Add the newline and return
 			text += "\n"
 			break
 		}
