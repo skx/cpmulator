@@ -14,7 +14,7 @@ fi
 #
 # We build on only a single platform/arch.
 #
-BUILD_PLATFORMS="linux darwin freebsd windows"
+BUILD_PLATFORMS="linux darwin freebsd openbsd netbsd"
 BUILD_ARCHS="amd64 386"
 
 # For each platform
@@ -33,18 +33,12 @@ for OS in ${BUILD_PLATFORMS[@]}; do
             SUFFIX="${SUFFIX}-${ARCH}"
         fi
 
-        # Windows binaries should end in .EXE
-        if [ "$OS" = "windows" ]; then
-            SUFFIX="${SUFFIX}.exe"
-        fi
-
         echo "Building for ${OS} [${ARCH}] -> ${BASE}-${SUFFIX}"
 
         # Run the build
         export GOARCH=${ARCH}
         export GOOS=${OS}
         export CGO_ENABLED=0
-
 
         go build -ldflags "-X github.com/skx/cpmulator/version.version=$(git describe --tags)" -o "${BASE}-${SUFFIX}"
 

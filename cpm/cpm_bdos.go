@@ -99,18 +99,58 @@ func SysCallAuxWrite(cpm *CPM) error {
 }
 
 // SysCallRawIO handles both simple character output, and input.
+//
+// Note that we have to poll and determine if character input is present
+// in this function, otherwise games and things don't work well without it.
+//
+// Blocking in the handler for 0xFF will make ZORK X work, but not other things
+// this is the single hardest function to work with.  Meh.
 func SysCallRawIO(cpm *CPM) error {
 
 	switch cpm.CPU.States.DE.Lo {
-	case 0xFF, 0xFD:
+	case 0xFF:
+		// Return a character without echoing if one is waiting; zero if none is available.
+		if cpm.input.PendingInput() {
+			out, err := cpm.input.BlockForCharacterNoEcho()
+			if err != nil {
+				return err
+			}
+			cpm.CPU.States.AF.Hi = out
+			cpm.CPU.States.HL.Lo = out
+			cpm.CPU.States.AF.Lo = 0x00
+			return nil
+		}
+		// nothing pending, return 0x00
+		cpm.CPU.States.AF.Hi = 0x00
+		cpm.CPU.States.AF.Lo = 0x00
+		cpm.CPU.States.HL.Lo = 0x00
+		return nil
+	case 0xFE:
+		// Return console input status. Zero if no character is waiting, nonzero otherwise.
+		if cpm.input.PendingInput() {
 
+			cpm.CPU.States.AF.Hi = 0xFF
+			cpm.CPU.States.AF.Lo = 0x00
+			cpm.CPU.States.HL.Lo = 0xFF
+		} else {
+			cpm.CPU.States.AF.Hi = 0x00
+			cpm.CPU.States.AF.Lo = 0x00
+			cpm.CPU.States.HL.Lo = 0x00
+
+		}
+		return nil
+	case 0xFD:
+		// Wait until a character is ready, return it without echoing.
 		out, err := cpm.input.BlockForCharacterNoEcho()
 		if err != nil {
 			return err
 		}
 		cpm.CPU.States.AF.Hi = out
+		cpm.CPU.States.AF.Lo = 0x00
+		cpm.CPU.States.HL.Lo = 0x00
 		return nil
 	default:
+		// Anything else is to output a character.
 		cpm.output.PutCharacter(cpm.CPU.States.DE.Lo)
 	}
 	return nil
@@ -216,8 +256,13 @@ func SysCallReadString(cpm *CPM) error {
 // SysCallConsoleStatus tests if we have pending console (character) input.
 func SysCallConsoleStatus(cpm *CPM) error {
 
-	// Nothing pending
-	cpm.CPU.States.AF.Hi = 0x00
+	if cpm.input.PendingInput() {
+		cpm.CPU.States.AF.Hi = 0xFF
+		cpm.CPU.States.HL.Lo = 0xFF
+	} else {
+		cpm.CPU.States.AF.Hi = 0x00
+		cpm.CPU.States.HL.Lo = 0x00
+	}
 	return nil
 }
 
