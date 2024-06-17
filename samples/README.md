@@ -29,3 +29,5 @@ More significant programs are available within the sister-repository:
   * Used to test sequential read/write operations.
 * [ret.z80](ret.z80)
   * Terminate the execution of a binary in four different ways.
+* [terminal.z80](terminal.z80)
+  * Show the dimensions of the terminal we're running within.

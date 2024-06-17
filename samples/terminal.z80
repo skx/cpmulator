@@ -1,0 +1,142 @@
+;; terminal.z80 - Show the terminal size.
+
+
+
+;
+; Simple macro to push all (important) registers.
+;
+MACRO PUSH_ALL
+        push af
+        push bc
+        push de
+        push hl
+      ENDM
+
+
+;
+; Simple macro to pop all (important) registers.
+;
+MACRO POP_ALL
+        pop hl
+        pop de
+        pop bc
+        pop af
+      ENDM
+; }}
+
+FCB1:                 EQU 0x5C
+BDOS_ENTRY_POINT:     EQU 5
+BDOS_OUTPUT_STRING:   EQU 9
+
+        ;;
+        ;; CP/M programs start at 0x100.
+        ;;
+        ORG 100H
+
+        ;; Test that we're running under cpmulator by calling the
+        ;; "is cpmulator" function.
+        ld HL, 0x0000
+        ld a, 31
+        out (0xff), a
+
+        ;; We expect SKX to appear in registers HLA
+        CP 'X'
+        jr nz, not_cpmulator
+
+        LD A, H
+        CP 'S'
+        jr nz, not_cpmulator
+
+        LD A, L
+        CP 'K'
+        jr nz, not_cpmulator
+
+        ;; get the terminal size
+        ld HL, 0x05
+        ld  a, 31
+        out (0xff), a
+
+        ;; save the result
+        push hl
+        push hl
+
+        LD DE, WIDTH_PREFIX
+        LD C, BDOS_OUTPUT_STRING
+        call BDOS_ENTRY_POINT
+
+        ;; show width
+        pop hl
+        ld a, h
+        call  show_a_register
+
+        LD DE, NEWLINE
+        LD C, BDOS_OUTPUT_STRING
+        call BDOS_ENTRY_POINT
+
+        LD DE, HEIGHT_PREFIX
+        LD C, BDOS_OUTPUT_STRING
+        call BDOS_ENTRY_POINT
+
+        ;; show height
+        pop hl
+        ld a, l
+        call  show_a_register
+
+        LD DE, NEWLINE
+        LD C, BDOS_OUTPUT_STRING
+        call BDOS_ENTRY_POINT
+
+exit:
+        LD      C,0x00
+        CALL    BDOS_ENTRY_POINT
+
+
+DispHL:
+	ld	bc,-10000
+	call	Num1
+	ld	bc,-1000
+	call	Num1
+	ld	bc,-100
+	call	Num1
+	ld	c,-10
+	call	Num1
+	ld	c,-1
+Num1:	ld	a,'0'-1
+Num2:	inc	a
+	add	hl,bc
+	jr	c,Num2
+	sbc	hl,bc
+        PUSH_ALL
+        ld e, a
+        ld c, 0x02
+        call 0x0005
+        POP_ALL
+	ret
+
+show_a_register:
+        ld h,0
+	ld l,a
+	call DispHL
+        ret
+
+;;
+;; Error Routines
+;;
+not_cpmulator:
+        LD DE, WRONG_EMULATOR
+        LD C, BDOS_OUTPUT_STRING
+        call BDOS_ENTRY_POINT
+        jr exit
+
+;;
+;; Text output strings.
+;;
+WRONG_EMULATOR:
+        db "This binary is not running under cpmulator, aborting.", 0x0a, 0x0d, "$"
+WIDTH_PREFIX:
+        db "The terminal width is $"
+HEIGHT_PREFIX:
+        db "The terminal height is $"
+NEWLINE:
+        db 0x0a, 0x0d, "$"
+END

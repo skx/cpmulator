@@ -9,7 +9,10 @@ package cpm
 import (
 	"fmt"
 	"log/slog"
+	"os"
 	"strings"
+
+	"golang.org/x/term"
 
 	"github.com/skx/cpmulator/ccp"
 	"github.com/skx/cpmulator/consoleout"
@@ -364,6 +367,14 @@ func BiosSysCallReserved1(cpm *CPM) error {
 			}
 
 		}
+
+	case 0x0005:
+		width, height, err := term.GetSize(int(os.Stdin.Fd()))
+		if err != nil {
+			return err
+		}
+		cpm.CPU.States.HL.Hi = uint8(height)
+		cpm.CPU.States.HL.Lo = uint8(width)
 
 	default:
 		fmt.Printf("Unknown custom BIOS function HL:%04X, ignoring", hl)

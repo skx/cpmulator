@@ -84,3 +84,10 @@ Demonstrated in [samples/ccp.z80](samples/ccp.z80)
 Quiet mode prevents the display of a banner every time the CCP is restarted.
 
 Demonstrated in [samples/quiet.z80](samples/quiet.z80)
+
+
+
+## Function 0x05: Get Terminal Size
+
+* Returns the height of the terminal in H.
+* Returns the width of the terminal in L.
