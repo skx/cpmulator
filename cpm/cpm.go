@@ -351,6 +351,11 @@ func New(logger *slog.Logger, prn string, condriver string, ccp string) (*CPM, e
 		Handler: SysCallDriveReset,
 		Fake:    true,
 	}
+	sys[45] = CPMHandler{
+		Desc:    "F_ERRMODE",
+		Handler: SysCallErrorMode,
+		Fake:    true,
+	}
 	sys[105] = CPMHandler{
 		Desc:    "T_GET",
 		Handler: SysCallTime,
