@@ -1519,6 +1519,12 @@ func SysCallDriveReset(cpm *CPM) error {
 	return nil
 }
 
+// SysCallErrorMode implements a NOP version of F_ERRMODE.
+func SysCallErrorMode(cpm *CPM) error {
+	return nil
+}
+
+// SysCallTime implements a NOP version of T_GET.
 func SysCallTime(cpm *CPM) error {
 	return nil
 }
