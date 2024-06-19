@@ -370,53 +370,53 @@ func New(logger *slog.Logger, prn string, condriver string, ccp string) (*CPM, e
 	//
 	// Create and populate our syscall table for the BIOS syscalls.
 	//
-	b := make(map[uint8]CPMHandler)
-	b[0] = CPMHandler{
+	bios := make(map[uint8]CPMHandler)
+	bios[0] = CPMHandler{
 		Desc:    "BOOT",
 		Handler: BiosSysCallBoot,
 	}
-	b[1] = CPMHandler{
+	bios[1] = CPMHandler{
 		Desc:    "WBOOT",
 		Handler: BiosSysCallBoot,
 	}
-	b[2] = CPMHandler{
+	bios[2] = CPMHandler{
 		Desc:    "CONST",
 		Handler: BiosSysCallConsoleStatus,
 	}
-	b[3] = CPMHandler{
+	bios[3] = CPMHandler{
 		Desc:    "CONIN",
 		Handler: BiosSysCallConsoleInput,
 	}
-	b[4] = CPMHandler{
+	bios[4] = CPMHandler{
 		Desc:    "CONOUT",
 		Handler: BiosSysCallConsoleOutput,
 	}
-	b[5] = CPMHandler{
+	bios[5] = CPMHandler{
 		Desc:    "LIST",
 		Handler: BiosSysCallPrintChar,
 		Fake:    true,
 	}
-	b[15] = CPMHandler{
+	bios[15] = CPMHandler{
 		Desc:    "LISTST",
 		Handler: BiosSysCallPrinterStatus,
 		Fake:    true,
 	}
-	b[17] = CPMHandler{
+	bios[17] = CPMHandler{
 		Desc:    "CONOST",
 		Handler: BiosSysCallScreenOutputStatus,
 		Fake:    true,
 	}
-	b[18] = CPMHandler{
+	bios[18] = CPMHandler{
 		Desc:    "AUXIST",
 		Handler: BiosSysCallAuxInputStatus,
 		Fake:    true,
 	}
-	b[19] = CPMHandler{
+	bios[19] = CPMHandler{
 		Desc:    "AUXOST",
 		Handler: BiosSysCallAuxOutputStatus,
 		Fake:    true,
 	}
-	b[31] = CPMHandler{
+	bios[31] = CPMHandler{
 		Desc:    "RESERVE1",
 		Handler: BiosSysCallReserved1,
 		Fake:    true,
@@ -431,7 +431,7 @@ func New(logger *slog.Logger, prn string, condriver string, ccp string) (*CPM, e
 	// Create the emulator object and return it
 	tmp := &CPM{
 		BDOSSyscalls: sys,
-		BIOSSyscalls: b,
+		BIOSSyscalls: bios,
 		Logger:       logger,
 		ccp:          ccp,
 		dma:          0x0080,
