@@ -1,26 +1,28 @@
-//go:build netbsd
+//go:build unix
 
 package consolein
 
 import (
 	"os"
-	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 // canSelect contains a platform-specific implementation of code that tries to use
 // SELECT to read from STDIN.
 func canSelect() bool {
 
-	var readfds syscall.FdSet
-
-	fd := os.Stdin.Fd()
-	readfds.Bits[fd/64] |= 1 << (fd % 64)
+	fds := &unix.FdSet{}
+	fds.Set(int(os.Stdin.Fd()))
 
 	// See if input is pending, for a while.
-	err := syscall.Select(1, &readfds, nil, nil, &syscall.Timeval{Usec: 200})
+	tv := unix.Timeval{Usec: 200}
+
+	// via select with timeout
+	nRead, err := unix.Select(1, fds, nil, nil, &tv)
 	if err != nil {
 		return false
 	}
 
-	return true
+	return (nRead > 0)
 }
