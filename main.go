@@ -38,6 +38,26 @@ func main() {
 	syscalls := flag.Bool("syscalls", false, "List the syscalls we implement.")
 	quiet := flag.Bool("quiet", false, "Avoid showing the startup-banner when CCP is reloaded.")
 	showVersion := flag.Bool("version", false, "Report our version, and exit.")
+
+	// drives
+	drive := make(map[string]*string)
+	drive["A"] = flag.String("drive-a", "", "The path to the directory for A:")
+	drive["B"] = flag.String("drive-b", "", "The path to the directory for B:")
+	drive["C"] = flag.String("drive-c", "", "The path to the directory for C:")
+	drive["D"] = flag.String("drive-d", "", "The path to the directory for D:")
+	drive["E"] = flag.String("drive-e", "", "The path to the directory for E:")
+	drive["F"] = flag.String("drive-f", "", "The path to the directory for F:")
+	drive["G"] = flag.String("drive-g", "", "The path to the directory for G:")
+	drive["H"] = flag.String("drive-h", "", "The path to the directory for H:")
+	drive["I"] = flag.String("drive-i", "", "The path to the directory for I:")
+	drive["J"] = flag.String("drive-j", "", "The path to the directory for J:")
+	drive["K"] = flag.String("drive-k", "", "The path to the directory for K:")
+	drive["L"] = flag.String("drive-l", "", "The path to the directory for L:")
+	drive["M"] = flag.String("drive-m", "", "The path to the directory for M:")
+	drive["N"] = flag.String("drive-n", "", "The path to the directory for N:")
+	drive["O"] = flag.String("drive-o", "", "The path to the directory for O:")
+	drive["P"] = flag.String("drive-p", "", "The path to the directory for P:")
+
 	flag.Parse()
 
 	// Are we dumping CCPs?
@@ -209,6 +229,13 @@ func main() {
 			fmt.Printf("\n")
 			fmt.Printf("Or you could launch this program with the '-create' flag.\n")
 			fmt.Printf("That would automatically create directories for drives A-P.\n")
+		}
+	}
+
+	// Do we have custom paths?  If so set them.
+	for d, pth := range drive {
+		if pth != nil && *pth != "" {
+			obj.SetDrivePath(d, *pth)
 		}
 	}
 
