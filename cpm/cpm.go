@@ -190,180 +190,180 @@ func New(logger *slog.Logger, prn string, condriver string, ccp string) (*CPM, e
 	//
 	// Create and populate our syscall table for the BDOS syscalls.
 	//
-	sys := make(map[uint8]CPMHandler)
-	sys[0] = CPMHandler{
+	bdos := make(map[uint8]CPMHandler)
+	bdos[0] = CPMHandler{
 		Desc:    "P_TERMCPM",
-		Handler: SysCallExit,
+		Handler: BdosSysCallExit,
 	}
-	sys[1] = CPMHandler{
+	bdos[1] = CPMHandler{
 		Desc:    "C_READ",
-		Handler: SysCallReadChar,
+		Handler: BdosSysCallReadChar,
 	}
-	sys[2] = CPMHandler{
+	bdos[2] = CPMHandler{
 		Desc:    "C_WRITE",
-		Handler: SysCallWriteChar,
+		Handler: BdosSysCallWriteChar,
 	}
-	sys[3] = CPMHandler{
+	bdos[3] = CPMHandler{
 		Desc:    "A_READ",
-		Handler: SysCallAuxRead,
+		Handler: BdosSysCallAuxRead,
 	}
-	sys[4] = CPMHandler{
+	bdos[4] = CPMHandler{
 		Desc:    "A_WRITE",
-		Handler: SysCallAuxWrite,
+		Handler: BdosSysCallAuxWrite,
 	}
-	sys[5] = CPMHandler{
+	bdos[5] = CPMHandler{
 		Desc:    "L_WRITE",
-		Handler: SysCallPrinterWrite,
+		Handler: BdosSysCallPrinterWrite,
 		Fake:    true,
 	}
-	sys[6] = CPMHandler{
+	bdos[6] = CPMHandler{
 		Desc:    "C_RAWIO",
-		Handler: SysCallRawIO,
+		Handler: BdosSysCallRawIO,
 	}
-	sys[7] = CPMHandler{
+	bdos[7] = CPMHandler{
 		Desc:    "GET_IOBYTE",
-		Handler: SysCallGetIOByte,
+		Handler: BdosSysCallGetIOByte,
 	}
-	sys[8] = CPMHandler{
+	bdos[8] = CPMHandler{
 		Desc:    "SET_IOBYTE",
-		Handler: SysCallSetIOByte,
+		Handler: BdosSysCallSetIOByte,
 	}
-	sys[9] = CPMHandler{
+	bdos[9] = CPMHandler{
 		Desc:    "C_WRITESTRING",
-		Handler: SysCallWriteString,
+		Handler: BdosSysCallWriteString,
 	}
-	sys[10] = CPMHandler{
+	bdos[10] = CPMHandler{
 		Desc:    "C_READSTRING",
-		Handler: SysCallReadString,
+		Handler: BdosSysCallReadString,
 	}
-	sys[11] = CPMHandler{
+	bdos[11] = CPMHandler{
 		Desc:    "C_STAT",
-		Handler: SysCallConsoleStatus,
+		Handler: BdosSysCallConsoleStatus,
 	}
-	sys[12] = CPMHandler{
+	bdos[12] = CPMHandler{
 		Desc:    "S_BDOSVER",
-		Handler: SysCallBDOSVersion,
+		Handler: BdosSysCallBDOSVersion,
 	}
-	sys[13] = CPMHandler{
+	bdos[13] = CPMHandler{
 		Desc:    "DRV_ALLRESET",
-		Handler: SysCallDriveAllReset,
+		Handler: BdosSysCallDriveAllReset,
 	}
-	sys[14] = CPMHandler{
+	bdos[14] = CPMHandler{
 		Desc:    "DRV_SET",
-		Handler: SysCallDriveSet,
+		Handler: BdosSysCallDriveSet,
 	}
-	sys[15] = CPMHandler{
+	bdos[15] = CPMHandler{
 		Desc:    "F_OPEN",
-		Handler: SysCallFileOpen,
+		Handler: BdosSysCallFileOpen,
 	}
-	sys[16] = CPMHandler{
+	bdos[16] = CPMHandler{
 		Desc:    "F_CLOSE",
-		Handler: SysCallFileClose,
+		Handler: BdosSysCallFileClose,
 	}
-	sys[17] = CPMHandler{
+	bdos[17] = CPMHandler{
 		Desc:    "F_SFIRST",
-		Handler: SysCallFindFirst,
+		Handler: BdosSysCallFindFirst,
 	}
-	sys[18] = CPMHandler{
+	bdos[18] = CPMHandler{
 		Desc:    "F_SNEXT",
-		Handler: SysCallFindNext,
+		Handler: BdosSysCallFindNext,
 	}
-	sys[19] = CPMHandler{
+	bdos[19] = CPMHandler{
 		Desc:    "F_DELETE",
-		Handler: SysCallDeleteFile,
+		Handler: BdosSysCallDeleteFile,
 	}
-	sys[20] = CPMHandler{
+	bdos[20] = CPMHandler{
 		Desc:    "F_READ",
-		Handler: SysCallRead,
+		Handler: BdosSysCallRead,
 	}
-	sys[21] = CPMHandler{
+	bdos[21] = CPMHandler{
 		Desc:    "F_WRITE",
-		Handler: SysCallWrite,
+		Handler: BdosSysCallWrite,
 	}
-	sys[22] = CPMHandler{
+	bdos[22] = CPMHandler{
 		Desc:    "F_MAKE",
-		Handler: SysCallMakeFile,
+		Handler: BdosSysCallMakeFile,
 	}
-	sys[23] = CPMHandler{
+	bdos[23] = CPMHandler{
 		Desc:    "F_RENAME",
-		Handler: SysCallRenameFile,
+		Handler: BdosSysCallRenameFile,
 	}
-	sys[24] = CPMHandler{
+	bdos[24] = CPMHandler{
 		Desc:    "DRV_LOGINVEC",
-		Handler: SysCallLoginVec,
+		Handler: BdosSysCallLoginVec,
 		Fake:    true,
 	}
-	sys[25] = CPMHandler{
+	bdos[25] = CPMHandler{
 		Desc:    "DRV_GET",
-		Handler: SysCallDriveGet,
+		Handler: BdosSysCallDriveGet,
 	}
-	sys[26] = CPMHandler{
+	bdos[26] = CPMHandler{
 		Desc:    "F_DMAOFF",
-		Handler: SysCallSetDMA,
+		Handler: BdosSysCallSetDMA,
 	}
-	sys[27] = CPMHandler{
+	bdos[27] = CPMHandler{
 		Desc:    "DRV_ALLOCVEC",
-		Handler: SysCallDriveAlloc,
+		Handler: BdosSysCallDriveAlloc,
 		Fake:    true,
 	}
-	sys[28] = CPMHandler{
+	bdos[28] = CPMHandler{
 		Desc:    "DRV_SETRO",
-		Handler: SysCallDriveSetRO,
+		Handler: BdosSysCallDriveSetRO,
 		Fake:    true,
 	}
-	sys[29] = CPMHandler{
+	bdos[29] = CPMHandler{
 		Desc:    "DRV_ROVEC",
-		Handler: SysCallDriveROVec,
+		Handler: BdosSysCallDriveROVec,
 		Fake:    true,
 	}
-	sys[30] = CPMHandler{
+	bdos[30] = CPMHandler{
 		Desc:    "F_ATTRIB",
-		Handler: SysCallSetFileAttributes,
+		Handler: BdosSysCallSetFileAttributes,
 		Fake:    true,
 	}
-	sys[31] = CPMHandler{
+	bdos[31] = CPMHandler{
 		Desc:    "DRV_DPB",
-		Handler: SysCallGetDriveDPB,
+		Handler: BdosSysCallGetDriveDPB,
 		Fake:    true,
 	}
-	sys[32] = CPMHandler{
+	bdos[32] = CPMHandler{
 		Desc:    "F_USERNUM",
-		Handler: SysCallUserNumber,
+		Handler: BdosSysCallUserNumber,
 	}
-	sys[33] = CPMHandler{
+	bdos[33] = CPMHandler{
 		Desc:    "F_READRAND",
-		Handler: SysCallReadRand,
+		Handler: BdosSysCallReadRand,
 	}
-	sys[34] = CPMHandler{
+	bdos[34] = CPMHandler{
 		Desc:    "F_WRITERAND",
-		Handler: SysCallWriteRand,
+		Handler: BdosSysCallWriteRand,
 	}
-	sys[35] = CPMHandler{
+	bdos[35] = CPMHandler{
 		Desc:    "F_SIZE",
-		Handler: SysCallFileSize,
+		Handler: BdosSysCallFileSize,
 	}
-	sys[36] = CPMHandler{
+	bdos[36] = CPMHandler{
 		Desc:    "F_RANDREC",
-		Handler: SysCallRandRecord,
+		Handler: BdosSysCallRandRecord,
 	}
-	sys[37] = CPMHandler{
+	bdos[37] = CPMHandler{
 		Desc:    "DRV_RESET",
-		Handler: SysCallDriveReset,
+		Handler: BdosSysCallDriveReset,
 		Fake:    true,
 	}
-	sys[45] = CPMHandler{
+	bdos[45] = CPMHandler{
 		Desc:    "F_ERRMODE",
-		Handler: SysCallErrorMode,
+		Handler: BdosSysCallErrorMode,
 		Fake:    true,
 	}
-	sys[105] = CPMHandler{
+	bdos[105] = CPMHandler{
 		Desc:    "T_GET",
-		Handler: SysCallTime,
+		Handler: BdosSysCallTime,
 		Fake:    true,
 	}
-	sys[113] = CPMHandler{ // used by Turbo Pascal
+	bdos[113] = CPMHandler{ // used by Turbo Pascal
 		Desc:    "DirectScreenFunctions",
-		Handler: SysCallDirectScreenFunctions,
+		Handler: BdosSysCallDirectScreenFunctions,
 		Fake:    true,
 	}
 
@@ -430,7 +430,7 @@ func New(logger *slog.Logger, prn string, condriver string, ccp string) (*CPM, e
 
 	// Create the emulator object and return it
 	tmp := &CPM{
-		BDOSSyscalls: sys,
+		BDOSSyscalls: bdos,
 		BIOSSyscalls: bios,
 		Logger:       logger,
 		ccp:          ccp,

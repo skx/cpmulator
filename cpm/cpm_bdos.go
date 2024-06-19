@@ -26,13 +26,13 @@ const blkSize = 128
 // maxRC is the maximum read count
 const maxRC = 128
 
-// SysCallExit implements the Exit syscall
-func SysCallExit(cpm *CPM) error {
+// BdosSysCallExit implements the Exit syscall
+func BdosSysCallExit(cpm *CPM) error {
 	return ErrExit
 }
 
-// SysCallReadChar reads a single character from the console.
-func SysCallReadChar(cpm *CPM) error {
+// BdosSysCallReadChar reads a single character from the console.
+func BdosSysCallReadChar(cpm *CPM) error {
 
 	// Block for input
 	c, err := cpm.input.BlockForCharacterWithEcho()
@@ -50,18 +50,18 @@ func SysCallReadChar(cpm *CPM) error {
 	return nil
 }
 
-// SysCallWriteChar writes the single character in the E register to STDOUT.
-func SysCallWriteChar(cpm *CPM) error {
+// BdosSysCallWriteChar writes the single character in the E register to STDOUT.
+func BdosSysCallWriteChar(cpm *CPM) error {
 
 	cpm.output.PutCharacter(cpm.CPU.States.DE.Lo)
 
 	return nil
 }
 
-// SysCallAuxRead reads a single character from the auxiliary input.
+// BdosSysCallAuxRead reads a single character from the auxiliary input.
 //
 // Note: Echo is not enabled in this function.
-func SysCallAuxRead(cpm *CPM) error {
+func BdosSysCallAuxRead(cpm *CPM) error {
 
 	// Block for input
 	c, err := cpm.input.BlockForCharacterNoEcho()
@@ -79,18 +79,9 @@ func SysCallAuxRead(cpm *CPM) error {
 	return nil
 }
 
-// SysCallPrinterWrite should send a single character to the printer,
-// we fake that by writing to a file instead.
-func SysCallPrinterWrite(cpm *CPM) error {
-
-	// write the character to our printer-file
-	err := cpm.prnC(cpm.CPU.States.BC.Lo)
-	return err
-}
-
-// SysCallAuxWrite writes the single character in the C register
+// BdosSysCallAuxWrite writes the single character in the C register
 // auxiliary / punch output.
-func SysCallAuxWrite(cpm *CPM) error {
+func BdosSysCallAuxWrite(cpm *CPM) error {
 
 	// The character we're going to write
 	c := cpm.CPU.States.BC.Lo
@@ -98,14 +89,23 @@ func SysCallAuxWrite(cpm *CPM) error {
 	return nil
 }
 
-// SysCallRawIO handles both simple character output, and input.
+// BdosSysCallPrinterWrite should send a single character to the printer,
+// we fake that by writing to a file instead.
+func BdosSysCallPrinterWrite(cpm *CPM) error {
+
+	// write the character to our printer-file
+	err := cpm.prnC(cpm.CPU.States.BC.Lo)
+	return err
+}
+
+// BdosSysCallRawIO handles both simple character output, and input.
 //
 // Note that we have to poll and determine if character input is present
 // in this function, otherwise games and things don't work well without it.
 //
 // Blocking in the handler for 0xFF will make ZORK X work, but not other things
 // this is the single hardest function to work with.  Meh.
-func SysCallRawIO(cpm *CPM) error {
+func BdosSysCallRawIO(cpm *CPM) error {
 
 	switch cpm.CPU.States.DE.Lo {
 	case 0xFF:
@@ -156,11 +156,11 @@ func SysCallRawIO(cpm *CPM) error {
 	return nil
 }
 
-// SysCallGetIOByte gets the IOByte, which is used to describe which devices
+// BdosSysCallGetIOByte gets the IOByte, which is used to describe which devices
 // are used for I/O.  No CP/M utilities use it, except for STAT and PIP.
 //
 // The IOByte lives at 0x0003 in RAM, so it is often accessed directly when it is used.
-func SysCallGetIOByte(cpm *CPM) error {
+func BdosSysCallGetIOByte(cpm *CPM) error {
 
 	// Get the value
 	c := cpm.Memory.Get(0x0003)
@@ -171,11 +171,11 @@ func SysCallGetIOByte(cpm *CPM) error {
 	return nil
 }
 
-// SysCallSetIOByte sets the IOByte, which is used to describe which devices
+// BdosSysCallSetIOByte sets the IOByte, which is used to describe which devices
 // are used for I/O.  No CP/M utilities use it, except for STAT and PIP.
 //
 // The IOByte lives at 0x0003 in RAM, so it is often accessed directly when it is used.
-func SysCallSetIOByte(cpm *CPM) error {
+func BdosSysCallSetIOByte(cpm *CPM) error {
 
 	// Set the value
 	cpm.Memory.Set(0x003, cpm.CPU.States.DE.Lo)
@@ -183,8 +183,8 @@ func SysCallSetIOByte(cpm *CPM) error {
 	return nil
 }
 
-// SysCallWriteString writes the $-terminated string pointed to by DE to STDOUT
-func SysCallWriteString(cpm *CPM) error {
+// BdosSysCallWriteString writes the $-terminated string pointed to by DE to STDOUT
+func BdosSysCallWriteString(cpm *CPM) error {
 	addr := cpm.CPU.States.DE.U16()
 
 	c := cpm.Memory.Get(addr)
@@ -204,8 +204,8 @@ func SysCallWriteString(cpm *CPM) error {
 	return nil
 }
 
-// SysCallReadString reads a string from the console, into the buffer pointed to by DE.
-func SysCallReadString(cpm *CPM) error {
+// BdosSysCallReadString reads a string from the console, into the buffer pointed to by DE.
+func BdosSysCallReadString(cpm *CPM) error {
 
 	// DE points to the buffer
 	addr := cpm.CPU.States.DE.U16()
@@ -253,8 +253,8 @@ func SysCallReadString(cpm *CPM) error {
 	return nil
 }
 
-// SysCallConsoleStatus tests if we have pending console (character) input.
-func SysCallConsoleStatus(cpm *CPM) error {
+// BdosSysCallConsoleStatus tests if we have pending console (character) input.
+func BdosSysCallConsoleStatus(cpm *CPM) error {
 
 	if cpm.input.PendingInput() {
 		cpm.CPU.States.AF.Hi = 0xFF
@@ -266,8 +266,8 @@ func SysCallConsoleStatus(cpm *CPM) error {
 	return nil
 }
 
-// SysCallBDOSVersion returns version details
-func SysCallBDOSVersion(cpm *CPM) error {
+// BdosSysCallBDOSVersion returns version details
+func BdosSysCallBDOSVersion(cpm *CPM) error {
 
 	// HL = 0x0022 -CP/M 2.2
 	// B = 0x00
@@ -281,30 +281,11 @@ func SysCallBDOSVersion(cpm *CPM) error {
 	return nil
 }
 
-// SysCallSetDMA updates the address of the DMA area, which is used for block I/O.
-func SysCallSetDMA(cpm *CPM) error {
-
-	// Get the address from BC
-	addr := cpm.CPU.States.DE.U16()
-
-	// Update the DMA value.
-	cpm.dma = addr
-
-	// Return values:
-	// HL = 0, B=0, A=0
-	cpm.CPU.States.HL.Hi = 0x00
-	cpm.CPU.States.HL.Lo = 0x00
-	cpm.CPU.States.BC.Hi = 0x00
-	cpm.CPU.States.AF.Hi = 0x00
-
-	return nil
-}
-
-// SysCallDriveAllReset resets the drives.
+// BdosSysCallDriveAllReset resets the drives.
 //
 // If there is a file named "$..." then we need to return 0xFF in A,
 // which will be read by the CCP - as created by SUBMIT.COM
-func SysCallDriveAllReset(cpm *CPM) error {
+func BdosSysCallDriveAllReset(cpm *CPM) error {
 
 	// Reset disk - but leave the user-number alone
 	cpm.currentDrive = 0
@@ -343,8 +324,8 @@ func SysCallDriveAllReset(cpm *CPM) error {
 	return nil
 }
 
-// SysCallDriveSet updates the current drive number.
-func SysCallDriveSet(cpm *CPM) error {
+// BdosSysCallDriveSet updates the current drive number.
+func BdosSysCallDriveSet(cpm *CPM) error {
 
 	// The drive number passed to this routine is 0 for A:, 1 for B:
 	// up to 15 for P:.
@@ -371,8 +352,8 @@ func SysCallDriveSet(cpm *CPM) error {
 	return nil
 }
 
-// SysCallFileOpen opens the filename that matches the pattern on the FCB supplied in DE
-func SysCallFileOpen(cpm *CPM) error {
+// BdosSysCallFileOpen opens the filename that matches the pattern on the FCB supplied in DE
+func BdosSysCallFileOpen(cpm *CPM) error {
 
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
@@ -511,13 +492,13 @@ func SysCallFileOpen(cpm *CPM) error {
 	return nil
 }
 
-// SysCallFileClose closes the filename that matches the pattern on the FCB supplied in DE.
+// BdosSysCallFileClose closes the filename that matches the pattern on the FCB supplied in DE.
 //
 // To handle SUBMIT we need to also do more than close an existing file handle, and remove
 // it from our cache.  It seems that we can also be required to _truncate_ a file. Because
 // I'm unsure exactly how much this is in-use I'm going to only implement it for
 // files with "$" in their name.
-func SysCallFileClose(cpm *CPM) error {
+func BdosSysCallFileClose(cpm *CPM) error {
 
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
@@ -583,8 +564,8 @@ func SysCallFileClose(cpm *CPM) error {
 	return nil
 }
 
-// SysCallFindFirst finds the first filename, on disk, that matches the glob in the FCB supplied in DE.
-func SysCallFindFirst(cpm *CPM) error {
+// BdosSysCallFindFirst finds the first filename, on disk, that matches the glob in the FCB supplied in DE.
+func BdosSysCallFindFirst(cpm *CPM) error {
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
 	// Get the bytes which make up the FCB entry.
@@ -682,8 +663,8 @@ func SysCallFindFirst(cpm *CPM) error {
 	return nil
 }
 
-// SysCallFindNext finds the next filename that matches the glob set in the FCB in DE.
-func SysCallFindNext(cpm *CPM) error {
+// BdosSysCallFindNext finds the next filename that matches the glob set in the FCB in DE.
+func BdosSysCallFindNext(cpm *CPM) error {
 	//
 	// Assume we've been called with findFirst before
 	//
@@ -727,8 +708,8 @@ func SysCallFindNext(cpm *CPM) error {
 	return nil
 }
 
-// SysCallDeleteFile deletes the filename(s) matching the pattern specified by the FCB in DE.
-func SysCallDeleteFile(cpm *CPM) error {
+// BdosSysCallDeleteFile deletes the filename(s) matching the pattern specified by the FCB in DE.
+func BdosSysCallDeleteFile(cpm *CPM) error {
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
 	// Get the bytes which make up the FCB entry.
@@ -794,8 +775,8 @@ func SysCallDeleteFile(cpm *CPM) error {
 	return err
 }
 
-// SysCallRead reads a record from the file named in the FCB given in DE
-func SysCallRead(cpm *CPM) error {
+// BdosSysCallRead reads a record from the file named in the FCB given in DE
+func BdosSysCallRead(cpm *CPM) error {
 
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
@@ -901,8 +882,8 @@ func SysCallRead(cpm *CPM) error {
 	return nil
 }
 
-// SysCallWrite writes a record to the file named in the FCB given in DE
-func SysCallWrite(cpm *CPM) error {
+// BdosSysCallWrite writes a record to the file named in the FCB given in DE
+func BdosSysCallWrite(cpm *CPM) error {
 
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
@@ -964,8 +945,8 @@ func SysCallWrite(cpm *CPM) error {
 	return nil
 }
 
-// SysCallMakeFile creates the file named in the FCB given in DE
-func SysCallMakeFile(cpm *CPM) error {
+// BdosSysCallMakeFile creates the file named in the FCB given in DE
+func BdosSysCallMakeFile(cpm *CPM) error {
 
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
@@ -1058,9 +1039,9 @@ func SysCallMakeFile(cpm *CPM) error {
 	return nil
 }
 
-// SysCallRenameFile will handle a rename operation.
+// BdosSysCallRenameFile will handle a rename operation.
 // Note that this will not handle cross-directory renames (i.e. file moving).
-func SysCallRenameFile(cpm *CPM) error {
+func BdosSysCallRenameFile(cpm *CPM) error {
 
 	// 1. SRC
 
@@ -1132,36 +1113,83 @@ func SysCallRenameFile(cpm *CPM) error {
 	return nil
 }
 
-// SysCallLoginVec returns the list of logged in drives.
-func SysCallLoginVec(cpm *CPM) error {
+// BdosSysCallLoginVec returns the list of logged in drives.
+func BdosSysCallLoginVec(cpm *CPM) error {
 	cpm.CPU.States.HL.Hi = 0xFF
 	cpm.CPU.States.HL.Lo = 0xFF
 	return nil
 }
 
-// SysCallDriveGet returns the number of the active drive.
-func SysCallDriveGet(cpm *CPM) error {
+// BdosSysCallDriveGet returns the number of the active drive.
+func BdosSysCallDriveGet(cpm *CPM) error {
 	cpm.CPU.States.AF.Hi = cpm.currentDrive
 
 	return nil
 }
 
-// SysCallSetFileAttributes should update the attributes of the given
-// file, but it fakes it.
-func SysCallSetFileAttributes(cpm *CPM) error {
+// BdosSysCallSetDMA updates the address of the DMA area, which is used for block I/O.
+func BdosSysCallSetDMA(cpm *CPM) error {
+
+	// Get the address from BC
+	addr := cpm.CPU.States.DE.U16()
+
+	// Update the DMA value.
+	cpm.dma = addr
+
+	// Return values:
+	// HL = 0, B=0, A=0
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = 0x00
+	cpm.CPU.States.BC.Hi = 0x00
+	cpm.CPU.States.AF.Hi = 0x00
+
+	return nil
+}
+
+// BdosSysCallDriveAlloc will return the address of the allocation bitmap (which blocks are used and
+// which are free) in HL.
+//
+// TODO: Fake me better.  Right now I just return "random memory".
+func BdosSysCallDriveAlloc(cpm *CPM) error {
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = 0x00
+	return nil
+}
+
+// BdosSysCallDriveSetRO will mark the current drive as being read-only.
+//
+// This call is faked.
+func BdosSysCallDriveSetRO(cpm *CPM) error {
 	cpm.CPU.States.AF.Hi = 0x00
 	return nil
 }
 
-// SysCallGetDriveDPB returns the address of the DPB, which is faked.
-func SysCallGetDriveDPB(cpm *CPM) error {
+// BdosSysCallDriveROVec will return a bitfield describing which drives are read-only.
+//
+// Bit 7 of H corresponds to P: while bit 0 of L corresponds to A:. A bit is set if the corresponding drive is
+// set to read-only in software.  As we never set drives to read-only we return 0x0000
+func BdosSysCallDriveROVec(cpm *CPM) error {
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = 0x00
+	return nil
+}
+
+// BdosSysCallSetFileAttributes should update the attributes of the given
+// file, but it fakes it.
+func BdosSysCallSetFileAttributes(cpm *CPM) error {
+	cpm.CPU.States.AF.Hi = 0x00
+	return nil
+}
+
+// BdosSysCallGetDriveDPB returns the address of the DPB, which is faked.
+func BdosSysCallGetDriveDPB(cpm *CPM) error {
 	cpm.CPU.States.HL.Hi = 0xCD
 	cpm.CPU.States.HL.Lo = 0xCD
 	return nil
 }
 
-// SysCallUserNumber gets, or sets, the user-number.
-func SysCallUserNumber(cpm *CPM) error {
+// BdosSysCallUserNumber gets, or sets, the user-number.
+func BdosSysCallUserNumber(cpm *CPM) error {
 
 	// We're either setting or getting
 	//
@@ -1186,8 +1214,8 @@ func SysCallUserNumber(cpm *CPM) error {
 	return nil
 }
 
-// SysCallReadRand reads a random block from the FCB pointed to by DE into the DMA area.
-func SysCallReadRand(cpm *CPM) error {
+// BdosSysCallReadRand reads a random block from the FCB pointed to by DE into the DMA area.
+func BdosSysCallReadRand(cpm *CPM) error {
 	// Temporary area to read into
 	data := make([]byte, blkSize)
 
@@ -1281,8 +1309,8 @@ func SysCallReadRand(cpm *CPM) error {
 	return nil
 }
 
-// SysCallWriteRand writes a random block from DMA area to the FCB pointed to by DE.
-func SysCallWriteRand(cpm *CPM) error {
+// BdosSysCallWriteRand writes a random block from DMA area to the FCB pointed to by DE.
+func BdosSysCallWriteRand(cpm *CPM) error {
 
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
@@ -1362,11 +1390,11 @@ func SysCallWriteRand(cpm *CPM) error {
 	return nil
 }
 
-// SysCallFileSize updates the Random Record bytes of the given FCB to the
+// BdosSysCallFileSize updates the Random Record bytes of the given FCB to the
 // number of records in the file.
 //
 // Returns the result in the A record
-func SysCallFileSize(cpm *CPM) error {
+func BdosSysCallFileSize(cpm *CPM) error {
 
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
@@ -1444,37 +1472,9 @@ func SysCallFileSize(cpm *CPM) error {
 	return nil
 }
 
-// SysCallDriveAlloc will return the address of the allocation bitmap (which blocks are used and
-// which are free) in HL.
-//
-// TODO: Fake me better.  Right now I just return "random memory".
-func SysCallDriveAlloc(cpm *CPM) error {
-	cpm.CPU.States.HL.Hi = 0x00
-	cpm.CPU.States.HL.Lo = 0x00
-	return nil
-}
-
-// SysCallDriveSetRO will mark the current drive as being read-only.
-//
-// This call is faked.
-func SysCallDriveSetRO(cpm *CPM) error {
-	cpm.CPU.States.AF.Hi = 0x00
-	return nil
-}
-
-// SysCallDriveROVec will return a bitfield describing which drives are read-only.
-//
-// Bit 7 of H corresponds to P: while bit 0 of L corresponds to A:. A bit is set if the corresponding drive is
-// set to read-only in software.  As we never set drives to read-only we return 0x0000
-func SysCallDriveROVec(cpm *CPM) error {
-	cpm.CPU.States.HL.Hi = 0x00
-	cpm.CPU.States.HL.Lo = 0x00
-	return nil
-}
-
-// SysCallRandRecord Sets the random record count bytes of the FCB to the number
+// BdosSysCallRandRecord Sets the random record count bytes of the FCB to the number
 // of the last record read/written by the sequential I/O calls.
-func SysCallRandRecord(cpm *CPM) error {
+func BdosSysCallRandRecord(cpm *CPM) error {
 
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
@@ -1508,30 +1508,30 @@ func SysCallRandRecord(cpm *CPM) error {
 	return nil
 }
 
-// SysCallDriveReset allows resetting specific drives, via the bits in DE
+// BdosSysCallDriveReset allows resetting specific drives, via the bits in DE
 // Bit 7 of D corresponds to P: while bit 0 of E corresponds to A:.
 // A bit is set if the corresponding drive should be reset.
 // Resetting a drive removes its software read-only status.
-func SysCallDriveReset(cpm *CPM) error {
+func BdosSysCallDriveReset(cpm *CPM) error {
 
 	// Fake success
 	cpm.CPU.States.AF.Hi = 0x00
 	return nil
 }
 
-// SysCallErrorMode implements a NOP version of F_ERRMODE.
-func SysCallErrorMode(cpm *CPM) error {
+// BdosSysCallErrorMode implements a NOP version of F_ERRMODE.
+func BdosSysCallErrorMode(cpm *CPM) error {
 	return nil
 }
 
-// SysCallTime implements a NOP version of T_GET.
-func SysCallTime(cpm *CPM) error {
+// BdosSysCallTime implements a NOP version of T_GET.
+func BdosSysCallTime(cpm *CPM) error {
 	return nil
 }
 
-// SysCallDirectScreenFunctions receives a pointer in DE to a parameter block,
+// BdosSysCallDirectScreenFunctions receives a pointer in DE to a parameter block,
 // which specifies which function to run.  I've only seen this invoked in
 // TurboPascal when choosing the "Execute" or "Run" options.
-func SysCallDirectScreenFunctions(cpm *CPM) error {
+func BdosSysCallDirectScreenFunctions(cpm *CPM) error {
 	return nil
 }
