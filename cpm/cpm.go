@@ -373,11 +373,11 @@ func New(logger *slog.Logger, prn string, condriver string, ccp string) (*CPM, e
 	bios := make(map[uint8]CPMHandler)
 	bios[0] = CPMHandler{
 		Desc:    "BOOT",
-		Handler: BiosSysCallBoot,
+		Handler: BiosSysCallColdBoot,
 	}
 	bios[1] = CPMHandler{
 		Desc:    "WBOOT",
-		Handler: BiosSysCallBoot,
+		Handler: BiosSysCallWarmBoot,
 	}
 	bios[2] = CPMHandler{
 		Desc:    "CONST",
@@ -525,7 +525,7 @@ func (cpm *CPM) LoadBinary(filename string) error {
 // we don't overlap with our CCP, or "large programs" loaded at 0x0100.
 func (cpm *CPM) fixupRAM() {
 	i := 0
-	CBIOS := 0xFE00
+	BIOS := 0xFE00
 	BDOS := 0xF000
 	NENTRY := 30
 
@@ -542,9 +542,9 @@ func (cpm *CPM) fixupRAM() {
 	// turbo pascal, and other programs presumably, look at
 	// the following address to see how much free RAM is available.
 	//
-	SETMEM(0x0000, 0x76)                 /* HALT */
-	SETMEM(0x0001, ((CBIOS + 3) & 0xFF)) /* Fake address of entry-point */
-	SETMEM(0x0002, ((CBIOS + 3) >> 8))
+	SETMEM(0x0000, 0x76)                /* HALT */
+	SETMEM(0x0001, ((BIOS + 3) & 0xFF)) /* Fake address of entry-point */
+	SETMEM(0x0002, ((BIOS + 3) >> 8))
 
 	// We setup a fake jump here, because 0x0006 is sometimes
 	// used to find the free RAM and we pretend our BDOS is at 0xDC00
@@ -568,20 +568,20 @@ func (cpm *CPM) fixupRAM() {
 	//
 	for i < 30 {
 		/* JP <bios-entry> */
-		SETMEM(CBIOS+3*i, 0xC3)
-		SETMEM(CBIOS+3*i+1, (CBIOS+NENTRY*3+i*5)&0xFF)
-		SETMEM(CBIOS+3*i+2, (CBIOS+NENTRY*3+i*5)>>8)
+		SETMEM(BIOS+3*i, 0xC3)
+		SETMEM(BIOS+3*i+1, (BIOS+NENTRY*3+i*5)&0xFF)
+		SETMEM(BIOS+3*i+2, (BIOS+NENTRY*3+i*5)>>8)
 
 		/* LD A,<bios-call> - start of bios-entry */
-		SETMEM(CBIOS+NENTRY*3+i*5, 0x3E)
-		SETMEM(CBIOS+NENTRY*3+i*5+1, i)
+		SETMEM(BIOS+NENTRY*3+i*5, 0x3E)
+		SETMEM(BIOS+NENTRY*3+i*5+1, i)
 
 		/* OUT A,0FFH - we use port 0xFF to fake the BIOS call */
-		SETMEM(CBIOS+NENTRY*3+i*5+2, 0xD3)
-		SETMEM(CBIOS+NENTRY*3+i*5+3, 0xFF)
+		SETMEM(BIOS+NENTRY*3+i*5+2, 0xD3)
+		SETMEM(BIOS+NENTRY*3+i*5+3, 0xFF)
 
 		/* RET - end of bios-entry */
-		SETMEM(CBIOS+NENTRY*3+i*5+4, 0xC9)
+		SETMEM(BIOS+NENTRY*3+i*5+4, 0xC9)
 		i++
 	}
 
@@ -682,7 +682,7 @@ func (cpm *CPM) Execute(args []string) error {
 	// Set the same value in RAM
 	cpm.Memory.Set(0x0004, cpm.CPU.States.BC.Lo)
 
-	CBIOS := uint16(0xFE00)
+	BIOS := uint16(0xFE00)
 	BDOS := uint16(0xF000)
 
 	// Setup our breakpoints.
@@ -693,8 +693,8 @@ func (cpm *CPM) Execute(args []string) error {
 	//  0x0005 - The CPM BDOS entrypoint.
 	//
 	cpm.CPU.BreakPoints = make(map[uint16]struct{})
-	cpm.CPU.BreakPoints[CBIOS] = struct{}{}
-	cpm.CPU.BreakPoints[CBIOS+3] = struct{}{}
+	cpm.CPU.BreakPoints[BIOS] = struct{}{}
+	cpm.CPU.BreakPoints[BIOS+3] = struct{}{}
 	cpm.CPU.BreakPoints[BDOS] = struct{}{}
 	cpm.CPU.BreakPoints[BDOS+6] = struct{}{}
 	cpm.CPU.BreakPoints[0x0005] = struct{}{}
