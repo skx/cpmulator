@@ -5,7 +5,10 @@
 // given just a name.
 package consoleout
 
-import "fmt"
+import (
+	"fmt"
+	"io"
+)
 
 // ConsoleDriver is the interface that must be implemented by anything
 // that wishes to be used as a console driver.
@@ -19,6 +22,9 @@ type ConsoleDriver interface {
 
 	// GetName will return the name of the driver.
 	GetName() string
+
+	// SetWriter will update the writer
+	SetWriter(io.Writer)
 }
 
 // This is a map of known-drivers
