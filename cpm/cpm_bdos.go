@@ -1148,8 +1148,6 @@ func BdosSysCallSetDMA(cpm *CPM) error {
 
 // BdosSysCallDriveAlloc will return the address of the allocation bitmap (which blocks are used and
 // which are free) in HL.
-//
-// TODO: Fake me better.  Right now I just return "random memory".
 func BdosSysCallDriveAlloc(cpm *CPM) error {
 	cpm.CPU.States.HL.Hi = 0x00
 	cpm.CPU.States.HL.Lo = 0x00
