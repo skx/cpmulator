@@ -888,6 +888,11 @@ func (cpm *CPM) SetDrives(enabled bool) {
 	}
 }
 
+// SetDrivePath allows a caller to setup a custom path for a given drive.
+func (cpm *CPM) SetDrivePath(drive string, path string) {
+	cpm.drives[drive] = path
+}
+
 // In is called to handle the I/O reading of a Z80 port.
 //
 // This is called by our embedded Z80 emulator.

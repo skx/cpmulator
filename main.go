@@ -38,6 +38,26 @@ func main() {
 	syscalls := flag.Bool("syscalls", false, "List the syscalls we implement.")
 	quiet := flag.Bool("quiet", false, "Avoid showing the startup-banner when CCP is reloaded.")
 	showVersion := flag.Bool("version", false, "Report our version, and exit.")
+
+	// drives
+	drive := make(map[string]*string)
+	drive["A"] = flag.String("drive-a", "", "The path to the directory for A:")
+	drive["B"] = flag.String("drive-b", "", "The path to the directory for B:")
+	drive["C"] = flag.String("drive-c", "", "The path to the directory for C:")
+	drive["D"] = flag.String("drive-d", "", "The path to the directory for D:")
+	drive["E"] = flag.String("drive-e", "", "The path to the directory for E:")
+	drive["F"] = flag.String("drive-f", "", "The path to the directory for F:")
+	drive["G"] = flag.String("drive-g", "", "The path to the directory for G:")
+	drive["H"] = flag.String("drive-h", "", "The path to the directory for H:")
+	drive["I"] = flag.String("drive-i", "", "The path to the directory for I:")
+	drive["J"] = flag.String("drive-j", "", "The path to the directory for J:")
+	drive["K"] = flag.String("drive-k", "", "The path to the directory for K:")
+	drive["L"] = flag.String("drive-l", "", "The path to the directory for L:")
+	drive["M"] = flag.String("drive-m", "", "The path to the directory for M:")
+	drive["N"] = flag.String("drive-n", "", "The path to the directory for N:")
+	drive["O"] = flag.String("drive-o", "", "The path to the directory for O:")
+	drive["P"] = flag.String("drive-p", "", "The path to the directory for P:")
+
 	flag.Parse()
 
 	// Are we dumping CCPs?
@@ -212,6 +232,13 @@ func main() {
 		}
 	}
 
+	// Do we have custom paths?  If so set them.
+	for d, pth := range drive {
+		if pth != nil && *pth != "" {
+			obj.SetDrivePath(d, *pth)
+		}
+	}
+
 	// Load the binary, if we were given one.
 	if program != "" {
 
@@ -253,7 +280,7 @@ func main() {
 	// We will load AUTOEXEC.SUB, once, if it exists (*)
 	//
 	// * - Terms and conditions apply.
-	autoexec := false
+	obj.RunAutoExec()
 
 	// We load and re-run eternally - because many binaries the CCP
 	// would launch would end with "exit" which would otherwise cause
@@ -263,12 +290,6 @@ func main() {
 	// just jump back to the entry-point for that.
 	//
 	for {
-
-		// Run the autoexec behaviour, once only
-		if !autoexec {
-			obj.RunAutoExec()
-			autoexec = true
-		}
 
 		// Load the CCP binary - resetting RAM in the process.
 		err := obj.LoadCCP()

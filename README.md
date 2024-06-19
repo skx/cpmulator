@@ -283,7 +283,11 @@ G>dir b:*.com
 B: MBASIC  .COM | OBASIC  .COM | TBASIC  .COM
 ```
 
-Note that it isn't currently possibly to point different drives to arbitrary paths on your computer, but that might be considered if you have a use-case for it.
+You can also point specific drives to particular paths via the `-drive-X` command-line arguments.  For example the following would have A: and B: pointed to custom paths, and C:-P: using the current working directory:
+
+```
+$ cpmulator -ccp=ccpz -drive-a /tmp -drive-b ~/Repos/github.com/skx/cpm-dist/G/
+```
 
 
 
