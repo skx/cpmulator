@@ -119,7 +119,7 @@ type CPM struct {
 	input *consolein.ConsoleIn
 
 	// output is used for writing characters to the conolse
-	output consoleout.ConsoleDriver
+	output *consoleout.ConsoleOut
 
 	// dma contains the address of the DMA area in RAM.
 	//
