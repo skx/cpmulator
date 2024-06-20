@@ -219,7 +219,7 @@ func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 			return "", err
 		}
 
-		// Esc
+		// Esc?
 		if x == 27 {
 			// remove the character from our text, and overwrite on the console
 			for len(text) > 0 {
@@ -232,7 +232,7 @@ func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 			continue
 		}
 
-		// Ctrl-N
+		// Ctrl-N?
 		if x == 14 {
 			if offset >= 1 {
 
@@ -253,7 +253,7 @@ func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 			continue
 		}
 
-		// Ctrl-P ?
+		// Ctrl-P?
 		if x == 16 {
 			if offset >= len(ci.history) {
 				continue
@@ -274,7 +274,6 @@ func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 		}
 
 		// Ctrl-C ?
-		//
 		if x == 0x03 {
 
 			// Ctrl-C should only take effect at the start of the line.
@@ -302,7 +301,7 @@ func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 				if len(ci.history) == 0 {
 					ci.history = append(ci.history, text)
 				} else {
-					// otherwise only add if different to previous entry
+					// otherwise only add if different to previous entry.
 					if text != ci.history[len(ci.history)-1] {
 						ci.history = append(ci.history, text)
 					}
@@ -325,12 +324,13 @@ func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 			continue
 		}
 
-		// If the user has entered the maximum then we'll
-		// avoid further input
+		// If the user has entered the maximum then we'll say their
+		// input-time is over now.
 		if len(text) >= int(max) {
-			continue
+			break
 		}
-		// Otherwise if it was a printable character we'll keep it.
+
+		// Finally if it was a printable character we'll keep it.
 		if unicode.IsPrint(rune(x)) {
 			fmt.Printf("%c", x)
 			text += string(x)
