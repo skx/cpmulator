@@ -276,12 +276,17 @@ func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 		// Ctrl-C ?
 		//
 		if x == 0x03 {
-			ctrlCount += 1
 
-			// If we've hit our limit of consecutive Ctrl-Cs
-			// then we return the interrupted error-code
-			if ctrlCount == ci.InterruptCount {
-				return "", ErrInterrupted
+			// Ctrl-C should only take effect at the start of the line.
+			// i.e. When the text is empty.
+			if text == "" {
+				ctrlCount += 1
+
+				// If we've hit our limit of consecutive Ctrl-Cs
+				// then we return the interrupted error-code
+				if ctrlCount == ci.InterruptCount {
+					return "", ErrInterrupted
+				}
 			}
 			continue
 		}
