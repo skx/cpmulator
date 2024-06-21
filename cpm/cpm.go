@@ -77,6 +77,14 @@ type CPMHandler struct {
 	// This might mean completely bogus behaviour, or it might mean
 	// "good enough, even if wrong".
 	Fake bool
+
+	// Noisy is set when a given function is noisy, that is it is called
+	// a lot and the debugging logs from the function are not so useful.
+	//
+	// This is primarily used to mark console I/O functions, and disables
+	// their logging by default.  Logging these functions is still possible,
+	// but requires a call to LogNoisy()
+	Noisy bool
 }
 
 // FileCache is used to cache filehandles, against FCB addresses.
@@ -198,27 +206,33 @@ func New(logger *slog.Logger, prn string, condriver string, ccp string) (*CPM, e
 	bdos[1] = CPMHandler{
 		Desc:    "C_READ",
 		Handler: BdosSysCallReadChar,
+		Noisy:   true,
 	}
 	bdos[2] = CPMHandler{
 		Desc:    "C_WRITE",
 		Handler: BdosSysCallWriteChar,
+		Noisy:   true,
 	}
 	bdos[3] = CPMHandler{
 		Desc:    "A_READ",
 		Handler: BdosSysCallAuxRead,
+		Noisy:   true,
 	}
 	bdos[4] = CPMHandler{
 		Desc:    "A_WRITE",
 		Handler: BdosSysCallAuxWrite,
+		Noisy:   true,
 	}
 	bdos[5] = CPMHandler{
 		Desc:    "L_WRITE",
 		Handler: BdosSysCallPrinterWrite,
 		Fake:    true,
+		Noisy:   true,
 	}
 	bdos[6] = CPMHandler{
 		Desc:    "C_RAWIO",
 		Handler: BdosSysCallRawIO,
+		Noisy:   true,
 	}
 	bdos[7] = CPMHandler{
 		Desc:    "GET_IOBYTE",
@@ -239,6 +253,7 @@ func New(logger *slog.Logger, prn string, condriver string, ccp string) (*CPM, e
 	bdos[11] = CPMHandler{
 		Desc:    "C_STAT",
 		Handler: BdosSysCallConsoleStatus,
+		Noisy:   true,
 	}
 	bdos[12] = CPMHandler{
 		Desc:    "S_BDOSVER",
@@ -382,14 +397,17 @@ func New(logger *slog.Logger, prn string, condriver string, ccp string) (*CPM, e
 	bios[2] = CPMHandler{
 		Desc:    "CONST",
 		Handler: BiosSysCallConsoleStatus,
+		Noisy:   true,
 	}
 	bios[3] = CPMHandler{
 		Desc:    "CONIN",
 		Handler: BiosSysCallConsoleInput,
+		Noisy:   true,
 	}
 	bios[4] = CPMHandler{
 		Desc:    "CONOUT",
 		Handler: BiosSysCallConsoleOutput,
+		Noisy:   true,
 	}
 	bios[5] = CPMHandler{
 		Desc:    "LIST",
@@ -405,6 +423,7 @@ func New(logger *slog.Logger, prn string, condriver string, ccp string) (*CPM, e
 		Desc:    "CONOST",
 		Handler: BiosSysCallScreenOutputStatus,
 		Fake:    true,
+		Noisy:   true,
 	}
 	bios[18] = CPMHandler{
 		Desc:    "AUXIST",
@@ -463,6 +482,20 @@ func (cpm *CPM) GetCCPName() string {
 // GetQuiet returns the status of the quiet-flag.
 func (cpm *CPM) GetQuiet() bool {
 	return cpm.quiet
+}
+
+// LogNoisy enables logging support for each of the functions which
+// would otherwise be disabled
+func (cpm *CPM) LogNoisy() {
+
+	for k, e := range cpm.BDOSSyscalls {
+		e.Noisy = false
+		cpm.BDOSSyscalls[k] = e
+	}
+	for k, e := range cpm.BIOSSyscalls {
+		e.Noisy = false
+		cpm.BIOSSyscalls[k] = e
+	}
 }
 
 // SetQuiet updates the state of the quiet-flag.
@@ -785,22 +818,24 @@ func (cpm *CPM) Execute(args []string) error {
 		}
 
 		// Log the call we're going to make
-		cpm.Logger.Info("BDOS",
-			slog.String("name", handler.Desc),
-			slog.Int("syscall", int(syscall)),
-			slog.String("syscallHex", fmt.Sprintf("0x%02X", syscall)),
-			slog.Group("registers",
-				slog.String("A", fmt.Sprintf("%02X", cpm.CPU.States.AF.Hi)),
-				slog.String("B", fmt.Sprintf("%02X", cpm.CPU.States.BC.Hi)),
-				slog.String("C", fmt.Sprintf("%02X", cpm.CPU.States.BC.Lo)),
-				slog.String("D", fmt.Sprintf("%02X", cpm.CPU.States.DE.Hi)),
-				slog.String("E", fmt.Sprintf("%02X", cpm.CPU.States.DE.Lo)),
-				slog.String("F", fmt.Sprintf("%02X", cpm.CPU.States.AF.Lo)),
-				slog.String("H", fmt.Sprintf("%02X", cpm.CPU.States.HL.Hi)),
-				slog.String("L", fmt.Sprintf("%02X", cpm.CPU.States.HL.Lo)),
-				slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
-				slog.String("DE", fmt.Sprintf("%04X", cpm.CPU.States.DE.U16())),
-				slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16()))))
+		if !handler.Noisy {
+			cpm.Logger.Info("BDOS",
+				slog.String("name", handler.Desc),
+				slog.Int("syscall", int(syscall)),
+				slog.String("syscallHex", fmt.Sprintf("0x%02X", syscall)),
+				slog.Group("registers",
+					slog.String("A", fmt.Sprintf("%02X", cpm.CPU.States.AF.Hi)),
+					slog.String("B", fmt.Sprintf("%02X", cpm.CPU.States.BC.Hi)),
+					slog.String("C", fmt.Sprintf("%02X", cpm.CPU.States.BC.Lo)),
+					slog.String("D", fmt.Sprintf("%02X", cpm.CPU.States.DE.Hi)),
+					slog.String("E", fmt.Sprintf("%02X", cpm.CPU.States.DE.Lo)),
+					slog.String("F", fmt.Sprintf("%02X", cpm.CPU.States.AF.Lo)),
+					slog.String("H", fmt.Sprintf("%02X", cpm.CPU.States.HL.Hi)),
+					slog.String("L", fmt.Sprintf("%02X", cpm.CPU.States.HL.Lo)),
+					slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
+					slog.String("DE", fmt.Sprintf("%04X", cpm.CPU.States.DE.U16())),
+					slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16()))))
+		}
 
 		// Invoke the handler
 		err = handler.Handler(cpm)
