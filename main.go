@@ -34,6 +34,7 @@ func main() {
 	ccps := flag.Bool("ccps", false, "Dump the list of embedded CCPs.")
 	useDirectories := flag.Bool("directories", false, "Use subdirectories on the host computer for CP/M drives.")
 	logPath := flag.String("log-path", "", "Specify the file to write debug logs to.")
+	logAll := flag.Bool("log-all", false, "Log the output of all functions, including the noisy Console I/O ones.")
 	prnPath := flag.String("prn-path", "print.log", "Specify the file to write printer-output to.")
 	syscalls := flag.Bool("syscalls", false, "List the syscalls we implement.")
 	quiet := flag.Bool("quiet", false, "Avoid showing the startup-banner when CCP is reloaded.")
@@ -161,6 +162,11 @@ func main() {
 	if err != nil {
 		fmt.Printf("error creating CPM object: %s\n", err)
 		return
+	}
+
+	// Are we logging noisy functions?
+	if *logAll {
+		obj.LogNoisy()
 	}
 
 	// Set the quiet behaviour
