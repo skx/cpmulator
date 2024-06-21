@@ -366,6 +366,13 @@ func New(logger *slog.Logger, prn string, condriver string, ccp string) (*CPM, e
 		Handler: BdosSysCallDriveReset,
 		Fake:    true,
 	}
+	bdos[40] = CPMHandler{
+		Desc:    "F_WRITEZF",
+		Handler: BdosSysCallWriteRand,
+
+		// We don't zero-pad
+		Fake: true,
+	}
 	bdos[45] = CPMHandler{
 		Desc:    "F_ERRMODE",
 		Handler: BdosSysCallErrorMode,
