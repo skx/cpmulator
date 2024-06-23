@@ -219,8 +219,8 @@ func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 			return "", err
 		}
 
-		// Esc?
-		if x == 27 {
+		// Esc? or Ctrl-X
+		if x == 27 || x == 24 {
 			// remove the character from our text, and overwrite on the console
 			for len(text) > 0 {
 				text = text[:len(text)-1]
