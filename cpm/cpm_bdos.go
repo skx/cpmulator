@@ -496,6 +496,9 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 
 	// Return success
 	cpm.CPU.States.AF.Hi = 0x00
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = 0x00
+	cpm.CPU.States.BC.Hi = 0x00
 
 	return nil
 }
@@ -574,6 +577,9 @@ func BdosSysCallFileClose(cpm *CPM) error {
 
 	// Record success
 	cpm.CPU.States.AF.Hi = 0x00
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = 0x00
+	cpm.CPU.States.BC.Hi = 0x00
 	return nil
 }
 
@@ -725,11 +731,16 @@ func BdosSysCallFindNext(cpm *CPM) error {
 func BdosSysCallDeleteFile(cpm *CPM) error {
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
+
 	// Get the bytes which make up the FCB entry.
 	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
 
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
+
+	// Show what we're going to delete
+	cpm.Logger.Debug("SysCallDeleteFile",
+		slog.String("pattern", fcbPtr.GetFileName()))
 
 	// drive will default to our current drive, if the FCB drive field is 0
 	drive := cpm.currentDrive + 'A'
@@ -743,7 +754,7 @@ func BdosSysCallDeleteFile(cpm *CPM) error {
 	// Find files in the FCB.
 	res, err := fcbPtr.GetMatches(path)
 	if err != nil {
-		cpm.Logger.Debug("fcbPtr.GetMatches returned error",
+		cpm.Logger.Debug("SysCallDeleteFile - fcbPtr.GetMatches returned error",
 			slog.String("path", path),
 			slog.String("error", err.Error()))
 
@@ -751,14 +762,7 @@ func BdosSysCallDeleteFile(cpm *CPM) error {
 		return nil
 	}
 
-	// No matches on the glob-search
-	if len(res) == 0 {
-		// Return 0xFF for failure
-		cpm.CPU.States.AF.Hi = 0xFF
-		return nil
-	}
-
-	// For each result
+	// For each result, if any
 	for _, entry := range res {
 
 		// Host path
@@ -1059,6 +1063,10 @@ func BdosSysCallMakeFile(cpm *CPM) error {
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
 
 	cpm.CPU.States.AF.Hi = 0x00
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = 0x00
+	cpm.CPU.States.BC.Hi = 0x00
+
 	return nil
 }
 
@@ -1329,6 +1337,10 @@ func BdosSysCallReadRand(cpm *CPM) error {
 
 	// Update the FCB in memory
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
+
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = 0x00
+	cpm.CPU.States.BC.Hi = 0x00
 	cpm.CPU.States.AF.Hi = uint8(res)
 	return nil
 }
@@ -1413,7 +1425,12 @@ func BdosSysCallWriteRand(cpm *CPM) error {
 
 	// Update the FCB in memory
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
+
 	cpm.CPU.States.AF.Hi = 0x00
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = 0x00
+	cpm.CPU.States.BC.Hi = 0x00
+
 	return nil
 }
 
