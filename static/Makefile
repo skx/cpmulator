@@ -2,7 +2,7 @@
 #
 # The files we wish to generate.
 #
-all: A/\#.COM A/CCP.COM A/CONSOLE.COM A/CTRLC.COM A/DEBUG.COM A/QUIET.COM
+all: A/\#.COM A/!CCP.COM A/!CONSOLE.COM A/!CTRLC.COM A/!DEBUG.COM A/!QUIET.COM
 
 # cleanup
 clean:
@@ -11,20 +11,20 @@ clean:
 #
 # How to build them all - repetitive.
 #
-A/\#.COM:
+A/\#.COM: comment.z80
 	pasmo comment.z80 A/#.COM
 
-A/CCP.COM:
-	pasmo ccp.z80 A/CCP.COM
+A/!CCP.COM: ccp.z80
+	pasmo ccp.z80 A/!CCP.COM
 
-A/CONSOLE.COM:
-	pasmo console.z80 A/CONSOLE.COM
+A/!CONSOLE.COM: console.z80
+	pasmo console.z80 A/!CONSOLE.COM
 
-A/CTRLC.COM:
-	pasmo ctrlc.z80 A/CTRLC.COM
+A/!CTRLC.COM: ctrlc.z80
+	pasmo ctrlc.z80 A/!CTRLC.COM
 
-A/DEBUG.COM:
-	pasmo debug.z80 A/DEBUG.COM
+A/!DEBUG.COM: debug.z80
+	pasmo debug.z80 A/!DEBUG.COM
 
-A/QUIET.COM:
-	pasmo quiet.z80 A/QUIET.COM
+A/!QUIET.COM: quiet.z80
+	pasmo quiet.z80 A/!QUIET.COM
