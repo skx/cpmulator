@@ -330,6 +330,32 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		cpm.CPU.States.HL.Hi = uint8(height)
 		cpm.CPU.States.HL.Lo = uint8(width)
 
+	// Get/Set the debug-flag
+	case 0x0006:
+
+		// if C == 00
+		//   Disable debug
+		//
+		// if C == 01
+		//   Enable debug
+		//
+		// If C == 0xFF
+		//   Return the statues of the flag in C.
+		//
+		if c == 0x00 {
+			cpm.simpleDebug = false
+		}
+		if c == 0x01 {
+			cpm.simpleDebug = true
+		}
+		if c == 0xFF {
+			if cpm.simpleDebug {
+				cpm.CPU.States.BC.Lo = 0x01
+			} else {
+				cpm.CPU.States.BC.Lo = 0x00
+			}
+		}
+
 	default:
 		fmt.Printf("Unknown custom BIOS function HL:%04X, ignoring", hl)
 	}
@@ -362,6 +388,12 @@ func (cpm *CPM) BiosHandler(val uint8) {
 	}
 
 	if !handler.Noisy {
+
+		// show the function being invoked.
+		if cpm.simpleDebug {
+			fmt.Printf("%03d %s\n", val, handler.Desc)
+		}
+
 		// Log the call we're going to make
 		cpm.Logger.Info("BIOS",
 			slog.String("name", handler.Desc),
