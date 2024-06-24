@@ -408,6 +408,6 @@ The testing that I should do before a release:
 
 ## Bugs?
 
-Let me know by filing an issue.  If your program is "real" then it is highly likely it will try to invoke an unimplemented BIOS function.
+Let me know by filing an issue.
 
 Steve
