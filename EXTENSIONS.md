@@ -79,7 +79,7 @@ Demonstrated in [samples/ccp.z80](samples/ccp.z80)
 * If C is 0x00 quiet-mode is disabled.
 * If C is 0xFF quiet-mode is queried.
    * 0x00 means it is disabled.
-   * 0x01 means it is active
+   * 0x01 means it is active.
 
 Quiet mode prevents the display of a banner every time the CCP is restarted.
 
@@ -91,3 +91,18 @@ Demonstrated in [samples/quiet.z80](samples/quiet.z80)
 
 * Returns the height of the terminal in H.
 * Returns the width of the terminal in L.
+
+
+
+## Function 0x06: Get/Set Debug flag
+
+* If C is 0x01 debug-mode is enabled.
+* If C is 0x00 debug-mode is disabled.
+* If C is 0xFF debug-mode is queried.
+   * 0x00 means it is not active.
+   * 0x01 means it is enabled.
+
+Debug mode shows a summary of syscalls, and their results.  It is faster
+than using the logfile and it is useful to be able to toggle it at runtime.
+
+Demonstrated in [samples/debug.z80](samples/debug.z80)

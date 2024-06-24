@@ -190,6 +190,12 @@ type CPM struct {
 
 	// Logger holds a logger which we use for debugging and diagnostics.
 	Logger *slog.Logger
+
+	// simpleDebug is used to just output the name of syscalls made.
+	//
+	// For real debugging we expect the caller to use our Logger, via
+	// the logfile
+	simpleDebug bool
 }
 
 // New returns a new emulation object
@@ -826,6 +832,12 @@ func (cpm *CPM) Execute(args []string) error {
 
 		// Log the call we're going to make
 		if !handler.Noisy {
+
+			// show the function being invoked.
+			if cpm.simpleDebug {
+				fmt.Printf("%03d %s\n", syscall, handler.Desc)
+			}
+
 			cpm.Logger.Info("BDOS",
 				slog.String("name", handler.Desc),
 				slog.Int("syscall", int(syscall)),
