@@ -138,16 +138,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 	// HL == 1
 	//    C == 0xff to get the ctrl-c count
 	//    C != 0xff to set the ctrl-c count
-	//
-	// HL == 2
-	//    DE points to a string containing the console driver to use.
-	//
-	// HL == 3
-	//    DE points to a string containing the CCP to use.
-	//
-	// HL == 4
-	//    C == 0 - Quiet mode on.
-	//    C != 0 - Quiet mode off
+	// ...
 	//
 	hl := cpm.CPU.States.HL.U16()
 	c := cpm.CPU.States.BC.Lo
@@ -157,8 +148,8 @@ func BiosSysCallReserved1(cpm *CPM) error {
 	// Helper to read a null/space terminated string from
 	// memory.
 	//
-	// Here because our custom syscalls read a string when
-	// setting both CCP and DisplayDriver.
+	// Here because several of our custom syscalls need to
+	// read a string from the caller.
 	//
 	getStringFromMemory := func(addr uint16) string {
 		str := ""
@@ -176,6 +167,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 
 	switch hl {
 
+	// Is this a CPMUlator?
 	case 0x0000:
 		// Magic values in the registers
 		cpm.CPU.States.HL.Hi = 'S'
@@ -200,6 +192,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		}
 		return nil
 
+	// Get/Set the ctrl-c flag
 	case 0x0001:
 		if c == 0xFF {
 			cpm.CPU.States.AF.Hi = uint8(cpm.input.GetInterruptCount())
@@ -207,6 +200,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 			cpm.input.SetInterruptCount(int(c))
 		}
 
+	// Get/Set the console driver.
 	case 0x0002:
 
 		if de == 0x0000 {
@@ -254,6 +248,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 			fmt.Printf("Console driver is already %s, making no change.\n", str)
 		}
 
+	// Get/Set the CCP
 	case 0x0003:
 
 		if de == 0x0000 {
@@ -299,30 +294,34 @@ func BiosSysCallReserved1(cpm *CPM) error {
 			fmt.Printf("CCP is already %s, making no change.\n", str)
 		}
 
+	// Get/Set the quiet flag
 	case 0x0004:
 
 		// if C == 00
+		//   Set the quiet flag to be false
+		//
+		// if C == 01
 		//   Set the quiet flag to be true
 		//
 		// If C == 0xFF
-		//   Return the statues of the flag in C (0 = quiet, 1 = non-quiet)
-		//
-		// Set the quiet flag
+		//   Return the statues of the flag in C
+		//   (1 = quiet, 0 = non-quiet)
+
 		if c == 0x00 {
-			cpm.SetQuiet(true)
+			cpm.SetQuiet(false)
 		}
 		if c == 0x01 {
-			cpm.SetQuiet(false)
+			cpm.SetQuiet(true)
 		}
 		if c == 0xFF {
 			if cpm.GetQuiet() {
-				cpm.CPU.States.BC.Lo = 0x00
-			} else {
 				cpm.CPU.States.BC.Lo = 0x01
+			} else {
+				cpm.CPU.States.BC.Lo = 0x00
 			}
-
 		}
 
+	// Get terminal size in HL
 	case 0x0005:
 		width, height, err := term.GetSize(int(os.Stdin.Fd()))
 		if err != nil {
