@@ -73,13 +73,13 @@ Demonstrated in [samples/ccp.z80](samples/ccp.z80)
 
 
 
-## Function 0x04: Get/Set Quiet
+## Function 0x04: Get/Set Quiet Flag
 
-* If C is 0x00 quiet-mode is enabled.
-* If C is 0x01 quiet-mode is disabled.
+* If C is 0x01 quiet-mode is enabled.
+* If C is 0x00 quiet-mode is disabled.
 * If C is 0xFF quiet-mode is queried.
-   * 0x00 means it is active
-   * 0x01 means it is not active.
+   * 0x00 means it is disabled.
+   * 0x01 means it is active
 
 Quiet mode prevents the display of a banner every time the CCP is restarted.
 
