@@ -188,9 +188,6 @@ type CPM struct {
 	// to be read next.
 	findOffset int
 
-	// Logger holds a logger which we use for debugging and diagnostics.
-	Logger *slog.Logger
-
 	// simpleDebug is used to just output the name of syscalls made.
 	//
 	// For real debugging we expect the caller to use our Logger, via
@@ -199,7 +196,7 @@ type CPM struct {
 }
 
 // New returns a new emulation object
-func New(logger *slog.Logger, prn string, condriver string, ccp string) (*CPM, error) {
+func New(prn string, condriver string, ccp string) (*CPM, error) {
 
 	//
 	// Create and populate our syscall table for the BDOS syscalls.
@@ -464,7 +461,6 @@ func New(logger *slog.Logger, prn string, condriver string, ccp string) (*CPM, e
 	tmp := &CPM{
 		BDOSSyscalls: bdos,
 		BIOSSyscalls: bios,
-		Logger:       logger,
 		ccp:          ccp,
 		dma:          0x0080,
 		drives:       make(map[string]string),
@@ -694,7 +690,7 @@ func (cpm *CPM) Execute(args []string) error {
 	//
 	// This is only required when running the CCP, as there we're persistent.
 	for fcb, obj := range cpm.files {
-		cpm.Logger.Debug("Closing handle in FileCache",
+		slog.Debug("Closing handle in FileCache",
 			slog.String("path", obj.name),
 			slog.Int("fcb", int(fcb)))
 		obj.handle.Close()
@@ -822,7 +818,7 @@ func (cpm *CPM) Execute(args []string) error {
 		//
 		if !exists {
 
-			cpm.Logger.Error("Unimplemented BDOS Syscall",
+			slog.Error("Unimplemented BDOS Syscall",
 				slog.Int("syscall", int(syscall)),
 				slog.String("syscallHex",
 					fmt.Sprintf("0x%02X", syscall)),
@@ -838,7 +834,7 @@ func (cpm *CPM) Execute(args []string) error {
 				fmt.Printf("%03d %s\n", syscall, handler.Desc)
 			}
 
-			cpm.Logger.Info("BDOS",
+			slog.Info("BDOS",
 				slog.String("name", handler.Desc),
 				slog.Int("syscall", int(syscall)),
 				slog.String("syscallHex", fmt.Sprintf("0x%02X", syscall)),
@@ -951,7 +947,7 @@ func (cpm *CPM) SetDrivePath(drive string, path string) {
 //
 // This is called by our embedded Z80 emulator.
 func (cpm *CPM) In(addr uint8) uint8 {
-	cpm.Logger.Debug("I/O IN",
+	slog.Debug("I/O IN",
 		slog.Int("port", int(addr)))
 
 	return 0

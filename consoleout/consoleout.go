@@ -87,6 +87,18 @@ func (co *ConsoleOut) GetName() string {
 	return co.driver.GetName()
 }
 
+// GetDrivers returns all available driver-names
+func (co *ConsoleOut) GetDrivers() []string {
+	valid := []string{}
+
+	for x := range handlers.m {
+		if x != "null" {
+			valid = append(valid, x)
+		}
+	}
+	return valid
+}
+
 // PutCharacter outputs a character, using our selected driver.
 func (co *ConsoleOut) PutCharacter(c byte) {
 	co.driver.PutCharacter(c)

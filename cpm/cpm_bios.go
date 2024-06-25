@@ -374,7 +374,7 @@ func (cpm *CPM) BiosHandler(val uint8) {
 
 	// If it doesn't exist we don't have it implemented.
 	if !ok {
-		cpm.Logger.Error("Unimplemented BIOS syscall",
+		slog.Error("Unimplemented BIOS syscall",
 			slog.Int("syscall", int(val)),
 			slog.String("syscallHex", fmt.Sprintf("0x%02X", val)))
 
@@ -395,7 +395,7 @@ func (cpm *CPM) BiosHandler(val uint8) {
 		}
 
 		// Log the call we're going to make
-		cpm.Logger.Info("BIOS",
+		slog.Info("BIOS",
 			slog.String("name", handler.Desc),
 			slog.Int("syscall", int(val)),
 			slog.String("syscallHex", fmt.Sprintf("0x%02X", val)),

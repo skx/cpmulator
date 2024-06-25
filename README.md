@@ -151,7 +151,7 @@ There are several command-line options which are shown in the output of `cpmulat
   * All output which CP/M sends to the "printer" will be written to the given file.
 * `-quiet`
   * Enable quiet-mode, which cuts down on output.
-* `-syscalls`
+* `-list-syscalls`
   * Dump the list of implemented BDOS and BIOS syscalls.
 * `-version`
   * Show the version number of the emulator, and exit.
@@ -309,7 +309,7 @@ $ cpmulator -ccp=ccpz -drive-a /tmp -drive-b ~/Repos/github.com/skx/cpm-dist/G/
 You can see the list of implemented syscalls, along with a mention of how complete their implementation is, by running:
 
 ```
-$ cpmulator -syscalls
+$ cpmulator -list-syscalls
 BDOS
 	00 P_TERMCPM
 	01 C_READ
