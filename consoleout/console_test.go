@@ -109,3 +109,13 @@ func TestNull(t *testing.T) {
 		t.Fatalf("got output, expected none: '%s'", tmp.String())
 	}
 }
+
+func TestList(t *testing.T) {
+	x, _ := New("foo")
+
+	valid := x.GetDrivers()
+
+	if len(valid) != 2 {
+		t.Fatalf("unexpected number of console drivers")
+	}
+}

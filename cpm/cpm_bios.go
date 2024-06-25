@@ -28,7 +28,7 @@ func BiosSysCallColdBoot(cpm *CPM) error {
 	return nil
 }
 
-// BiosSysCallWrmBoot handles a warm boot.
+// BiosSysCallWarmBoot handles a warm boot.
 func BiosSysCallWarmBoot(cpm *CPM) error {
 
 	// Set entry-point to 0x0000 which will result in
@@ -237,15 +237,8 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		old := cpm.output.GetName()
 		cpm.output = driver
 
-		// when running quietly don't show any output
-		if cpm.quiet {
-			return nil
-		}
-
 		if old != str {
 			fmt.Printf("Console driver changed from %s to %s.\n", old, driver.GetName())
-		} else {
-			fmt.Printf("Console driver is already %s, making no change.\n", str)
 		}
 
 	// Get/Set the CCP
@@ -283,43 +276,15 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		old := cpm.ccp
 		cpm.ccp = str
 
-		// when running quietly don't show any output
-		if cpm.quiet {
-			return nil
-		}
-
 		if old != str {
 			fmt.Printf("CCP changed to %s [%s] Size:0x%04X Entry-Point:0x%04X\n", str, entry.Description, len(entry.Bytes), entry.Start)
-		} else {
-			fmt.Printf("CCP is already %s, making no change.\n", str)
 		}
 
 	// Get/Set the quiet flag
 	case 0x0004:
 
-		// if C == 00
-		//   Set the quiet flag to be false
-		//
-		// if C == 01
-		//   Set the quiet flag to be true
-		//
-		// If C == 0xFF
-		//   Return the statues of the flag in C
-		//   (1 = quiet, 0 = non-quiet)
-
-		if c == 0x00 {
-			cpm.SetQuiet(false)
-		}
-		if c == 0x01 {
-			cpm.SetQuiet(true)
-		}
-		if c == 0xFF {
-			if cpm.GetQuiet() {
-				cpm.CPU.States.BC.Lo = 0x01
-			} else {
-				cpm.CPU.States.BC.Lo = 0x00
-			}
-		}
+		// Retired.
+		return nil
 
 	// Get terminal size in HL
 	case 0x0005:
@@ -374,7 +339,7 @@ func (cpm *CPM) BiosHandler(val uint8) {
 
 	// If it doesn't exist we don't have it implemented.
 	if !ok {
-		cpm.Logger.Error("Unimplemented BIOS syscall",
+		slog.Error("Unimplemented BIOS syscall",
 			slog.Int("syscall", int(val)),
 			slog.String("syscallHex", fmt.Sprintf("0x%02X", val)))
 
@@ -395,19 +360,12 @@ func (cpm *CPM) BiosHandler(val uint8) {
 		}
 
 		// Log the call we're going to make
-		cpm.Logger.Info("BIOS",
+		slog.Info("BIOS",
 			slog.String("name", handler.Desc),
 			slog.Int("syscall", int(val)),
 			slog.String("syscallHex", fmt.Sprintf("0x%02X", val)),
 			slog.Group("registers",
-				slog.String("A", fmt.Sprintf("%02X", cpm.CPU.States.AF.Hi)),
-				slog.String("B", fmt.Sprintf("%02X", cpm.CPU.States.BC.Hi)),
-				slog.String("C", fmt.Sprintf("%02X", cpm.CPU.States.BC.Lo)),
-				slog.String("D", fmt.Sprintf("%02X", cpm.CPU.States.DE.Hi)),
-				slog.String("E", fmt.Sprintf("%02X", cpm.CPU.States.DE.Lo)),
-				slog.String("F", fmt.Sprintf("%02X", cpm.CPU.States.AF.Lo)),
-				slog.String("H", fmt.Sprintf("%02X", cpm.CPU.States.HL.Hi)),
-				slog.String("L", fmt.Sprintf("%02X", cpm.CPU.States.HL.Lo)),
+				slog.String("AF", fmt.Sprintf("%04X", cpm.CPU.States.AF.U16())),
 				slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
 				slog.String("DE", fmt.Sprintf("%04X", cpm.CPU.States.DE.U16())),
 				slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16()))))

@@ -18,7 +18,7 @@ func (cpm *CPM) prnC(char uint8) error {
 	}
 
 	data := make([]byte, 1)
-	data[0] = cpm.CPU.States.BC.Lo
+	data[0] = char
 	_, err = f.Write(data)
 	if err != nil {
 		return fmt.Errorf("prnC: Failed to write to file %s:%s", cpm.prnPath, err)

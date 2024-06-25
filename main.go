@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	cpmccp "github.com/skx/cpmulator/ccp"
+	"github.com/skx/cpmulator/consoleout"
 	"github.com/skx/cpmulator/cpm"
 	"github.com/skx/cpmulator/static"
 	cpmver "github.com/skx/cpmulator/version"
@@ -31,14 +32,16 @@ func main() {
 	createDirectories := flag.Bool("create", false, "Create subdirectories on the host computer for each CP/M drive.")
 	console := flag.String("console", "adm-3a", "The name of the console output driver to use (adm-3a or ansi).")
 	ccp := flag.String("ccp", "ccp", "The name of the CCP that we should run (ccp vs. ccpz).")
-	ccps := flag.Bool("ccps", false, "Dump the list of embedded CCPs.")
 	useDirectories := flag.Bool("directories", false, "Use subdirectories on the host computer for CP/M drives.")
 	logPath := flag.String("log-path", "", "Specify the file to write debug logs to.")
 	logAll := flag.Bool("log-all", false, "Log the output of all functions, including the noisy Console I/O ones.")
 	prnPath := flag.String("prn-path", "print.log", "Specify the file to write printer-output to.")
-	syscalls := flag.Bool("syscalls", false, "List the syscalls we implement.")
-	quiet := flag.Bool("quiet", false, "Avoid showing the startup-banner when CCP is reloaded.")
 	showVersion := flag.Bool("version", false, "Report our version, and exit.")
+
+	// listing
+	listCcps := flag.Bool("list-ccp", false, "Dump the list of embedded CCPs.")
+	listConsole := flag.Bool("list-console-drivers", false, "Dump the list of valid console drivers.")
+	listSyscalls := flag.Bool("list-syscalls", false, "Dump the list of implemented BIOS/BDOS syscall functions.")
 
 	// drives
 	drive := make(map[string]*string)
@@ -62,7 +65,7 @@ func main() {
 	flag.Parse()
 
 	// Are we dumping CCPs?
-	if *ccps {
+	if *listCcps {
 		x := cpmccp.GetAll()
 		for _, x := range x {
 			fmt.Printf("%5s %-10s %04X bytes, entry-point %04X\n", x.Name, x.Description, len(x.Bytes), x.Start)
@@ -70,8 +73,18 @@ func main() {
 		return
 	}
 
+	// Are we dumping console drivers?
+	if *listConsole {
+		obj, _ := consoleout.New("null")
+		valid := obj.GetDrivers()
+
+		for _, name := range valid {
+			fmt.Printf("%s\n", name)
+		}
+		return
+	}
 	// Are we dumping syscalls?
-	if *syscalls {
+	if *listSyscalls {
 
 		// dumper is a helper to dump the contents of
 		// the given map in a human readable fashion.
@@ -97,7 +110,7 @@ func main() {
 		}
 
 		// Create helper
-		c, err := cpm.New(nil, "print.log", "ansi", "ccp")
+		c, err := cpm.New("print.log", "ansi", "ccp")
 		if err != nil {
 			fmt.Printf("error creating CPM object: %s\n", err)
 			return
@@ -157,8 +170,11 @@ func main() {
 				Level: lvl,
 			}))
 
+	// Set the logger now we've updated as appropriate.
+	slog.SetDefault(log)
+
 	// Create a new emulator.
-	obj, err := cpm.New(log, *prnPath, *console, *ccp)
+	obj, err := cpm.New(*prnPath, *console, *ccp)
 	if err != nil {
 		fmt.Printf("error creating CPM object: %s\n", err)
 		return
@@ -167,11 +183,6 @@ func main() {
 	// Are we logging noisy functions?
 	if *logAll {
 		obj.LogNoisy()
-	}
-
-	// Set the quiet behaviour
-	if *quiet {
-		obj.SetQuiet(*quiet)
 	}
 
 	// When we're finishing we'll reset some (console) state.
@@ -282,6 +293,9 @@ func main() {
 		fmt.Printf("\n")
 		return
 	}
+
+	// Show a startup-banner.
+	fmt.Printf("\ncpmulator %s loaded CCP %s, with %s output driver\n", cpmver.GetVersionString(), obj.GetCCPName(), obj.GetOutputDriver())
 
 	// We will load AUTOEXEC.SUB, once, if it exists (*)
 	//

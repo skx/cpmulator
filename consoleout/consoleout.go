@@ -23,7 +23,7 @@ type ConsoleDriver interface {
 	// GetName will return the name of the driver.
 	GetName() string
 
-	// SetWriter will update the writer
+	// SetWriter will update the writer.
 	SetWriter(io.Writer)
 }
 
@@ -85,6 +85,20 @@ func (co *ConsoleOut) ChangeDriver(name string) error {
 // GetName returns the name of our selected driver.
 func (co *ConsoleOut) GetName() string {
 	return co.driver.GetName()
+}
+
+// GetDrivers returns all available driver-names.
+//
+// We hide the internal "null" driver.
+func (co *ConsoleOut) GetDrivers() []string {
+	valid := []string{}
+
+	for x := range handlers.m {
+		if x != "null" {
+			valid = append(valid, x)
+		}
+	}
+	return valid
 }
 
 // PutCharacter outputs a character, using our selected driver.

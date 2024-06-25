@@ -94,7 +94,7 @@ func BdosSysCallAuxWrite(cpm *CPM) error {
 func BdosSysCallPrinterWrite(cpm *CPM) error {
 
 	// write the character to our printer-file
-	err := cpm.prnC(cpm.CPU.States.BC.Lo)
+	err := cpm.prnC(cpm.CPU.States.DE.Lo)
 	return err
 }
 
@@ -393,7 +393,7 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 	}
 
 	// child logger with more details.
-	l := cpm.Logger.With(
+	l := slog.With(
 		slog.String("function", "SysCallFileOpen"),
 		slog.String("name", fileName),
 		slog.String("drive", string(cpm.currentDrive+'A')),
@@ -526,7 +526,7 @@ func BdosSysCallFileClose(cpm *CPM) error {
 	// Get the file handle from our cache.
 	obj, ok := cpm.files[key]
 	if !ok {
-		cpm.Logger.Debug("SysCallFileClose tried to close a file that wasn't open",
+		slog.Debug("SysCallFileClose tried to close a file that wasn't open",
 			slog.Int("fcb", int(ptr)))
 		cpm.CPU.States.AF.Hi = 0x00
 		return nil
@@ -603,7 +603,7 @@ func BdosSysCallFindFirst(cpm *CPM) error {
 	// Find files in the FCB.
 	res, err := fcbPtr.GetMatches(dir)
 	if err != nil {
-		cpm.Logger.Debug("fcbPtr.GetMatches returned error",
+		slog.Debug("fcbPtr.GetMatches returned error",
 			slog.String("path", dir),
 			slog.String("error", err.Error()))
 
@@ -739,7 +739,7 @@ func BdosSysCallDeleteFile(cpm *CPM) error {
 	fcbPtr := fcb.FromBytes(xxx)
 
 	// Show what we're going to delete
-	cpm.Logger.Debug("SysCallDeleteFile",
+	slog.Debug("SysCallDeleteFile",
 		slog.String("pattern", fcbPtr.GetFileName()))
 
 	// drive will default to our current drive, if the FCB drive field is 0
@@ -754,7 +754,7 @@ func BdosSysCallDeleteFile(cpm *CPM) error {
 	// Find files in the FCB.
 	res, err := fcbPtr.GetMatches(path)
 	if err != nil {
-		cpm.Logger.Debug("SysCallDeleteFile - fcbPtr.GetMatches returned error",
+		slog.Debug("SysCallDeleteFile - fcbPtr.GetMatches returned error",
 			slog.String("path", path),
 			slog.String("error", err.Error()))
 
@@ -768,13 +768,13 @@ func BdosSysCallDeleteFile(cpm *CPM) error {
 		// Host path
 		path := entry.Host
 
-		cpm.Logger.Debug("SysCallDeleteFile: deleting file",
+		slog.Debug("SysCallDeleteFile: deleting file",
 			slog.String("path", path))
 
 		err = os.Remove(path)
 		if err != nil {
 
-			cpm.Logger.Debug("SysCallDeleteFile: failed to delete file",
+			slog.Debug("SysCallDeleteFile: failed to delete file",
 				slog.String("path", path),
 				slog.String("error", err.Error()))
 
@@ -810,7 +810,7 @@ func BdosSysCallRead(cpm *CPM) error {
 	// Get the file handle in our cache.
 	obj, ok := cpm.files[key]
 	if !ok {
-		cpm.Logger.Error("SysCallRead: Attempting to read from a file that isn't open")
+		slog.Error("SysCallRead: Attempting to read from a file that isn't open")
 		cpm.CPU.States.AF.Hi = 0xFF
 		return nil
 	}
@@ -877,7 +877,7 @@ func BdosSysCallRead(cpm *CPM) error {
 	}
 
 	// Add logging of the result and details.
-	cpm.Logger.Debug("SysCallRead",
+	slog.Debug("SysCallRead",
 		slog.Int("dma", int(cpm.dma)),
 		slog.Int("fcb", int(ptr)),
 		slog.Int("handle", int(obj.handle.Fd())),
@@ -919,7 +919,7 @@ func BdosSysCallWrite(cpm *CPM) error {
 	// Get the file handle in our cache.
 	obj, ok := cpm.files[key]
 	if !ok {
-		cpm.Logger.Error("SysCallWrite: Attempting to write to a file that isn't open")
+		slog.Error("SysCallWrite: Attempting to write to a file that isn't open")
 		cpm.CPU.States.AF.Hi = 0xFF
 		return nil
 	}
@@ -933,7 +933,7 @@ func BdosSysCallWrite(cpm *CPM) error {
 	offset := fcbPtr.GetSequentialOffset()
 
 	// Add logging of the result and details.
-	cpm.Logger.Debug("SysCallWrite",
+	slog.Debug("SysCallWrite",
 		slog.Int("dma", int(cpm.dma)),
 		slog.Int("fcb", int(ptr)),
 		slog.Int("handle", int(obj.handle.Fd())),
@@ -1008,7 +1008,7 @@ func BdosSysCallMakeFile(cpm *CPM) error {
 	}
 
 	// child logger with more details.
-	l := cpm.Logger.With(
+	l := slog.With(
 		slog.String("function", "SysCallMakeFile"),
 		slog.String("name", fileName),
 		slog.String("drive", string(cpm.currentDrive+'A')),
@@ -1122,13 +1122,13 @@ func BdosSysCallRenameFile(cpm *CPM) error {
 	// ensure the name is qualified
 	dstName = filepath.Join(path, dstName)
 
-	cpm.Logger.Debug("Renaming file",
+	slog.Debug("Renaming file",
 		slog.String("src", fileName),
 		slog.String("dst", dstName))
 
 	err := os.Rename(fileName, dstName)
 	if err != nil {
-		cpm.Logger.Debug("Renaming file failed",
+		slog.Debug("Renaming file failed",
 			slog.String("error", err.Error()))
 		cpm.CPU.States.AF.Hi = 0xFF
 
@@ -1306,7 +1306,7 @@ func BdosSysCallReadRand(cpm *CPM) error {
 	// Get the file handle in our cache.
 	obj, ok := cpm.files[key]
 	if !ok {
-		cpm.Logger.Error("SysCallReadRand: Attempting to read from a file that isn't open")
+		slog.Error("SysCallReadRand: Attempting to read from a file that isn't open")
 		cpm.CPU.States.AF.Hi = 0xFF
 		return nil
 	}
@@ -1326,7 +1326,7 @@ func BdosSysCallReadRand(cpm *CPM) error {
 	res := sysRead(obj.handle, fpos)
 
 	// Add logging of the result and details.
-	cpm.Logger.Debug("SysCallReadRand",
+	slog.Debug("SysCallReadRand",
 		slog.Int("dma", int(cpm.dma)),
 		slog.Int("fcb", int(ptr)),
 		slog.Int("handle", int(obj.handle.Fd())),
@@ -1363,7 +1363,7 @@ func BdosSysCallWriteRand(cpm *CPM) error {
 	// Get the file handle in our cache.
 	obj, ok := cpm.files[key]
 	if !ok {
-		cpm.Logger.Error("SysCallWriteRand: Attempting to write to a file that isn't open")
+		slog.Error("SysCallWriteRand: Attempting to write to a file that isn't open")
 		cpm.CPU.States.AF.Hi = 0xFF
 		return nil
 	}
@@ -1394,7 +1394,7 @@ func BdosSysCallWriteRand(cpm *CPM) error {
 	padding := fpos - fileSize
 
 	// Add logging of the result and details.
-	cpm.Logger.Debug("SysCallWriteRand",
+	slog.Debug("SysCallWriteRand",
 		slog.Int("dma", int(cpm.dma)),
 		slog.Int("fcb", int(ptr)),
 		slog.Int("padding", int(padding)),

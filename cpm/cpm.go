@@ -22,7 +22,6 @@ import (
 	"github.com/skx/cpmulator/consoleout"
 	"github.com/skx/cpmulator/fcb"
 	"github.com/skx/cpmulator/memory"
-	cpmver "github.com/skx/cpmulator/version"
 )
 
 var (
@@ -59,7 +58,7 @@ type CPMHandlerType func(cpm *CPM) error
 
 // CPMHandler contains details of a specific call we implement.
 //
-// While we mostly need a "number to handler", mapping having a name
+// While we mostly need a "number to handler", having a name as well
 // is useful for the logs we produce, and we mark those functions that
 // don't do 100% of what they should as "Fake".
 type CPMHandler struct {
@@ -87,14 +86,14 @@ type CPMHandler struct {
 	Noisy bool
 }
 
-// FileCache is used to cache filehandles, against FCB addresses.
-//
-// This is primarily done as a speed optimization.
+// FileCache is used to cache filehandles on the host-side of the system,
+// which have been opened by the CP/M binary/CCP.
 type FileCache struct {
-	// name holds the name file, when it was opened/created.
+	// name holds the name of the file, when it was opened/created,
+	// on the host-side.
 	name string
 
-	// handle has the file object.
+	// handle has the file handle of the opened file.
 	handle *os.File
 }
 
@@ -111,9 +110,6 @@ type CPM struct {
 	// ccp contains the name of the CCP we should load
 	ccp string
 
-	// Should we be quiet?
-	quiet bool
-
 	// files is the cache we use for File handles.
 	files map[uint16]FileCache
 
@@ -126,7 +122,7 @@ type CPM struct {
 	// This needs to take account of echo/no-echo status.
 	input *consolein.ConsoleIn
 
-	// output is used for writing characters to the conolse
+	// output is used for writing characters to the console.
 	output *consoleout.ConsoleOut
 
 	// dma contains the address of the DMA area in RAM.
@@ -188,9 +184,6 @@ type CPM struct {
 	// to be read next.
 	findOffset int
 
-	// Logger holds a logger which we use for debugging and diagnostics.
-	Logger *slog.Logger
-
 	// simpleDebug is used to just output the name of syscalls made.
 	//
 	// For real debugging we expect the caller to use our Logger, via
@@ -199,7 +192,7 @@ type CPM struct {
 }
 
 // New returns a new emulation object
-func New(logger *slog.Logger, prn string, condriver string, ccp string) (*CPM, error) {
+func New(prn string, condriver string, ccp string) (*CPM, error) {
 
 	//
 	// Create and populate our syscall table for the BDOS syscalls.
@@ -464,7 +457,6 @@ func New(logger *slog.Logger, prn string, condriver string, ccp string) (*CPM, e
 	tmp := &CPM{
 		BDOSSyscalls: bdos,
 		BIOSSyscalls: bios,
-		Logger:       logger,
 		ccp:          ccp,
 		dma:          0x0080,
 		drives:       make(map[string]string),
@@ -492,11 +484,6 @@ func (cpm *CPM) GetCCPName() string {
 	return cpm.ccp
 }
 
-// GetQuiet returns the status of the quiet-flag.
-func (cpm *CPM) GetQuiet() bool {
-	return cpm.quiet
-}
-
 // LogNoisy enables logging support for each of the functions which
 // would otherwise be disabled
 func (cpm *CPM) LogNoisy() {
@@ -509,11 +496,6 @@ func (cpm *CPM) LogNoisy() {
 		e.Noisy = false
 		cpm.BIOSSyscalls[k] = e
 	}
-}
-
-// SetQuiet updates the state of the quiet-flag.
-func (cpm *CPM) SetQuiet(state bool) {
-	cpm.quiet = state
 }
 
 // LoadBinary loads the given CP/M binary at the default address of 0x0100,
@@ -639,11 +621,6 @@ func (cpm *CPM) fixupRAM() {
 // and executed at a higher address than the default of 0x0100.
 func (cpm *CPM) LoadCCP() error {
 
-	// Show a startup-banner.
-	if !cpm.GetQuiet() {
-		fmt.Printf("\ncpmulator %s loaded CCP %s, with %s output driver\n", cpmver.GetVersionString(), cpm.GetCCPName(), cpm.GetOutputDriver())
-	}
-
 	// Create 64K of memory, full of NOPs
 	if cpm.Memory == nil {
 		cpm.Memory = new(memory.Memory)
@@ -694,7 +671,7 @@ func (cpm *CPM) Execute(args []string) error {
 	//
 	// This is only required when running the CCP, as there we're persistent.
 	for fcb, obj := range cpm.files {
-		cpm.Logger.Debug("Closing handle in FileCache",
+		slog.Debug("Closing handle in FileCache",
 			slog.String("path", obj.name),
 			slog.Int("fcb", int(fcb)))
 		obj.handle.Close()
@@ -822,7 +799,7 @@ func (cpm *CPM) Execute(args []string) error {
 		//
 		if !exists {
 
-			cpm.Logger.Error("Unimplemented BDOS Syscall",
+			slog.Error("Unimplemented BDOS Syscall",
 				slog.Int("syscall", int(syscall)),
 				slog.String("syscallHex",
 					fmt.Sprintf("0x%02X", syscall)),
@@ -838,19 +815,12 @@ func (cpm *CPM) Execute(args []string) error {
 				fmt.Printf("%03d %s\n", syscall, handler.Desc)
 			}
 
-			cpm.Logger.Info("BDOS",
+			slog.Info("BDOS",
 				slog.String("name", handler.Desc),
 				slog.Int("syscall", int(syscall)),
 				slog.String("syscallHex", fmt.Sprintf("0x%02X", syscall)),
 				slog.Group("registers",
-					slog.String("A", fmt.Sprintf("%02X", cpm.CPU.States.AF.Hi)),
-					slog.String("B", fmt.Sprintf("%02X", cpm.CPU.States.BC.Hi)),
-					slog.String("C", fmt.Sprintf("%02X", cpm.CPU.States.BC.Lo)),
-					slog.String("D", fmt.Sprintf("%02X", cpm.CPU.States.DE.Hi)),
-					slog.String("E", fmt.Sprintf("%02X", cpm.CPU.States.DE.Lo)),
-					slog.String("F", fmt.Sprintf("%02X", cpm.CPU.States.AF.Lo)),
-					slog.String("H", fmt.Sprintf("%02X", cpm.CPU.States.HL.Hi)),
-					slog.String("L", fmt.Sprintf("%02X", cpm.CPU.States.HL.Lo)),
+					slog.String("AF", fmt.Sprintf("%04X", cpm.CPU.States.AF.U16())),
 					slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
 					slog.String("DE", fmt.Sprintf("%04X", cpm.CPU.States.DE.U16())),
 					slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16()))))
@@ -951,7 +921,7 @@ func (cpm *CPM) SetDrivePath(drive string, path string) {
 //
 // This is called by our embedded Z80 emulator.
 func (cpm *CPM) In(addr uint8) uint8 {
-	cpm.Logger.Debug("I/O IN",
+	slog.Debug("I/O IN",
 		slog.Int("port", int(addr)))
 
 	return 0

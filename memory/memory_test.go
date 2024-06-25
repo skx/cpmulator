@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"os"
 	"testing"
 )
 
@@ -61,5 +62,48 @@ func TestMemoryTrivial(t *testing.T) {
 	if mem.GetU16(0x02) != 0xCD03 {
 		t.Fatalf("failed to get expected result")
 	}
+}
 
+// TestLoadFile ensures we can load a file
+func TestLoadFile(t *testing.T) {
+
+	// Create memory
+	mem := new(Memory)
+
+	err := mem.LoadFile(0, "/this/file-does/not/exist")
+	if err == nil {
+		t.Fatalf("expected error, got none")
+	}
+
+	// Now write out a temporary file, with static contents.
+	var file *os.File
+	file, err = os.CreateTemp("", "tst-*.mem")
+	if err != nil {
+		t.Fatalf("failed to create temporary file")
+	}
+	defer os.Remove(file.Name())
+
+	// Write some known-text to the file
+	_, err = file.WriteString("Steve Kemp")
+	if err != nil {
+		t.Fatalf("failed to write program to temporary file")
+	}
+
+	// Close the file
+	file.Close()
+
+	// Load the file
+	err = mem.LoadFile(0, file.Name())
+	if err != nil {
+		t.Errorf("failed to load file")
+	}
+
+	// Confirm the contents are OK
+	x := "Steve Kemp"
+	for i, c := range x {
+		chr := mem.Get(uint16(i))
+		if string(chr) != string(c) {
+			t.Fatalf("RAM had wrong contents at %d: %c != %c\n", i, c, chr)
+		}
+	}
 }
