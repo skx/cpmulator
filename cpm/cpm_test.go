@@ -92,7 +92,7 @@ func TestLoadCCP(t *testing.T) {
 
 // TestPrinterOutput tests that printer output goes to the file as
 // expected.
-func TestPrinterOutpu(t *testing.T) {
+func TestPrinterOutput(t *testing.T) {
 
 	// Create a printer-output file
 	file, err := os.CreateTemp("", "tst-*.prn")
