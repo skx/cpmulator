@@ -94,7 +94,7 @@ func BdosSysCallAuxWrite(cpm *CPM) error {
 func BdosSysCallPrinterWrite(cpm *CPM) error {
 
 	// write the character to our printer-file
-	err := cpm.prnC(cpm.CPU.States.BC.Lo)
+	err := cpm.prnC(cpm.CPU.States.DE.Lo)
 	return err
 }
 

@@ -26,7 +26,7 @@ func TestSimple(t *testing.T) {
 	var file *os.File
 	file, err = os.CreateTemp("", "tst-*.com")
 	if err != nil {
-		t.Fatalf("failed to create tmpoerary file")
+		t.Fatalf("failed to create temporary file")
 	}
 	defer os.Remove(file.Name())
 
@@ -88,4 +88,39 @@ func TestLoadCCP(t *testing.T) {
 		t.Fatalf("expected an error loading invalid CCP, got none")
 	}
 
+}
+
+// TestPrinterOutput tests that printer output goes to the file as
+// expected.
+func TestPrinterOutpu(t *testing.T) {
+
+	// Create a printer-output file
+	file, err := os.CreateTemp("", "tst-*.prn")
+	if err != nil {
+		t.Fatalf("failed to create temporary file")
+	}
+	defer os.Remove(file.Name())
+
+	// Create a new CP/M helper - valid
+	var obj *CPM
+	obj, err = New(file.Name(), "null", "ccp")
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+
+	// Now output some characters
+	obj.prnC('s')
+	obj.prnC('k')
+	obj.prnC('x')
+
+	// Read back the file.
+	var data []byte
+	data, err = os.ReadFile(file.Name())
+	if err != nil {
+		t.Fatalf("failed to read from file")
+	}
+
+	if string(data) != "skx" {
+		t.Fatalf("printer output had the wrong content")
+	}
 }
