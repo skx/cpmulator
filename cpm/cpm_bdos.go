@@ -189,7 +189,7 @@ func BdosSysCallWriteString(cpm *CPM) error {
 
 	c := cpm.Memory.Get(addr)
 	for c != '$' {
-		fmt.Printf("%c", c)
+		cpm.output.PutCharacter(c)
 		addr++
 		c = cpm.Memory.Get(addr)
 	}
