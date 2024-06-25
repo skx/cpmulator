@@ -109,9 +109,18 @@ func TestPrinterOutput(t *testing.T) {
 	}
 
 	// Now output some characters
-	obj.prnC('s')
-	obj.prnC('k')
-	obj.prnC('x')
+	err = obj.prnC('s')
+	if err != nil {
+		t.Fatalf("failed to write character to printer-file")
+	}
+	err = obj.prnC('k')
+	if err != nil {
+		t.Fatalf("failed to write character to printer-file")
+	}
+	err = obj.prnC('x')
+	if err != nil {
+		t.Fatalf("failed to write character to printer-file")
+	}
 
 	// Read back the file.
 	var data []byte
