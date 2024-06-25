@@ -9,8 +9,7 @@ import (
 // TestSimple ensures the most basic program runs
 func TestSimple(t *testing.T) {
 
-	// Create a new CP/M program
-	var obj *CPM
+	// Create a new CP/M helper
 	obj, err := New("xx", "null", "ccp")
 	if err != nil {
 		t.Fatalf("failed to create CPM")
@@ -44,7 +43,13 @@ func TestSimple(t *testing.T) {
 		t.Fatalf("failed to close file")
 	}
 
-	// Now load the binary
+	// Attempt to load an invalid binary
+	err = obj.LoadBinary("this/fil/does/not/exist")
+	if err == nil {
+		t.Fatalf("expected an error loading a bogus binary, got none")
+	}
+
+	// Now load the real binary
 	err = obj.LoadBinary(file.Name())
 	if err != nil {
 		t.Fatalf("failed to load binary")
@@ -57,4 +62,31 @@ func TestSimple(t *testing.T) {
 	}
 
 	defer obj.Cleanup()
+}
+
+func TestLoadCCP(t *testing.T) {
+
+	// Create a new CP/M helper - valid
+	var obj *CPM
+	obj, err := New("xx", "null", "ccp")
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+
+	err = obj.LoadCCP()
+	if err != nil {
+		t.Fatalf("failed to load CCP")
+	}
+
+	// Create a new CP/M helper - invalid
+	obj, err = New("xx", "null", "ccp-invalid")
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+
+	err = obj.LoadCCP()
+	if err == nil {
+		t.Fatalf("expected an error loading invalid CCP, got none")
+	}
+
 }
