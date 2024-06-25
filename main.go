@@ -36,7 +36,6 @@ func main() {
 	logPath := flag.String("log-path", "", "Specify the file to write debug logs to.")
 	logAll := flag.Bool("log-all", false, "Log the output of all functions, including the noisy Console I/O ones.")
 	prnPath := flag.String("prn-path", "print.log", "Specify the file to write printer-output to.")
-	quiet := flag.Bool("quiet", false, "Avoid showing the startup-banner when CCP is reloaded.")
 	showVersion := flag.Bool("version", false, "Report our version, and exit.")
 
 	// listing
@@ -186,11 +185,6 @@ func main() {
 		obj.LogNoisy()
 	}
 
-	// Set the quiet behaviour
-	if *quiet {
-		obj.SetQuiet(*quiet)
-	}
-
 	// When we're finishing we'll reset some (console) state.
 	defer obj.Cleanup()
 
@@ -299,6 +293,9 @@ func main() {
 		fmt.Printf("\n")
 		return
 	}
+
+	// Show a startup-banner.
+	fmt.Printf("\ncpmulator %s loaded CCP %s, with %s output driver\n", cpmver.GetVersionString(), obj.GetCCPName(), obj.GetOutputDriver())
 
 	// We will load AUTOEXEC.SUB, once, if it exists (*)
 	//

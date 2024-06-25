@@ -36,7 +36,3 @@ The embedded resources do not have 100% full functionality, you cannot bundle a 
 * [test.z80](test.z80)
   * A program that determines whether it is running under cpmulator.
   * If so it shows the version banner.
-* [quiet.z80](quiet.z80)
-  * Get/Set the state of the "quiet flag".
-  * When running quietly we'll disable the startup banner:
-     * "cpmulator unreleased loaded CCP ccpz, with adm-3a output driver", or similar.
