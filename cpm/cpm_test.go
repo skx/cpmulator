@@ -1,7 +1,6 @@
 package cpm
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 )
@@ -25,7 +24,7 @@ func TestSimple(t *testing.T) {
 
 	// Create a temporary file with our "RET" program in it.
 	var file *os.File
-	file, err = ioutil.TempFile("", "tst-*.com")
+	file, err = os.CreateTemp("", "tst-*.com")
 	if err != nil {
 		t.Fatalf("failed to create tmpoerary file")
 	}

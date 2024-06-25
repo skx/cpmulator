@@ -28,7 +28,7 @@ func BiosSysCallColdBoot(cpm *CPM) error {
 	return nil
 }
 
-// BiosSysCallWrmBoot handles a warm boot.
+// BiosSysCallWarmBoot handles a warm boot.
 func BiosSysCallWarmBoot(cpm *CPM) error {
 
 	// Set entry-point to 0x0000 which will result in
