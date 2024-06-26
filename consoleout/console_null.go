@@ -24,13 +24,13 @@ func (no *NullOutputDriver) GetName() string {
 // is discarded.
 //
 // This is part of the OutputDriver interface.
-func (n *NullOutputDriver) PutCharacter(c uint8) {
+func (no *NullOutputDriver) PutCharacter(c uint8) {
 	// NOTHING HAppens
 }
 
 // SetWriter will update the writer.
-func (n *NullOutputDriver) SetWriter(w io.Writer) {
-	n.writer = w
+func (no *NullOutputDriver) SetWriter(w io.Writer) {
+	no.writer = w
 }
 
 // init registers our driver, by name.

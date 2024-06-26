@@ -9,7 +9,7 @@ import (
 func TestSimple(t *testing.T) {
 
 	// Create a new CP/M helper
-	obj, err := New("xx", "null", "ccp")
+	obj, err := New(WithConsoleDriver("null"))
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
@@ -67,7 +67,7 @@ func TestLoadCCP(t *testing.T) {
 
 	// Create a new CP/M helper - valid
 	var obj *CPM
-	obj, err := New("xx", "null", "ccp")
+	obj, err := New()
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
@@ -78,7 +78,7 @@ func TestLoadCCP(t *testing.T) {
 	}
 
 	// Create a new CP/M helper - invalid
-	obj, err = New("xx", "null", "ccp-invalid")
+	obj, err = New(WithCCP("ccp-invalid"))
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
@@ -103,7 +103,7 @@ func TestPrinterOutput(t *testing.T) {
 
 	// Create a new CP/M helper - valid
 	var obj *CPM
-	obj, err = New(file.Name(), "null", "ccp")
+	obj, err = New(WithPrinterPath(file.Name()))
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
@@ -137,7 +137,7 @@ func TestPrinterOutput(t *testing.T) {
 // TestLogNoisy tests that functions are updated appropriately.
 func TestLogNoisy(t *testing.T) {
 
-	obj, err := New("prn", "null", "ccp")
+	obj, err := New()
 	if err != nil {
 		t.Fatalf("failed to create CP/M object")
 	}
@@ -177,7 +177,7 @@ func TestLogNoisy(t *testing.T) {
 
 func TestDrives(t *testing.T) {
 
-	obj, err := New("prn", "null", "ccp")
+	obj, err := New()
 	if err != nil {
 		t.Fatalf("failed to create CP/M object")
 	}
@@ -215,7 +215,7 @@ func TestDrives(t *testing.T) {
 // TestCoverage is just coverage messup
 func TestCoverage(t *testing.T) {
 
-	obj, err := New("prn", "null", "ccp")
+	obj, err := New()
 	if err != nil {
 		t.Fatalf("failed to create CP/M object")
 	}

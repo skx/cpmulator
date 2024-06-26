@@ -109,8 +109,8 @@ func main() {
 			}
 		}
 
-		// Create helper
-		c, err := cpm.New("print.log", "ansi", "ccp")
+		// Create helper - with defaults.
+		c, err := cpm.New()
 		if err != nil {
 			fmt.Printf("error creating CPM object: %s\n", err)
 			return
@@ -174,7 +174,11 @@ func main() {
 	slog.SetDefault(log)
 
 	// Create a new emulator.
-	obj, err := cpm.New(*prnPath, *console, *ccp)
+	obj, err := cpm.New(
+		cpm.WithPrinterPath(*prnPath),
+		cpm.WithConsoleDriver(*console),
+		cpm.WithCCP(*ccp),
+	)
 	if err != nil {
 		fmt.Printf("error creating CPM object: %s\n", err)
 		return

@@ -191,8 +191,47 @@ type CPM struct {
 	simpleDebug bool
 }
 
-// New returns a new emulation object
-func New(prn string, condriver string, ccp string) (*CPM, error) {
+// ccpoption defines a config-setting option for our constructor.
+//
+// We use the decorator-pattern to allow flexible updates for the
+// configuration values we allow.
+type cpmoption func(*CPM) error
+
+// WithCCP lets the default CCP to be changed in our constructor.
+func WithCCP(name string) cpmoption {
+	return func(c *CPM) error {
+		c.ccp = name
+		return nil
+	}
+}
+
+// WithPrinterPath allows the printer output to changed in our constructor.
+func WithPrinterPath(path string) cpmoption {
+	return func(c *CPM) error {
+		c.prnPath = path
+		return nil
+	}
+}
+
+// WithConsoleDriver allows the console driver to be created in our
+// constructor.
+func WithConsoleDriver(name string) cpmoption {
+
+	return func(c *CPM) error {
+
+		driver, err := consoleout.New(name)
+		if err != nil {
+			return err
+		}
+
+		c.output = driver
+		return nil
+	}
+}
+
+// New returns a new emulation object.  We support default options,
+// and new defaults may be specified via WithConsoleDriver, etc, etc.
+func New(options ...cpmoption) (*CPM, error) {
 
 	//
 	// Create and populate our syscall table for the BDOS syscalls.
@@ -447,8 +486,8 @@ func New(prn string, condriver string, ccp string) (*CPM, error) {
 		Fake:    true,
 	}
 
-	// Output driver needs to be created
-	driver, err := consoleout.New(condriver)
+	// Default output driver
+	driver, err := consoleout.New("adm-3a")
 	if err != nil {
 		return nil, err
 	}
@@ -457,15 +496,24 @@ func New(prn string, condriver string, ccp string) (*CPM, error) {
 	tmp := &CPM{
 		BDOSSyscalls: bdos,
 		BIOSSyscalls: bios,
-		ccp:          ccp,
+		ccp:          "ccp", // default
 		dma:          0x0080,
 		drives:       make(map[string]string),
 		files:        make(map[uint16]FileCache),
 		input:        consolein.New(),
-		output:       driver,
-		prnPath:      prn,
+		output:       driver,        // default
+		prnPath:      "printer.log", // default
 		start:        0x0100,
 	}
+
+	// Allow options to override our defaults
+	for _, option := range options {
+		err := option(tmp)
+		if err != nil {
+			return tmp, err
+		}
+	}
+
 	return tmp, nil
 }
 
