@@ -48,3 +48,17 @@ func TestInvalidCCP(t *testing.T) {
 	}
 
 }
+
+func TestRetrieveAll(t *testing.T) {
+	all := GetAll()
+
+	for _, item := range all {
+		obj, err := Get(item.Name)
+		if err != nil {
+			t.Fatalf("failure to get by name %v:%s", item, err)
+		}
+		if item.Name != obj.Name {
+			t.Fatalf("bogus result")
+		}
+	}
+}
