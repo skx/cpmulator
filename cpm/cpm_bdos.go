@@ -116,13 +116,15 @@ func BdosSysCallRawIO(cpm *CPM) error {
 				return err
 			}
 			cpm.CPU.States.AF.Hi = out
-			cpm.CPU.States.HL.Lo = out
 			cpm.CPU.States.AF.Lo = 0x00
+			cpm.CPU.States.HL.Hi = 0x00
+			cpm.CPU.States.HL.Lo = out
 			return nil
 		}
 		// nothing pending, return 0x00
 		cpm.CPU.States.AF.Hi = 0x00
 		cpm.CPU.States.AF.Lo = 0x00
+		cpm.CPU.States.HL.Hi = 0x00
 		cpm.CPU.States.HL.Lo = 0x00
 		return nil
 	case 0xFE:
@@ -131,12 +133,13 @@ func BdosSysCallRawIO(cpm *CPM) error {
 
 			cpm.CPU.States.AF.Hi = 0xFF
 			cpm.CPU.States.AF.Lo = 0x00
+			cpm.CPU.States.HL.Hi = 0x00
 			cpm.CPU.States.HL.Lo = 0xFF
 		} else {
 			cpm.CPU.States.AF.Hi = 0x00
 			cpm.CPU.States.AF.Lo = 0x00
+			cpm.CPU.States.HL.Hi = 0x00
 			cpm.CPU.States.HL.Lo = 0x00
-
 		}
 		return nil
 	case 0xFD:
@@ -147,11 +150,16 @@ func BdosSysCallRawIO(cpm *CPM) error {
 		}
 		cpm.CPU.States.AF.Hi = out
 		cpm.CPU.States.AF.Lo = 0x00
-		cpm.CPU.States.HL.Lo = 0x00
+		cpm.CPU.States.HL.Hi = 0x00
+		cpm.CPU.States.HL.Lo = out
 		return nil
 	default:
 		// Anything else is to output a character.
 		cpm.output.PutCharacter(cpm.CPU.States.DE.Lo)
+		cpm.CPU.States.AF.Hi = 0x00
+		cpm.CPU.States.AF.Lo = 0x00
+		cpm.CPU.States.HL.Hi = 0x00
+		cpm.CPU.States.HL.Lo = 0x00
 	}
 	return nil
 }
@@ -167,6 +175,9 @@ func BdosSysCallGetIOByte(cpm *CPM) error {
 
 	// return it
 	cpm.CPU.States.AF.Hi = c
+	cpm.CPU.States.AF.Lo = 0x00
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = c
 
 	return nil
 }
@@ -258,9 +269,14 @@ func BdosSysCallConsoleStatus(cpm *CPM) error {
 
 	if cpm.input.PendingInput() {
 		cpm.CPU.States.AF.Hi = 0xFF
+		cpm.CPU.States.AF.Lo = 0x00
+		cpm.CPU.States.HL.Hi = 0x00
 		cpm.CPU.States.HL.Lo = 0xFF
+
 	} else {
 		cpm.CPU.States.AF.Hi = 0x00
+		cpm.CPU.States.AF.Lo = 0x00
+		cpm.CPU.States.HL.Hi = 0x00
 		cpm.CPU.States.HL.Lo = 0x00
 	}
 	return nil
@@ -318,7 +334,7 @@ func BdosSysCallDriveAllReset(cpm *CPM) error {
 	// Return values:
 	// HL = 0, B=0, A=0
 	cpm.CPU.States.HL.Hi = 0x00
-	cpm.CPU.States.HL.Lo = 0x00
+	cpm.CPU.States.HL.Lo = ret
 	cpm.CPU.States.BC.Hi = 0x00
 	cpm.CPU.States.AF.Hi = ret
 	return nil

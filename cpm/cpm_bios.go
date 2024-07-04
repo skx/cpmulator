@@ -14,6 +14,7 @@ import (
 
 	"golang.org/x/term"
 
+	"github.com/koron-go/z80"
 	"github.com/skx/cpmulator/ccp"
 	"github.com/skx/cpmulator/consoleout"
 	"github.com/skx/cpmulator/version"
@@ -381,4 +382,12 @@ func (cpm *CPM) BiosHandler(val uint8) {
 		// halt processing.
 		cpm.CPU.HALT = true
 	}
+
+	// If A == 0x00 then we set the zero flag
+	if cpm.CPU.States.AF.Hi == 0x00 {
+		cpm.CPU.SetFlag(z80.FlagZ)
+	} else {
+		cpm.CPU.ResetFlag(z80.FlagZ)
+	}
+
 }

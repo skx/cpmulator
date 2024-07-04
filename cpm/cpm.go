@@ -893,6 +893,13 @@ func (cpm *CPM) Execute(args []string) error {
 			return err
 		}
 
+		// If A == 0x00 then we set the zero flag
+		if cpm.CPU.States.AF.Hi == 0x00 {
+			cpm.CPU.SetFlag(z80.FlagZ)
+		} else {
+			cpm.CPU.ResetFlag(z80.FlagZ)
+		}
+
 		// Return from call by getting the return address
 		// from the stack, and updating the instruction pointer
 		// to continue executing from there.
