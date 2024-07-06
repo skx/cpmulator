@@ -1347,7 +1347,43 @@ func BdosSysCallReadRand(cpm *CPM) error {
 
 	// A virtual handle, from our embedded resources.
 	if obj.handle == nil {
-		return fmt.Errorf("fatal error SysCallReadRand against an embedded resource %v", obj)
+
+		// Remap
+		p := filepath.Join(string(cpm.currentDrive+'A'), filepath.Base(obj.name))
+
+		// open
+		file, err := fs.ReadFile(cpm.static, p)
+		if err != nil {
+			fmt.Printf("error on SysCallReadRand for virtual path (%s):%s\n", p, err)
+		}
+
+		// Get the record to read
+		record := int(int(fcbPtr.R2)<<16) | int(int(fcbPtr.R1)<<8) | int(fcbPtr.R0)
+
+		// Translate the record to a byte-offset
+		offset := int64(record) * blkSize
+
+		// copy each appropriate byte into the data-area
+		i := 0
+		var res uint8
+		for i < blkSize {
+			if int(offset)+i < len(file) {
+				data[i] = file[int(offset)+i]
+			} else {
+				res = 0x01
+			}
+			i++
+		}
+
+		// Copy the data to the DMA area
+		cpm.Memory.SetRange(cpm.dma, data...)
+
+		cpm.CPU.States.HL.Hi = 0x00
+		cpm.CPU.States.HL.Lo = 0x00
+		cpm.CPU.States.BC.Hi = 0x00
+		cpm.CPU.States.AF.Hi = uint8(res)
+
+		return nil
 	}
 
 	// Get the record to read
