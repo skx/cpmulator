@@ -383,6 +383,15 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 	// Get the actual name
 	fileName := fcbPtr.GetFileName()
 
+	// No filename?  That's an error
+	if fileName == "" {
+		cpm.CPU.States.AF.Hi = 0xFF
+		cpm.CPU.States.HL.Hi = 0x00
+		cpm.CPU.States.HL.Lo = 0xFF
+		cpm.CPU.States.BC.Hi = 0x00
+		return nil
+	}
+
 	// drive will default to our current drive, if the FCB drive field is 0
 	drive := cpm.currentDrive + 'A'
 	if fcbPtr.Drive != 0 {
@@ -997,6 +1006,15 @@ func BdosSysCallMakeFile(cpm *CPM) error {
 
 	// Get the actual name
 	fileName := fcbPtr.GetFileName()
+
+	// No filename?  That's an error
+	if fileName == "" {
+		cpm.CPU.States.AF.Hi = 0xFF
+		cpm.CPU.States.HL.Hi = 0x00
+		cpm.CPU.States.HL.Lo = 0xFF
+		cpm.CPU.States.BC.Hi = 0x00
+		return nil
+	}
 
 	// drive will default to our current drive, if the FCB drive field is 0
 	drive := cpm.currentDrive + 'A'
