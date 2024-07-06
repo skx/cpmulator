@@ -29,5 +29,5 @@ static: $(wildcard ccp/*.z80)
 #
 # cpmulator is fast to build.
 #
-cpmulator: $(wildcard *.go */*.go)
+cpmulator: $(wildcard *.go */*.go) ccp
 	go build .

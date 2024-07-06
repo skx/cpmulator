@@ -79,6 +79,8 @@
 ;     5L		GET	MEMLOAD	PRNLE
 ;     5M                QUIT    Added by skx
 ;     5N                CLS     Added by skx
+;     5O                PEEK    Added by skx
+;     5P                POKE    Added by skx
 ;
 FALSE	EQU	0
 TRUE	EQU	NOT FALSE
@@ -431,6 +433,10 @@ CMDTBL:
 	DW	QUIT
 	DB	'CLS '          ; added by skx
 	DW	CLS
+	DB	'PEEK'          ; added by skx
+	DW	PEEK
+	DB	'POKE'          ; added by skx
+	DW	POKE
 ;
 	IF	NOT RAS		;FOR NON-RAS
 	DB	'GO  '
@@ -2017,4 +2023,76 @@ CLS:
         db 27, '[', 'H'+80H     ; "home"
         RET
 
-	END
+;
+;Section 5O
+;Command: PEEK
+;Function:  Show the contents of the address
+;Forms:
+;	PEEK <hexadr> [<hexcnt>]
+;
+PEEK:
+	CALL	HEXNUM		; get display address
+	PUSH	HL		; save it
+	CALL	HEXNUM		; get optional count
+	LD	C,L		; save count
+	POP	HL		; get back address
+PEEK1:
+	CALL	CRLF		; start new line
+	CALL	PRHEXW		; print address
+	LD	B,16		; 16 values per line
+PEEK2:
+        LD A, " "
+        CALL CONOUT
+	;; CALL	PRINT		; space over
+	;; DB	' ', 0x00, ' '+80H
+	LD	A,(HL)		; get hex value
+	INC	HL		; step to next value
+	CALL	PRHEXA		; display value
+	DEC	C		; done?
+	RET	Z		; yes
+	DJNZ	PEEK2		; not end of line
+	JR	PEEK1		; end of line
+PRHEXW:
+	LD	A,H		; print hex word in hl
+	CALL	PRHEXA
+	LD	A,L
+PRHEXA:
+	PUSH	AF		; save right nibble
+	RRCA			; move left nibble to right
+	RRCA
+	RRCA
+	RRCA
+	CALL	PRHEX		; display left nibble
+	POP	AF		; get back right nibble
+PRHEX:
+	AND	0FH		; convert to ascii
+	ADD	A,90H
+	DAA
+	ADC	A,40H
+	DAA
+	JP	CONOUT		; go display value
+
+
+;
+;
+;Section 5P
+;Command: POKE
+;Function: To poke a string of hex values into a set of consecutive addresses.
+;Forms:
+;	POKE <hexadr> <hexval> [<hexval>]
+;
+POKE:
+	CALL	HEXNUM		; get address
+POKE1:
+	PUSH	HL		; save address
+	CALL	HEXNUM		; get next byte
+	LD	A,(FCBFN)	; done?
+	CP	' '
+	LD	A,L		; save byte
+	POP	HL		; get back address
+	RET	Z		; done
+	LD	(HL),A		; save byte
+	INC	HL		; step to next address
+	JR	POKE1		; go for more
+
+        END
