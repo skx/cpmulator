@@ -2,7 +2,7 @@
 #
 # The files we wish to generate.
 #
-all: A/\#.COM A/!CCP.COM A/!CONSOLE.COM A/!CTRLC.COM A/!DEBUG.COM A/!QUIET.COM
+all: A/\#.COM A/!CCP.COM A/!CONSOLE.COM A/!CTRLC.COM A/!DEBUG.COM 
 
 # cleanup
 clean:
@@ -26,5 +26,3 @@ A/!CTRLC.COM: ctrlc.z80
 A/!DEBUG.COM: debug.z80
 	pasmo debug.z80 A/!DEBUG.COM
 
-A/!QUIET.COM: quiet.z80
-	pasmo quiet.z80 A/!QUIET.COM

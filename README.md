@@ -126,6 +126,7 @@ There are currently a pair of CCP implementations included within the emulator, 
   * Launch this via `cpmulate -ccp=ccpz ..`
   * An enhanced one with extra built-in commands.
   * Notably "GET 0100 FOO.COM" will load a binary into RAM, at address 0x100.  Then "JMP 0100" will launch it.
+  * There are also `PEEK 0100 10` and `POKE 0100 C9 ..` commands available.
   * The prompt changes to show user-number, for example if you run "USER 3".
   * If a command isn't found in the current drive A: will be searched instead, which is handy.
 
