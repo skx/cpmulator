@@ -1,0 +1,91 @@
+;; filesize.z80 - Show the size of the named file
+;;
+
+FCB1:    EQU 0x5C
+
+BDOS_ENTRY_POINT:    EQU 5
+
+BDOS_OUTPUT_STRING:            EQU 9
+BDOS_FILE_SIZE:                EQU 35
+
+        ;;
+        ;; CP/M programs start at 0x100.
+        ;;
+        ORG 100H
+
+        ;; The FCB will be populated with the pattern/first argument,
+        ;; if the first character of that region is a space-character
+        ;; then we've got nothing to search for.
+        ld a, (FCB1 + 1)
+        cp 0x20             ; 0x20 = 32 == SPACE
+        jp nz, got_argument ; Not a space, so we can proceed
+
+        ;;
+        ;; No argument, so show the error and exit
+        ;;
+        ld de, usage_message
+        ld c,  BDOS_OUTPUT_STRING
+        call   BDOS_ENTRY_POINT
+        jr     exit_fn
+
+got_argument:
+        LD DE, FCB1
+        LD C, BDOS_FILE_SIZE
+        CALL BDOS_ENTRY_POINT
+
+        ; Now show the size
+        LD HL, FCB1 + 35
+        LD A,(HL)
+        call show_a_register
+
+        LD HL, FCB1 + 34
+        LD A,(HL)
+        call show_a_register
+
+        LD HL, FCB1 + 33
+        LD A,(HL)
+        call show_a_register
+
+        LD DE, newline
+        LD C, BDOS_OUTPUT_STRING
+        CALL BDOS_ENTRY_POINT
+
+exit_fn:
+        ;; exit
+        LD      C,0x00
+        CALL    BDOS_ENTRY_POINT
+
+
+
+show_a_register:
+PRHEXA:
+	PUSH	AF		; save right nibble
+	RRCA			; move left nibble to right
+	RRCA
+	RRCA
+	RRCA
+	CALL	PRHEX		; display left nibble
+	POP	AF		; get back right nibble
+PRHEX:
+	AND	0FH		; convert to ascii
+	ADD	A,90H
+	DAA
+	ADC	A,40H
+	DAA
+	LD      E,A
+        LD      C, 2
+        CALL    0x0005
+        REET
+
+
+;;;
+;;; The message displayed if no command-line argument was present.
+;;;
+usage_message:
+        db "Usage: FILESIZE FILENAME.EXT"
+
+        ;; note fall-through here :)
+newline:
+        db 0xa, 0xd, "$"
+
+END
