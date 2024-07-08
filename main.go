@@ -31,7 +31,7 @@ func main() {
 	cd := flag.String("cd", "", "Change to this directory before launching")
 	createDirectories := flag.Bool("create", false, "Create subdirectories on the host computer for each CP/M drive.")
 	console := flag.String("console", "adm-3a", "The name of the console output driver to use (adm-3a or ansi).")
-	ccp := flag.String("ccp", "ccp", "The name of the CCP that we should run (ccp vs. ccpz).")
+	ccp := flag.String("ccp", "ccpz", "The name of the CCP that we should run (ccp vs. ccpz).")
 	useDirectories := flag.Bool("directories", false, "Use subdirectories on the host computer for CP/M drives.")
 	logPath := flag.String("log-path", "", "Specify the file to write debug logs to.")
 	logAll := flag.Bool("log-all", false, "Log the output of all functions, including the noisy Console I/O ones.")

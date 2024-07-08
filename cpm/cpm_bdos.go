@@ -1506,8 +1506,6 @@ func BdosSysCallWriteRand(cpm *CPM) error {
 
 // BdosSysCallFileSize updates the Random Record bytes of the given FCB to the
 // number of records in the file.
-//
-// Returns the result in the A record
 func BdosSysCallFileSize(cpm *CPM) error {
 
 	// The pointer to the FCB
@@ -1547,26 +1545,46 @@ func BdosSysCallFileSize(cpm *CPM) error {
 		}
 	}
 
-	// esnure the path is qualified
+	// ensure the path is qualified
 	fileName = filepath.Join(path, fileName)
 
-	file, err := os.OpenFile(fileName, os.O_RDONLY, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to open file for FileSize %s:%s", fileName, err)
-	}
+	// Remapped file
+	x := filepath.Base(fileName)
+	x = filepath.Join(string(cpm.currentDrive+'A'), x)
 
-	// ensure we close
-	defer file.Close()
+	// fileSize we'll determine
+	var fileSize int64
 
-	// Get file size, in bytes
-	fi, err := file.Stat()
-	if err != nil {
-		return fmt.Errorf("failed to get file size of %s: %s", fileName, err)
+	// Can we open this file from our embedded filesystem?
+	virt, er := cpm.static.ReadFile(x)
+	if er == nil {
+
+		fmt.Printf("FileSizeFromVirtual\n")
+		fileSize = int64(len(virt))
+	} else {
+
+		file, err := os.OpenFile(fileName, os.O_RDONLY, 0644)
+		if err != nil {
+			return fmt.Errorf("failed to open file for FileSize %s:%s", fileName, err)
+		}
+
+		// ensure we close
+		defer file.Close()
+
+		// Get file size, in bytes
+		fi, err := file.Stat()
+		if err != nil {
+			return fmt.Errorf("failed to get file size of %s: %s", fileName, err)
+		}
+
+		fileSize = fi.Size()
+
 	}
+	fmt.Printf("SIZE:%d\n", fileSize)
 
 	// Now we have the size we need to turn it into the number
 	// of records
-	records := int(fi.Size() / 128)
+	records := int(fileSize / 128)
 
 	// Store the value in the three fields
 	fcbPtr.R0 = uint8(records & 0xFF)
@@ -1578,11 +1596,13 @@ func BdosSysCallFileSize(cpm *CPM) error {
 	if n != records {
 		return fmt.Errorf("failed to update because maths is hard %d != %d", n, records)
 	}
+	fmt.Printf("N:%d R0:%d R1:%d R2:%d\n", n, fcbPtr.R0, fcbPtr.R1, fcbPtr.R2)
 
 	// Update the FCB in memory
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
 	cpm.CPU.States.AF.Hi = 0x00
 
+	fmt.Printf("R0:%d R1:%d R2:%d\n", cpm.Memory.Get(ptr+33), cpm.Memory.Get(ptr+34), cpm.Memory.Get(ptr+35))
 	return nil
 }
 

@@ -134,7 +134,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 	// H is used to specify the function.
 	//
 	// HL == 0
-	//    Are we running under CPMUlater?  We always say yes!
+	//    Are we running under cpmulator?  We always say yes!
 	//
 	// HL == 1
 	//    C == 0xff to get the ctrl-c count

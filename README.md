@@ -1,9 +1,6 @@
 # cpmulator - A CP/M emulator written in golang
 
-This repository contains a CP/M emulator, with integrated CCP (i.e. "shell"), which is designed to run CP/M binaries:
-
-* The project was initially created to run [a text-based adventure game](https://github.com/skx/lighthouse-of-doom/), which I wrote a few years ago, to amuse my child.
-  * That was written in Z80 assembly language targeting CP/M, later I ported to the ZX Spectrum.
+This repository contains a CP/M emulator, with integrated CCP ("Console Command Processor", i.e. shell), which is designed to run CP/M binaries.  The project was initially created to run [a text-based adventure game](https://github.com/skx/lighthouse-of-doom/), which I wrote a few years ago, to amuse my child.  (That was written in Z80 assembly language targeting CP/M, later I ported to the ZX Spectrum.)
 
 Over time this project has become more complete, and I've now implemented enough functionity to run many of the well-known CP/M programs:
 
@@ -83,7 +80,7 @@ I've got an open bug about fixing the console (input), [#65](https://github.com/
 
 # Usage
 
-If you launch `cpmulator` with no arguments then one of the integrated CCPs ("console command processor") will be launched, dropping you into a familiar shell:
+If you launch `cpmulator` with no arguments then the default CCP ("console command processor") will be launched, dropping you into a familiar shell:
 
 ```sh
 $ cpmulator
@@ -101,7 +98,7 @@ A>
 You can terminate the CCP by typing `EXIT`.  The following built-in commands are available:
 
 <details>
-<summary>Show the built-in commands of the default CCP:</summary>
+<summary>Show the standard built-in commands of the default CCP:</summary>
 
 * `CLS`
   * Clear the screen.
@@ -118,19 +115,19 @@ You can terminate the CCP by typing `EXIT`.  The following built-in commands are
 
 </details>
 
-
-There are currently a pair of CCP implementations included within the emulator, and they can be selected via the `-ccp` command-line flag:
+There are a pair of CCP implementations included within the emulator, and they can be selected via the `-ccp` command-line flag:
 
 * "ccp"
-  * This is the default, but you can choose it explicitly via `cpmulator -ccp=ccp ..`.
-  * The original/default one, from Digital Research.
+  * The original CCP from Digital Research.
+  * Launch the emulator via `cpmulator -ccp=ccp ..`, or use `A:!CCP CCP` to change to it at run-time.
 * "ccpz"
-  * Launch this via `cpmulate -ccp=ccpz ..`
-  * An enhanced one with extra built-in commands.
-  * Notably "GET 0100 FOO.COM" will load a binary into RAM, at address 0x100.  Then "JMP 0100" will launch it.
-  * There are also `PEEK 0100 10` and `POKE 0100 C9 ..` commands available.
-  * The prompt changes to show user-number, for example if you run "USER 3".
+  * An enhanced CCP, which is the default
+  * "`GET 0100 FOO.COM`" will load a binary into RAM, at address 0x100.  Then "`JMP 0100`" will launch it.
+  * There are also built-in `PEEK` and `POKE` commands which can show/set memory contents.
+  * `LIST file.ext` will "print" the contents of `file.ext`, but see the note later about printer-output (TLDR; We write it to `print.log`.)
+  * The prompt will show the currently-selected user-number, for example if you run "USER 3".
   * If a command isn't found in the current drive A: will be searched instead, which is handy.
+  * Finally any line beginning with the comment-character (`#`) will be ignored, which is useful for commenting purposes inside SUBMIT files.
 
 You can also launch a binary directly by specifying it's path upon the command-line, followed by any optional arguments that the binary accepts or requires:
 
@@ -142,7 +139,7 @@ $ cpmulator /path/to/binary [optional-args]
 
 ## Command Line Flags
 
-There are several command-line options which are shown in the output of `cpmulator -help`, but in brief:
+There are several command-line options which are shown in the output of `cpmulator -help`, but the following summary shows the most important/useful options:
 
 * `-cd /path/to/directory`
   * Change to the given directory before running.
@@ -150,16 +147,13 @@ There are several command-line options which are shown in the output of `cpmulat
   * Use directories on the host for drive-contents, discussed later in this document.
 * `-log-path /path/to/file`
   * Output debug-logs to the given file, creating it if necessary.
+  * **NOTE**: You can run `A:!DEBUG 1` to enable "quick debug logging", and `A:!DEBUG 0` to turn it back off again, at runtime.
 * `-prn-path /path/to/file`
   * All output which CP/M sends to the "printer" will be written to the given file.
-* `-quiet`
-  * Enable quiet-mode, which cuts down on output.
 * `-list-syscalls`
   * Dump the list of implemented BDOS and BIOS syscalls.
 * `-version`
   * Show the version number of the emulator, and exit.
-
-Note that some of these options can be changed at runtime.
 
 
 
@@ -186,7 +180,7 @@ The behaviour changing is achieved by having a small number of .COM files invoke
 
 ### CCP Handling
 
-We default to loading the Digital Research CCP, but allow the CCPZ to be selected via the `-ccp` command-line flag.   The binary `A:!CCP.COM` lets you change CCP at runtime.
+We default to loading the enhanced CCP, but allow the original from Digital Research to be used via the `-ccp` command-line flag.   The binary `A:!CCP.COM` lets you change CCP at runtime.
 
 
 ### Ctrl-C Handling
@@ -212,13 +206,6 @@ have a "quick debug" option which will merely log the syscalls which are invoked
 runtime.
 
 `A:!DEBUG.COM` will show the state of the flag, and it can be enabled with `A:!DEBUG 1` or disabled with `!DEBUG 0`.
-
-
-### Quiet Mode
-
-When CCP is soft/warm-booted it prints a banner showing the currently active CCP, and the console-output device which is in-use.
-
-Running `A:!QUIET 1` will silence this output, essentially enabling "quiet mode", running with no arguments will show the current state, and running `A:!QUIET 0` will restore the default behaviour.
 
 
 
