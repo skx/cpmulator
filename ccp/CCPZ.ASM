@@ -26,7 +26,8 @@
 ;	FURTHER MODIFIED BY RLC AS V3.1
 ;	FURTHER MODIFIED BY RLC AS V4.0
 ;	SBB V4.1 11/27/81
-;	SBB V4.1skx 18/05/24 - Rebased, added QUIT/EXIT/HALT & CLS
+;	SBB V4.1skx 18/05/24 - Rebased, added new built-ins QUIT/EXIT/HALT/CLS
+;                            - Added PEEK, POKE, and made "#" a comment.
 ;
 ;******** Refer to CCPZ-Vxx.NOT File for Revision History ********
 ;
@@ -228,7 +229,17 @@ SUBA	EQU	TRUE		; Set to TRUE to have $$$.SUB always on A:
 ; a valid User/Disk Flag (see location 4) at this time.]
 ;
 CLEVEL3	EQU	TRUE		;ENABLE COMMAND LEVEL 3 PROCESSING
+
 ;
+; It can be useful to comment out things in SUBMIT-files, or in example
+; command-lines.  This CCP can be built with the notion of a comment-character
+; if that is the first character in a line then the rest of the input will
+; be skipped.
+;
+; skx
+;
+COMMENT EQU TRUE
+
 ;
 ;*** TERMINAL AND 'TYPE' CUSTOMIZATION EQUATES
 ;
@@ -263,6 +274,8 @@ SECTFLG	EQU	'S'		;OPTION CHAR FOR SAVE COMMAND TO SAVE SECTORS
 CR	EQU	0DH
 LF	EQU	0AH
 TAB	EQU	09H
+COMCHR  EQU     '#'
+
 ;
 WBOOT	EQU	BASE+0000H	;CP/M WARM BOOT ADDRESS
 UDFLAG	EQU	BASE+0004H	;USER NUM IN HIGH NYBBLE, DISK IN LOW
@@ -344,7 +357,7 @@ CIBUFF:
 	DB	'               ';DEFAULT (COLD BOOT) COMMAND
 CIBUF:
 	DB	0		;COMMAND STRING TERMINATOR
-	DB	'  CCPZ-V4.1 of 11/27/81  ';FOR DUMP IDENTIFICATION
+	DB	'  CCPZ-V4.1skx of 11/27/81  ';FOR DUMP IDENTIFICATION
 	DS	BUFLEN-($-CIBUFF)+1;TOTAL IS 'BUFLEN' BYTES
 ;
 CIBPTR:
@@ -437,7 +450,6 @@ CMDTBL:
 	DW	PEEK
 	DB	'POKE'          ; added by skx
 	DW	POKE
-;
 	IF	NOT RAS		;FOR NON-RAS
 	DB	'GO  '
 	DW	GO
@@ -552,7 +564,16 @@ RS1:
 	CALL	CNVBUF		;CAPITALIZE COMMAND LINE, PLACE ENDING 0,
 				; AND SET CIBPTR VALUE
 	ENDIF
-;
+                                ;
+	IF	COMMENT         ; IF comments are supported
+        LD      HL, CIBUFF      ;
+        LD      A, (HL)         ;
+        CP     COMCHR           ;
+        JR Z, RESTRT            ;
+
+        ENDIF
+                                ;
+
 	CALL	DEFDMA		;SET TBUFF TO DMA ADDRESS
 	CALL	GETDRV		;GET DEFAULT DRIVE NUMBER
 	LD	(TDRIVE),A	;SET IT
