@@ -1559,7 +1559,6 @@ func BdosSysCallFileSize(cpm *CPM) error {
 	virt, er := cpm.static.ReadFile(x)
 	if er == nil {
 
-		fmt.Printf("FileSizeFromVirtual\n")
 		fileSize = int64(len(virt))
 	} else {
 
@@ -1580,7 +1579,6 @@ func BdosSysCallFileSize(cpm *CPM) error {
 		fileSize = fi.Size()
 
 	}
-	fmt.Printf("SIZE:%d\n", fileSize)
 
 	// Now we have the size we need to turn it into the number
 	// of records
@@ -1596,13 +1594,11 @@ func BdosSysCallFileSize(cpm *CPM) error {
 	if n != records {
 		return fmt.Errorf("failed to update because maths is hard %d != %d", n, records)
 	}
-	fmt.Printf("N:%d R0:%d R1:%d R2:%d\n", n, fcbPtr.R0, fcbPtr.R1, fcbPtr.R2)
 
 	// Update the FCB in memory
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
 	cpm.CPU.States.AF.Hi = 0x00
 
-	fmt.Printf("R0:%d R1:%d R2:%d\n", cpm.Memory.Get(ptr+33), cpm.Memory.Get(ptr+34), cpm.Memory.Get(ptr+35))
 	return nil
 }
 
