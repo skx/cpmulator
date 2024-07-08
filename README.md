@@ -1,22 +1,24 @@
 # cpmulator - A CP/M emulator written in golang
 
-This repository contains a CP/M emulator, with integrated CCP, which is designed to run CP/M binaries:
+This repository contains a CP/M emulator, with integrated CCP (i.e. "shell"), which is designed to run CP/M binaries:
 
-* The project was initially created to run [my text-based adventure game](https://github.com/skx/lighthouse-of-doom/), which I wrote a few years ago, to amuse my child.
-  * That was written in Z80 assembly language and initially targeted CP/M, although it was later ported to the ZX Spectrum.
+* The project was initially created to run [a text-based adventure game](https://github.com/skx/lighthouse-of-doom/), which I wrote a few years ago, to amuse my child.
+  * That was written in Z80 assembly language targeting CP/M, later I ported to the ZX Spectrum.
 
 Over time this project has become more complete, and I've now implemented enough functionity to run many of the well-known CP/M programs:
 
 * The Aztec C-Compiler.
-* Borland's Turbo Pascal
+* Borland's Turbo Pascal.
 * Many early Infocom games:
   * Zork 1, 2, & 3.
   * Planetfall.
   * etc.
-* Microsoft BASIC
-* Wordstar
+* BBC and Microsoft BASIC.
+* Wordstar.
 
-The biggest caveat is that I've not implemented any notion of disk-based access.  This means that, for example, opening, reading/writing, and closing files is absolutely fine, but any API call that refers to tracks, sectors, or disks will fail (with an "unimplemented syscall" error).
+As things stand this project is "complete".  I'd like to increase the test-coverage for my own reassurance, but I've now reached a point where all the binaries I've tried to execute work as expected.  If you find a program that _doesn't_ work please [open an issue](https://github.com/skx/cpmulator/issues), beyond that I think this project is "complete" and future development will be minimal, and sporadic.
+
+> **NOTE** I've not implemented any notion of disk-support.  This means that opening, reading/writing, and closing files is absolutely fine, but any API call that refers to tracks, sectors, or disks will fail (with an "unimplemented syscall" error).
 
 A companion repository contains a collection of vintage CP/M software you can use with this, or any other, CP/M emulator:
 
