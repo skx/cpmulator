@@ -117,7 +117,9 @@ func TestPrinterOutput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to write character to printer-file")
 	}
-	err = obj.prnC('x')
+
+	obj.CPU.States.BC.Lo = 'x'
+	err = BiosSysCallPrintChar(obj)
 	if err != nil {
 		t.Fatalf("failed to write character to printer-file")
 	}
