@@ -67,3 +67,41 @@ func TestFileSize(t *testing.T) {
 
 	// Get the file-size of a failed file
 }
+
+// TestIOByte tests the get/set of the IO byte
+func TestIOByte(t *testing.T) {
+
+	// Create a new helper
+	c, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	c.Memory = new(memory.Memory)
+
+	// default is zero
+	err = BdosSysCallGetIOByte(c)
+	if err != nil {
+		t.Fatalf("error in CPM call")
+	}
+	if c.CPU.States.AF.Hi != 0x00 {
+		t.Fatalf("unexpected initial IO byte")
+	}
+
+	// set it
+	c.CPU.States.DE.Lo = 0xfe
+	err = BdosSysCallSetIOByte(c)
+	if err != nil {
+		t.Fatalf("error in CPM call")
+	}
+
+	// get it
+	err = BdosSysCallGetIOByte(c)
+	if err != nil {
+		t.Fatalf("error in CPM call")
+	}
+
+	if c.CPU.States.AF.Hi != 0xfe {
+		t.Fatalf("unexpected updated IO byte")
+	}
+
+}
