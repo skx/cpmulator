@@ -351,7 +351,7 @@ func TestBDOSCoverage(t *testing.T) {
 	}
 }
 
-// TestMakeFile tests our file creation handler
+// TestMakeCloseFile tests our file creation handler, and our close function too
 func TestMakeFile(t *testing.T) {
 
 	// Create a new helper
@@ -393,6 +393,22 @@ func TestMakeFile(t *testing.T) {
 	}
 	if !fileExists(name) {
 		t.Fatalf("failed to create file")
+	}
+
+	// Now we've created it the file will be open
+	// Close it.
+	c.CPU.States.DE.SetU16(0x0200)
+	err = BdosSysCallFileClose(c)
+	if err != nil {
+		t.Fatalf("failed to close file, after creation")
+	}
+
+	// Why not also try to close a file that is
+	// not open?
+	c.CPU.States.DE.SetU16(0xcdcd)
+	err = BdosSysCallFileClose(c)
+	if err != nil {
+		t.Fatalf("failed to close file which wasn't open")
 	}
 
 	// Try to create a file from a null FCB
@@ -456,5 +472,79 @@ func TestDelete(t *testing.T) {
 
 	// Delete the file, if it was present
 	os.Remove(name)
+
+}
+
+func TestRename(t *testing.T) {
+
+	// Create a new helper
+	c, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	c.Memory = new(memory.Memory)
+
+	// Files created in "."
+	c.SetDrives(false)
+
+	// Create a file
+	name := "BEFORE"
+	_, err = os.Create(name)
+	if err != nil {
+		t.Fatalf("failed to create file")
+	}
+
+	fileExists := func(path string) bool {
+		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+			return false
+		}
+		return true
+	}
+
+	// Src
+	fcbPtr := fcb.FromString(name)
+	fcbPtr.Drive = 3
+	c.Memory.SetRange(0x0200, fcbPtr.AsBytes()...)
+
+	// Dst
+	dstPtr := fcb.FromString("AFTER")
+	dstPtr.Drive = 6
+	c.Memory.SetRange(0x0200+16, dstPtr.AsBytes()...)
+
+	// Call the rename function
+	c.CPU.States.DE.SetU16(0x0200)
+	err = BdosSysCallRenameFile(c)
+	if err != nil {
+		t.Fatalf("error calling CP/M")
+	}
+
+	if c.CPU.States.AF.Hi != 0x00 {
+		t.Fatalf("rename failed")
+	}
+	if fileExists("BEFORE") {
+		t.Fatalf("file still exists")
+	}
+	if !fileExists("AFTER") {
+		t.Fatalf("file rename didn't create it")
+	}
+
+	// Delete both files, if present.
+	os.Remove("BEFORE")
+	os.Remove("AFTER")
+
+	// Try to rename to a file that can't work
+	dstPtr = fcb.FromString("/.>/>dsd:")
+	dstPtr.Drive = 6
+	c.Memory.SetRange(0x0200+16, dstPtr.AsBytes()...)
+
+	// Call the rename function
+	c.CPU.States.DE.SetU16(0x0200)
+	err = BdosSysCallRenameFile(c)
+	if err != nil {
+		t.Fatalf("error calling CP/M")
+	}
+	if c.CPU.States.AF.Hi != 0xff {
+		t.Fatalf("renaming to an impossible name succeeded")
+	}
 
 }
