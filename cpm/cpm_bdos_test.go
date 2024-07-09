@@ -10,6 +10,104 @@ import (
 	"github.com/skx/cpmulator/memory"
 )
 
+func TestUnimplemented(t *testing.T) {
+	// Create a new helper
+	c, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	c.Memory = new(memory.Memory)
+	c.fixupRAM()
+	defer c.Cleanup()
+
+	// Create a binary
+	var file *os.File
+	file, err = os.CreateTemp("", "tst-*.com")
+	if err != nil {
+		t.Fatalf("failed to create temporary file")
+	}
+	defer os.Remove(file.Name())
+
+	// Make a call to BDOS function 99 - unimplemented
+	_, err = file.Write([]byte{0x0E, 0x63, 0xCD, 0x05, 0x00})
+
+	if err != nil {
+		t.Fatalf("failed to write program to temporary file")
+	}
+
+	// Close the file
+	err = file.Close()
+	if err != nil {
+		t.Fatalf("failed to close file")
+	}
+
+	// Attempt to load the binary
+	err = c.LoadBinary(file.Name())
+	if err != nil {
+		t.Fatalf("error loading a binary")
+	}
+
+	// Finally launch it
+	c.simpleDebug = true
+	err = c.Execute([]string{"foo", "bar", "baz"})
+	if err == nil {
+		t.Fatalf("expected an error, got none")
+	}
+	if err != ErrUnimplemented {
+		t.Fatalf("got an error, but the wrong one: %v\n", err)
+	}
+}
+
+// TestBoot  ensures that a "jmp 0x0000" ends the emulation
+func TestBoot(t *testing.T) {
+	// Create a new helper
+	c, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	c.Memory = new(memory.Memory)
+	c.fixupRAM()
+	defer c.Cleanup()
+
+	// Create a binary
+	var file *os.File
+	file, err = os.CreateTemp("", "tst-*.com")
+	if err != nil {
+		t.Fatalf("failed to create temporary file")
+	}
+	defer os.Remove(file.Name())
+
+	// CALL 0x0000
+	_, err = file.Write([]byte{0xCD, 0x00, 0x00})
+
+	if err != nil {
+		t.Fatalf("failed to write program to temporary file")
+	}
+
+	// Close the file
+	err = file.Close()
+	if err != nil {
+		t.Fatalf("failed to close file")
+	}
+
+	// Attempt to load the binary
+	err = c.LoadBinary(file.Name())
+	if err != nil {
+		t.Fatalf("error loading a binary")
+	}
+
+	// Finally launch it
+	c.simpleDebug = true
+	err = c.Execute([]string{"foo", "bar", "baz"})
+	if err == nil {
+		t.Fatalf("expected an error, got none")
+	}
+	if err != ErrBoot {
+		t.Fatalf("got an error, but the wrong one: %v\n", err)
+	}
+
+}
+
 func TestReadLine(t *testing.T) {
 
 	// Create a new helper

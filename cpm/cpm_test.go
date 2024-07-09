@@ -64,7 +64,7 @@ func TestSimple(t *testing.T) {
 	defer os.Remove(file.Name())
 
 	// Write "RET" to the file
-	_, err = file.WriteString("0xC9")
+	_, err = file.Write([]byte{0xC9})
 	if err != nil {
 		t.Fatalf("failed to write program to temporary file")
 	}
@@ -81,7 +81,9 @@ func TestSimple(t *testing.T) {
 		t.Fatalf("expected an error loading a bogus binary, got none")
 	}
 
-	// Now load the real binary
+	// Now load the real binary - but first of all remove
+	// the RAM
+	obj.Memory = nil
 	err = obj.LoadBinary(file.Name())
 	if err != nil {
 		t.Fatalf("failed to load binary")
@@ -94,6 +96,14 @@ func TestSimple(t *testing.T) {
 	}
 
 	defer obj.Cleanup()
+}
+
+func TestBogusConstructor(t *testing.T) {
+
+	_, err := New(WithConsoleDriver("bogus"))
+	if err == nil {
+		t.Fatalf("expected error, bogus console driver, got none")
+	}
 }
 
 func TestLoadCCP(t *testing.T) {

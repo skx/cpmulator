@@ -31,3 +31,5 @@ More significant programs are available within the sister-repository:
   * Terminate the execution of a binary in four different ways.
 * [terminal.z80](terminal.z80)
   * Show the dimensions of the terminal we're running within.
+* [unimpl.z80](unimpl.z80)
+  * Attempt to call a BDOS function which isn't implemented.

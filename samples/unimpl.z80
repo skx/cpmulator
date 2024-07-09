@@ -1,0 +1,13 @@
+;; unimpl.z80 - A program calling a syscall which isn't implemented
+;;
+;;
+
+        ORG 0x0100
+
+; invalid-call; reached
+        LD C, 99
+        call 0x0005
+
+; exit-call; not reached
+;        LD      C,0x00
+;        CALL    0x0005
