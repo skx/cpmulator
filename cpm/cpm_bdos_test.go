@@ -181,7 +181,10 @@ func TestFileSize(t *testing.T) {
 
 		// Create a named file with the given size
 		name := "TEST.TXT"
-		create(name, sz)
+		err := create(name, sz)
+		if err != nil {
+			t.Fatalf("failed to create")
+		}
 
 		// Create an FCB
 		fcbPtr := fcb.FromString(name)
@@ -258,17 +261,50 @@ func TestBDOSCoverage(t *testing.T) {
 	}
 	c.Memory = new(memory.Memory)
 
-	BdosSysCallBDOSVersion(c)
-	BdosSysCallDirectScreenFunctions(c)
-	BdosSysCallDriveAlloc(c)
-	BdosSysCallDriveROVec(c)
-	BdosSysCallDriveReset(c)
-	BdosSysCallDriveSetRO(c)
-	BdosSysCallErrorMode(c)
-	BdosSysCallGetDriveDPB(c)
-	BdosSysCallLoginVec(c)
-	BdosSysCallSetFileAttributes(c)
-	BdosSysCallTime(c)
+	err = BdosSysCallBDOSVersion(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	err = BdosSysCallDirectScreenFunctions(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	err = BdosSysCallDriveAlloc(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	err = BdosSysCallDriveROVec(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	err = BdosSysCallDriveReset(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	err = BdosSysCallDriveSetRO(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	err = BdosSysCallErrorMode(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	err = BdosSysCallGetDriveDPB(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	err = BdosSysCallLoginVec(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	err = BdosSysCallSetFileAttributes(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	err = BdosSysCallTime(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
 }
 
 // TestMakeFile tests our file creation handler

@@ -15,27 +15,47 @@ func TestStatus(t *testing.T) {
 		t.Fatalf("failed to create CPM")
 	}
 
-	BiosSysCallConsoleStatus(c)
+	err = BiosSysCallConsoleStatus(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+
 	if c.CPU.States.AF.Hi != 0x00 {
 		t.Fatalf("console status was wrong")
 	}
 
-	BiosSysCallPrinterStatus(c)
+	err = BiosSysCallPrinterStatus(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+
 	if c.CPU.States.AF.Hi != 0xff {
 		t.Fatalf("printer status was wrong")
 	}
 
-	BiosSysCallScreenOutputStatus(c)
+	err = BiosSysCallScreenOutputStatus(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+
 	if c.CPU.States.AF.Hi != 0xff {
 		t.Fatalf("screen status was wrong")
 	}
 
-	BiosSysCallAuxInputStatus(c)
+	err = BiosSysCallAuxInputStatus(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+
 	if c.CPU.States.AF.Hi != 0xff {
 		t.Fatalf("aux input status was wrong")
 	}
 
-	BiosSysCallAuxOutputStatus(c)
+	err = BiosSysCallAuxOutputStatus(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+
 	if c.CPU.States.AF.Hi != 0xff {
 		t.Fatalf("aux output status was wrong")
 	}

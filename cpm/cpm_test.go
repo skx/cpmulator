@@ -22,9 +22,19 @@ func TestSimple(t *testing.T) {
 	// Write a simple character to the output
 	//
 	// Since our driver is "null" this will be silently discarded
-	BiosSysCallConsoleOutput(obj)
-	BdosSysCallAuxWrite(obj)
-	BdosSysCallWriteChar(obj)
+	err = BiosSysCallConsoleOutput(obj)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+
+	err = BdosSysCallAuxWrite(obj)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	err = BdosSysCallWriteChar(obj)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
 
 	// Write a string of three bytes to the console - again discarded
 	obj.CPU.States.DE.SetU16(0xfe00)
@@ -32,7 +42,10 @@ func TestSimple(t *testing.T) {
 	obj.Memory.Set(0xfe01, 'k')
 	obj.Memory.Set(0xfe02, 'x')
 	obj.Memory.Set(0xfe03, '$')
-	BdosSysCallWriteString(obj)
+	err = BdosSysCallWriteString(obj)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
 
 	// Confirm the output driver is null, as expected
 	if obj.GetOutputDriver() != "null" {
