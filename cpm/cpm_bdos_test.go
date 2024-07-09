@@ -1,6 +1,7 @@
 package cpm
 
 import (
+	"errors"
 	"os"
 	"testing"
 
@@ -8,6 +9,149 @@ import (
 	"github.com/skx/cpmulator/memory"
 )
 
+func TestDriveGetSet(t *testing.T) {
+
+	// Create a new helper
+	c, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	c.Memory = new(memory.Memory)
+
+	// Get the drive, wahtever it is
+	err = BdosSysCallDriveGet(c)
+	if err != nil {
+		t.Fatalf("failed to call CP/M")
+	}
+
+	// Set a drive
+	c.CPU.States.AF.Hi = 3
+	err = BdosSysCallDriveSet(c)
+	if err != nil {
+		t.Fatalf("failed to call CP/M")
+	}
+	cur := c.CPU.States.AF.Hi
+
+	// Get the (updated)
+	err = BdosSysCallDriveGet(c)
+	if err != nil {
+		t.Fatalf("failed to call CP/M")
+	}
+	if c.CPU.States.AF.Hi != 3 || c.CPU.States.AF.Hi == cur {
+		t.Fatalf("setting the drive failed got %d", c.CPU.States.AF.Hi)
+	}
+
+	// Set a drive to a bogus value
+	c.CPU.States.AF.Hi = 0xff
+	err = BdosSysCallDriveSet(c)
+	if err != nil {
+		t.Fatalf("failed to call CP/M")
+	}
+
+	// Get the (updated)
+	err = BdosSysCallDriveGet(c)
+	if err != nil {
+		t.Fatalf("failed to call CP/M")
+	}
+	if c.CPU.States.AF.Hi != 15 {
+		t.Fatalf("setting the drive failed got %d - should have been P:", c.CPU.States.AF.Hi)
+	}
+
+}
+
+func TestSetDMA(t *testing.T) {
+
+	// Create a new helper
+	c, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	c.Memory = new(memory.Memory)
+
+	if c.dma != 0x80 {
+		t.Fatalf("bogus initial DMA")
+	}
+
+	c.CPU.States.DE.SetU16(0x1234)
+	err = BdosSysCallSetDMA(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+
+	if c.dma != 0x1234 {
+		t.Fatalf("failed ot update dma")
+	}
+}
+
+func TestUserNumbeR(t *testing.T) {
+
+	// Create a new helper
+	c, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	c.Memory = new(memory.Memory)
+
+	// set to user 5
+	c.CPU.States.DE.Lo = 5
+	err = BdosSysCallUserNumber(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+
+	// get the user
+	if c.userNumber != 5 {
+		t.Fatalf("failed to set user number")
+	}
+
+	// now get properly
+	c.CPU.States.DE.Lo = 0xff
+	err = BdosSysCallUserNumber(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	if c.CPU.States.AF.Hi != 05 {
+		t.Fatalf("retriving user number failed")
+	}
+
+}
+func TestDriveReset(t *testing.T) {
+
+	getState := func() uint8 {
+		// Create a new helper
+		c, err := New()
+		if err != nil {
+			t.Fatalf("failed to create CPM")
+		}
+		c.Memory = new(memory.Memory)
+
+		c.SetDrives(false)
+
+		err = BdosSysCallDriveAllReset(c)
+		if err != nil {
+			t.Fatalf("reset drive call failed")
+		}
+		return c.CPU.States.AF.Hi
+	}
+
+	if getState() != 0x00 {
+		t.Fatalf("getState != 0")
+	}
+
+	// Create a file with "$" in it
+	name := "NA$E.$$$"
+	_, err := os.Create(name)
+	if err != nil {
+		t.Fatalf("failed to create $-file")
+	}
+	defer os.Remove(name)
+
+	// Now reset again and we should see 0xFF to trigger
+	// the submit.com behaviour
+	if getState() != 0xff {
+		t.Fatalf("getState != 0xff")
+	}
+}
 func TestFileSize(t *testing.T) {
 
 	create := func(name string, size int) error {
@@ -19,7 +163,7 @@ func TestFileSize(t *testing.T) {
 
 		d := []byte{0x00}
 		for size > 0 {
-			f.Write(d)
+			_, _ = f.Write(d)
 			size--
 		}
 		return nil
@@ -37,7 +181,10 @@ func TestFileSize(t *testing.T) {
 
 		// Create a named file with the given size
 		name := "TEST.TXT"
-		create(name, sz)
+		err := create(name, sz)
+		if err != nil {
+			t.Fatalf("failed to create")
+		}
 
 		// Create an FCB
 		fcbPtr := fcb.FromString(name)
@@ -103,5 +250,167 @@ func TestIOByte(t *testing.T) {
 	if c.CPU.States.AF.Hi != 0xfe {
 		t.Fatalf("unexpected updated IO byte")
 	}
+}
+
+func TestBDOSCoverage(t *testing.T) {
+
+	// Create a new helper
+	c, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	c.Memory = new(memory.Memory)
+
+	err = BdosSysCallBDOSVersion(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	err = BdosSysCallDirectScreenFunctions(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	err = BdosSysCallDriveAlloc(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	err = BdosSysCallDriveROVec(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	err = BdosSysCallDriveReset(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	err = BdosSysCallDriveSetRO(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	err = BdosSysCallErrorMode(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	err = BdosSysCallGetDriveDPB(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	err = BdosSysCallLoginVec(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	err = BdosSysCallSetFileAttributes(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	err = BdosSysCallTime(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+}
+
+// TestMakeFile tests our file creation handler
+func TestMakeFile(t *testing.T) {
+
+	// Create a new helper
+	c, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	c.Memory = new(memory.Memory)
+
+	// Files created in "."
+	c.SetDrives(false)
+
+	fileExists := func(path string) bool {
+		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+			return false
+		}
+		return true
+	}
+
+	// Create an FCB pointing to a file
+	name := "MAKE.ME"
+	if fileExists(name) {
+		t.Fatalf("file already exists")
+	}
+
+	fcbPtr := fcb.FromString(name)
+	fcbPtr.Drive = 5
+	c.Memory.SetRange(0x0200, fcbPtr.AsBytes()...)
+
+	// Call the creation function
+	c.CPU.States.DE.SetU16(0x0200)
+	err = BdosSysCallMakeFile(c)
+	if err != nil {
+		t.Fatalf("error calling CP/M")
+	}
+
+	if c.CPU.States.AF.Hi != 0x00 {
+		t.Fatalf("creation failed")
+	}
+	if !fileExists(name) {
+		t.Fatalf("failed to create file")
+	}
+
+	// Try to create a file from a null FCB
+	// Here we're relying on the RAM being nulls
+	c.CPU.States.DE.SetU16(0x1200)
+	err = BdosSysCallMakeFile(c)
+	if err != nil {
+		t.Fatalf("error calling CP/M")
+	}
+	if c.CPU.States.AF.Hi != 0xff {
+		t.Fatalf("expected error with empty file")
+	}
+
+	// Delete the file, if it was present
+	os.Remove(name)
+}
+
+func TestDelete(t *testing.T) {
+
+	// Create a new helper
+	c, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	c.Memory = new(memory.Memory)
+
+	// Files created in "."
+	c.SetDrives(false)
+
+	// Create a file
+	name := "DELETE.ME"
+	_, err = os.Create(name)
+	if err != nil {
+		t.Fatalf("failed to create $-file")
+	}
+
+	fileExists := func(path string) bool {
+		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+			return false
+		}
+		return true
+	}
+
+	fcbPtr := fcb.FromString(name)
+	fcbPtr.Drive = 3
+	c.Memory.SetRange(0x0200, fcbPtr.AsBytes()...)
+
+	// Call the deletion function
+	c.CPU.States.DE.SetU16(0x0200)
+	err = BdosSysCallDeleteFile(c)
+	if err != nil {
+		t.Fatalf("error calling CP/M")
+	}
+
+	if c.CPU.States.AF.Hi != 0x00 {
+		t.Fatalf("delete failed")
+	}
+	if fileExists(name) {
+		t.Fatalf("failed to delete file")
+	}
+
+	// Delete the file, if it was present
+	os.Remove(name)
 
 }

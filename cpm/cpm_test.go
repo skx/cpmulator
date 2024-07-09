@@ -3,6 +3,8 @@ package cpm
 import (
 	"os"
 	"testing"
+
+	"github.com/skx/cpmulator/memory"
 )
 
 // TestSimple ensures the most basic program runs
@@ -14,7 +16,38 @@ func TestSimple(t *testing.T) {
 		t.Fatalf("failed to create CPM")
 	}
 
-	// Confirm the output
+	// Ensure we have memory
+	obj.Memory = new(memory.Memory)
+
+	// Write a simple character to the output
+	//
+	// Since our driver is "null" this will be silently discarded
+	err = BiosSysCallConsoleOutput(obj)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+
+	err = BdosSysCallAuxWrite(obj)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	err = BdosSysCallWriteChar(obj)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+
+	// Write a string of three bytes to the console - again discarded
+	obj.CPU.States.DE.SetU16(0xfe00)
+	obj.Memory.Set(0xfe00, 's')
+	obj.Memory.Set(0xfe01, 'k')
+	obj.Memory.Set(0xfe02, 'x')
+	obj.Memory.Set(0xfe03, '$')
+	err = BdosSysCallWriteString(obj)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+
+	// Confirm the output driver is null, as expected
 	if obj.GetOutputDriver() != "null" {
 		t.Fatalf("console driver name mismatch!")
 	}
@@ -216,8 +249,8 @@ func TestDrives(t *testing.T) {
 	}
 }
 
-// TestCoverage is just coverage messup
-func TestCoverage(t *testing.T) {
+// TestCPMCoverage is just coverage messup
+func TestCPMCoverage(t *testing.T) {
 
 	obj, err := New()
 	if err != nil {

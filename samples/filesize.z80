@@ -58,7 +58,6 @@ exit_fn:
 
 
 show_a_register:
-PRHEXA:
 	PUSH	AF		; save right nibble
 	RRCA			; move left nibble to right
 	RRCA
@@ -75,7 +74,7 @@ PRHEX:
 	LD      E,A
         LD      C, 2
         CALL    0x0005
-        REET
+        RET
 
 
 ;;;
