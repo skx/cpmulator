@@ -5,9 +5,53 @@ import (
 	"os"
 	"testing"
 
+	"github.com/skx/cpmulator/consolein"
 	"github.com/skx/cpmulator/fcb"
 	"github.com/skx/cpmulator/memory"
 )
+
+func TestReadLine(t *testing.T) {
+
+	// Create a new helper
+	c, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	c.Memory = new(memory.Memory)
+
+	// Stuff some fake input
+	c.input = consolein.New()
+	c.input.StuffInput("steve")
+
+	// Setup a buffer, so we can read 5 characters
+	c.Memory.Set(0x0100, 5)
+	c.CPU.States.DE.SetU16(0x0100)
+
+	// Read it
+	err = BdosSysCallReadString(c)
+	if err != nil {
+		t.Fatalf("error reading CPM")
+	}
+
+	// How much did we get
+	got := c.Memory.Get(0x0101)
+	if got != 05 {
+		t.Fatalf("returned wrong amount")
+	}
+
+	// What did we get?
+	text := ""
+	i := 0
+	for i < int(got) {
+		text += string(c.Memory.Get(uint16(0x0102 + i)))
+		i++
+	}
+
+	if text != "steve" {
+		t.Fatalf("wrong text received")
+	}
+
+}
 
 func TestDriveGetSet(t *testing.T) {
 
