@@ -23,7 +23,6 @@ func TestDriveGetSet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to call CP/M")
 	}
-	cur := c.CPU.States.AF.Hi
 
 	// Set a drive
 	c.CPU.States.AF.Hi = 3
@@ -31,7 +30,7 @@ func TestDriveGetSet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to call CP/M")
 	}
-	cur = c.CPU.States.AF.Hi
+	cur := c.CPU.States.AF.Hi
 
 	// Get the (updated)
 	err = BdosSysCallDriveGet(c)
@@ -164,7 +163,7 @@ func TestFileSize(t *testing.T) {
 
 		d := []byte{0x00}
 		for size > 0 {
-			f.Write(d)
+			_, _ = f.Write(d)
 			size--
 		}
 		return nil
