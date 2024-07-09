@@ -227,7 +227,7 @@ func BdosSysCallReadString(cpm *CPM) error {
 	}
 
 	// First byte is the max len
-	max := cpm.CPU.Memory.Get(addr)
+	max := cpm.Memory.Get(addr)
 
 	// read the input
 	text, err := cpm.input.ReadLine(max)
@@ -245,12 +245,12 @@ func BdosSysCallReadString(cpm *CPM) error {
 
 	// addr[0] is the size of the input buffer
 	// addr[1] should be the size of input read, set it:
-	cpm.CPU.Memory.Set(addr+1, uint8(len(text)))
+	cpm.Memory.Set(addr+1, uint8(len(text)))
 
 	// addr[2+] should be the text
 	i := 0
 	for i < len(text) {
-		cpm.CPU.Memory.Set(uint16(addr+2+uint16(i)), text[i])
+		cpm.Memory.Set(uint16(addr+2+uint16(i)), text[i])
 		i++
 	}
 
