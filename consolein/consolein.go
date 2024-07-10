@@ -86,6 +86,11 @@ func (ci *ConsoleIn) GetInterruptCount() int {
 // and zork doesn't run.
 func (ci *ConsoleIn) PendingInput() bool {
 
+	// Do we have faked/stuffed input to process?
+	if len(ci.stuffed) > 0 {
+		return true
+	}
+
 	// switch stdin into 'raw' mode
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
@@ -110,6 +115,13 @@ func (ci *ConsoleIn) PendingInput() bool {
 //
 // NOTE: This function should not echo keystrokes which are entered.
 func (ci *ConsoleIn) BlockForCharacterNoEcho() (byte, error) {
+
+	// Do we have faked/stuffed input to process?
+	if len(ci.stuffed) > 0 {
+		c := ci.stuffed[0]
+		ci.stuffed = ci.stuffed[:1]
+		return c, nil
+	}
 
 	// Do we need to change state?  If so then do it.
 	if ci.State != NoEcho {
@@ -144,6 +156,13 @@ func (ci *ConsoleIn) BlockForCharacterNoEcho() (byte, error) {
 //
 // NOTE: Characters should be echo'd as they are input.
 func (ci *ConsoleIn) BlockForCharacterWithEcho() (byte, error) {
+
+	// Do we have faked/stuffed input to process?
+	if len(ci.stuffed) > 0 {
+		c := ci.stuffed[0]
+		ci.stuffed = ci.stuffed[:1]
+		return c, nil
+	}
 
 	// Do we need to change state?  If so then do it.
 	if ci.State != Echo {

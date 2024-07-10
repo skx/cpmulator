@@ -11,6 +11,84 @@ import (
 	"github.com/skx/cpmulator/static"
 )
 
+func TestConsoleInput(t *testing.T) {
+	// Create a new helper
+	c, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	c.Memory = new(memory.Memory)
+	c.fixupRAM()
+	defer c.Cleanup()
+
+	// ReadChar
+	c.input.StuffInput("s")
+	err = BdosSysCallReadChar(c)
+	if err != nil {
+		t.Fatalf("failed to call CP/M")
+	}
+	if c.CPU.States.AF.Hi != 's' {
+		t.Fatalf("got the wrong input")
+	}
+
+	// AuxRead
+	c.input.StuffInput("k")
+	err = BdosSysCallAuxRead(c)
+	if err != nil {
+		t.Fatalf("failed to call CP/M")
+	}
+	if c.CPU.States.AF.Hi != 'k' {
+		t.Fatalf("got the wrong input")
+	}
+
+	// RawIO
+	c.input.StuffInput("x")
+	c.CPU.States.DE.Lo = 0xFF
+	err = BdosSysCallRawIO(c)
+	if err != nil {
+		t.Fatalf("failed to call CP/M")
+	}
+	if c.CPU.States.AF.Hi != 'x' {
+		t.Fatalf("got the wrong input")
+	}
+
+	c.input.StuffInput("x")
+	c.CPU.States.DE.Lo = 0xFE
+	err = BdosSysCallRawIO(c)
+	if err != nil {
+		t.Fatalf("failed to call CP/M")
+	}
+	if c.CPU.States.AF.Hi != 0xFF {
+		t.Fatalf("got the wrong response")
+	}
+
+	c.input.StuffInput("1")
+	c.CPU.States.DE.Lo = 0xFD
+	err = BdosSysCallRawIO(c)
+	if err != nil {
+		t.Fatalf("failed to call CP/M")
+	}
+	if c.CPU.States.AF.Hi != '1' {
+		t.Fatalf("got the wrong response")
+	}
+
+	c.input.StuffInput("1")
+	c.CPU.States.DE.Lo = 42
+	err = BdosSysCallRawIO(c)
+	if err != nil {
+		t.Fatalf("failed to call CP/M")
+	}
+
+	c.input.StuffInput("1")
+	err = BdosSysCallConsoleStatus(c)
+	if err != nil {
+		t.Fatalf("failed to call CP/M")
+	}
+	if c.CPU.States.AF.Hi != 0xFF {
+		t.Fatalf("got the wrong response")
+	}
+}
+
 func TestUnimplemented(t *testing.T) {
 	// Create a new helper
 	c, err := New()

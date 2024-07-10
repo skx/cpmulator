@@ -19,8 +19,16 @@ func TestStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to call CPM")
 	}
-
 	if c.CPU.States.AF.Hi != 0x00 {
+		t.Fatalf("console status was wrong")
+	}
+
+	c.input.StuffInput("S")
+	err = BiosSysCallConsoleStatus(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	if c.CPU.States.AF.Hi != 0xFF {
 		t.Fatalf("console status was wrong")
 	}
 
@@ -274,6 +282,27 @@ func TestCustom(t *testing.T) {
 	}
 	if c.CPU.States.BC.Lo != 0x01 {
 		t.Fatalf("setting flag failed")
+	}
+
+}
+
+func TestBIOSConsoleInput(t *testing.T) {
+	// Create a new helper
+	c, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	c.Memory = new(memory.Memory)
+	c.fixupRAM()
+	defer c.Cleanup()
+
+	c.input.StuffInput("s")
+	err = BiosSysCallConsoleInput(c)
+	if err != nil {
+		t.Fatalf("failed to call CP/M")
+	}
+	if c.CPU.States.AF.Hi != 's' {
+		t.Fatalf("got the wrong input")
 	}
 
 }
