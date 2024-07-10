@@ -108,6 +108,61 @@ func TestBoot(t *testing.T) {
 
 }
 
+// TestFind invokes FindFirst and FindNext
+func TestFind(t *testing.T) {
+	// Create a new helper
+	c, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	c.Memory = new(memory.Memory)
+
+	c.fixupRAM()
+	c.SetDrives(false)
+	defer c.Cleanup()
+
+	// Create a pattern in an FCB
+	name := "*.GO"
+	fcbPtr := fcb.FromString(name)
+	fcbPtr.Drive = 5
+
+	// Save it into RAM
+	c.Memory.SetRange(0x0200, fcbPtr.AsBytes()...)
+
+	found := 0
+
+	// Call FindFirst
+	c.CPU.States.DE.SetU16(0x0200)
+	err = BdosSysCallFindFirst(c)
+
+	if err != nil {
+		t.Fatalf("error calling find first:err")
+	}
+	if c.CPU.States.AF.Hi != 0x00 {
+		t.Fatalf("error calling find first:A")
+	}
+	found++
+
+	// Now we call findNext, until it fails
+	for true {
+		c.CPU.States.DE.SetU16(0x0200)
+		err = BdosSysCallFindNext(c)
+
+		if err != nil {
+			t.Fatalf("error calling find next:err")
+		}
+		if c.CPU.States.AF.Hi != 0x00 {
+			break
+		}
+		found++
+
+	}
+
+	if found != 5 {
+		t.Fatalf("found wrong number of files, got %d", found)
+	}
+}
+
 func TestReadLine(t *testing.T) {
 
 	// Create a new helper
