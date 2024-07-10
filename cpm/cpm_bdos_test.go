@@ -1025,3 +1025,106 @@ func TestFileOpen(t *testing.T) {
 	}
 
 }
+
+func TestRead(t *testing.T) {
+
+	// Create a new helper
+	c, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	c.Memory = new(memory.Memory)
+
+	// Files created in "."
+	c.SetDrives(false)
+
+	// Create a file
+	name := "READ.ME"
+
+	// Create a binary
+	var file *os.File
+	file, err = os.OpenFile(name, os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		t.Fatalf("failed to create file")
+	}
+	defer os.Remove(name)
+
+	// Write some data there
+	_, err = file.Write([]byte{0x01, 0x02, 0xCD, 0xFF})
+	if err != nil {
+		t.Fatalf("failed to write to file")
+	}
+
+	// Close the file
+	err = file.Close()
+	if err != nil {
+		t.Fatalf("failed to close file")
+	}
+
+	fcbPtr := fcb.FromString(name)
+	fcbPtr.Drive = 5
+	c.Memory.SetRange(0x0200, fcbPtr.AsBytes()...)
+
+	// Open the file
+	c.CPU.States.DE.SetU16(0x0200)
+	err = BdosSysCallFileOpen(c)
+	if err != nil {
+		t.Fatalf("failed to open file: err")
+	}
+	if c.CPU.States.AF.Hi != 0x00 {
+		t.Fatalf("failed to open file: A=%02X", c.CPU.States.AF.Hi)
+	}
+
+	// Call the read function
+	c.CPU.States.DE.SetU16(0x0200)
+	err = BdosSysCallRead(c)
+	if err != nil {
+		t.Fatalf("error calling CP/M")
+	}
+
+	if c.CPU.States.AF.Hi != 0x00 {
+		t.Fatalf("read failed")
+	}
+
+	// Ensure the data is correct
+	if c.Memory.Get(c.dma) != 0x01 {
+		t.Fatalf("wrong value read")
+	}
+	if c.Memory.Get(c.dma+1) != 0x02 {
+		t.Fatalf("wrong value read")
+	}
+	if c.Memory.Get(c.dma+2) != 0xCD {
+		t.Fatalf("wrong value read")
+	}
+	if c.Memory.Get(c.dma+3) != 0xFF {
+		t.Fatalf("wrong value read")
+	}
+
+	//
+	// Read from a virtual file
+	//
+	c.SetStaticFilesystem(static.GetContent())
+	fcbPtr = fcb.FromString("A:!CTRLC.COM")
+	c.Memory.SetRange(0x0200, fcbPtr.AsBytes()...)
+
+	// Call Open
+	c.CPU.States.DE.SetU16(0x0200)
+	err = BdosSysCallFileOpen(c)
+	if err != nil {
+		t.Fatalf("failed to open embedded file: err")
+	}
+	if c.CPU.States.AF.Hi != 0x00 {
+		t.Fatalf("failed to open embedded file: A=%02X", c.CPU.States.AF.Hi)
+	}
+
+	// Call read
+	c.CPU.States.DE.SetU16(0x0200)
+	err = BdosSysCallRead(c)
+	if err != nil {
+		t.Fatalf("error calling CP/M")
+	}
+	if c.CPU.States.AF.Hi != 0x00 {
+		t.Fatalf("read (virtual) failed")
+	}
+
+}
