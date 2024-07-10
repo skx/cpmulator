@@ -216,8 +216,7 @@ func main() {
 	}
 
 	// Load any embedded files within our binary
-	files := static.Content
-	obj.SetStaticFilesystem(files)
+	obj.SetStaticFilesystem(static.GetContent())
 
 	// Default to not using subdirectories for drives
 	obj.SetDrives(false)

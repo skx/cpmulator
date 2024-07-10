@@ -13,6 +13,10 @@ func TestFCBSize(t *testing.T) {
 	if len(b) != 36 {
 		t.Fatalf("FCB struct is %d bytes", len(b))
 	}
+
+	if x.GetFileName() != "BLAH" {
+		t.Fatalf("wrong name returned, got %v", x.GetFileName())
+	}
 }
 
 // Test we can convert an FCB to bytes, and back, without losing data in the round-trip.
@@ -98,6 +102,9 @@ func TestFCBFromString(t *testing.T) {
 	if f.GetType() != "LON" {
 		t.Fatalf("unexpected suffix '%v'", f.GetType())
 	}
+	if f.GetFileName() != "THIS-IS-.LON" {
+		t.Fatalf("wrong name returned, got %v", f.GetFileName())
+	}
 
 	// wildcard
 	f = FromString("c:steve*.*")
@@ -172,5 +179,78 @@ func TestDoesMatch(t *testing.T) {
 				t.Fatalf("file %s did not match pattern %s and it should have done", joo, test.pattern)
 			}
 		}
+	}
+}
+
+// TestGetMatches ensures we can use our matcher.
+func TestGetMatches(t *testing.T) {
+
+	f := FromString("*.GO")
+
+	out, err := f.GetMatches("..")
+	if err != nil {
+		t.Fatalf("failed to get matches")
+	}
+
+	if len(out) != 1 {
+		t.Fatalf("unexpected number of matches")
+	}
+	if out[0].Host != "../main.go" {
+		t.Fatalf("unexpected name %s", out[0].Host)
+	}
+
+	_, err = f.GetMatches("!>>//path/not/found")
+	if err == nil {
+		t.Fatalf("expected error on bogus directory, got none")
+	}
+}
+
+// TestOffset does a trivial test that increases go in steps of 128
+func TestOffset(t *testing.T) {
+
+	f := FromString("test")
+
+	// before
+	cur := f.GetSequentialOffset()
+	if cur != 0 {
+		t.Fatalf("unexpected initial offset")
+	}
+
+	// bump
+	f.IncreaseSequentialOffset()
+
+	// after
+	after := f.GetSequentialOffset()
+	if after == 0 {
+		t.Fatalf("unexpected offset after increase")
+	}
+
+	// Should have gone up by 128
+	if after-128 != cur {
+		t.Fatalf("offset should rise by 128")
+	}
+
+	// Do a bunch more increases
+	remain := 128 * 128
+	for remain > 0 {
+		f.IncreaseSequentialOffset()
+		remain--
+	}
+
+	if f.GetSequentialOffset()%128 != 0 {
+		t.Fatalf("weird remainder - we should rise in 128-steps")
+	}
+
+}
+
+// TestSuffix ensures that the non-printable extensions are replaced with spaces, as expected.
+func TestSuffix(t *testing.T) {
+
+	b := make([]byte, 128)
+	f := FromBytes(b)
+
+	typ := f.GetType()
+	if typ != "   " {
+		t.Fatalf("type was weird '%s'", typ)
 	}
 }
