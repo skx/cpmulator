@@ -8,6 +8,7 @@ import (
 	"github.com/skx/cpmulator/consolein"
 	"github.com/skx/cpmulator/fcb"
 	"github.com/skx/cpmulator/memory"
+	"github.com/skx/cpmulator/static"
 )
 
 func TestUnimplemented(t *testing.T) {
@@ -144,7 +145,7 @@ func TestFind(t *testing.T) {
 	found++
 
 	// Now we call findNext, until it fails
-	for true {
+	for {
 		c.CPU.States.DE.SetU16(0x0200)
 		err = BdosSysCallFindNext(c)
 
@@ -163,6 +164,8 @@ func TestFind(t *testing.T) {
 	}
 }
 
+// TestReadLine does a minimal test on STDIN reading, via the faked/stuffed
+// contents.  We can't use this trick for single bytes though.
 func TestReadLine(t *testing.T) {
 
 	// Create a new helper
@@ -206,6 +209,7 @@ func TestReadLine(t *testing.T) {
 
 }
 
+// TestDriveGetSet tests getting/setting the current drive.
 func TestDriveGetSet(t *testing.T) {
 
 	// Create a new helper
@@ -256,6 +260,7 @@ func TestDriveGetSet(t *testing.T) {
 
 }
 
+// TestSetDMA tests that we can update the DMA address.
 func TestSetDMA(t *testing.T) {
 
 	// Create a new helper
@@ -280,7 +285,8 @@ func TestSetDMA(t *testing.T) {
 	}
 }
 
-func TestUserNumbeR(t *testing.T) {
+// TestUserNumber tests we can get/set the current user-number.
+func TestUserNumber(t *testing.T) {
 
 	// Create a new helper
 	c, err := New()
@@ -310,8 +316,12 @@ func TestUserNumbeR(t *testing.T) {
 	if c.CPU.States.AF.Hi != 05 {
 		t.Fatalf("retriving user number failed")
 	}
-
 }
+
+// TestDriveReset tests that when a $-file is present the
+// drive reset returns a different result, such that SUBMIT.COM
+// works - well more specifically so the CCP recognizes the file
+// that submit.com created.
 func TestDriveReset(t *testing.T) {
 
 	getState := func() uint8 {
@@ -349,6 +359,9 @@ func TestDriveReset(t *testing.T) {
 		t.Fatalf("getState != 0xff")
 	}
 }
+
+// TestFileSize is incomplete because it doesn't handle
+// virtual files - TODO
 func TestFileSize(t *testing.T) {
 
 	create := func(name string, size int) error {
@@ -449,6 +462,9 @@ func TestIOByte(t *testing.T) {
 	}
 }
 
+// TestBDOSCoverage adds calls to the trivial functions that
+// don't really get implemented.  It just calls them to
+// increase our coverage.
 func TestBDOSCoverage(t *testing.T) {
 
 	// Create a new helper
@@ -458,6 +474,15 @@ func TestBDOSCoverage(t *testing.T) {
 	}
 	c.Memory = new(memory.Memory)
 
+	for _, handler := range c.BDOSSyscalls {
+
+		if handler.Fake {
+			err := handler.Handler(c)
+			if err != nil {
+				t.Fatalf("error calling %s\n", handler.Desc)
+			}
+		}
+	}
 	err = BdosSysCallBDOSVersion(c)
 	if err != nil {
 		t.Fatalf("failed to call CPM")
@@ -579,6 +604,7 @@ func TestMakeFile(t *testing.T) {
 	os.Remove(name)
 }
 
+// TestDelete tests we can delete a file.
 func TestDelete(t *testing.T) {
 
 	// Create a new helper
@@ -628,6 +654,7 @@ func TestDelete(t *testing.T) {
 
 }
 
+// TestRename tests we can perform a simple rename.
 func TestRename(t *testing.T) {
 
 	// Create a new helper
@@ -698,6 +725,225 @@ func TestRename(t *testing.T) {
 	}
 	if c.CPU.States.AF.Hi != 0xff {
 		t.Fatalf("renaming to an impossible name succeeded")
+	}
+
+}
+
+// TestWriteFile tests writing a sequential record to an open file.
+func TestWriteFile(t *testing.T) {
+
+	// Create a new helper
+	c, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	c.Memory = new(memory.Memory)
+
+	// Files created in "."
+	c.SetDrives(false)
+
+	fileExists := func(path string) bool {
+		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+			return false
+		}
+		return true
+	}
+
+	// Create an FCB pointing to a file
+	name := "WRITE.ME"
+	if fileExists(name) {
+		t.Fatalf("file already exists")
+	}
+
+	fcbPtr := fcb.FromString(name)
+	fcbPtr.Drive = 5
+	c.Memory.SetRange(0x0200, fcbPtr.AsBytes()...)
+
+	// Call the creation function
+	c.CPU.States.DE.SetU16(0x0200)
+	err = BdosSysCallMakeFile(c)
+	if err != nil {
+		t.Fatalf("error calling CP/M")
+	}
+
+	if c.CPU.States.AF.Hi != 0x00 {
+		t.Fatalf("creation failed")
+	}
+	if !fileExists(name) {
+		t.Fatalf("failed to create file")
+	}
+
+	//
+	// Now we've created the file we'll write
+	// to it.
+	//
+	// Fill the DMA area
+	c.Memory.Set(c.dma+0, 'S')
+	c.Memory.Set(c.dma+1, 't')
+	c.Memory.Set(c.dma+2, 'e')
+	c.Memory.Set(c.dma+3, 'v')
+	c.Memory.Set(c.dma+4, 'e')
+	c.Memory.Set(c.dma+5, 0x00)
+
+	err = BdosSysCallWrite(c)
+	if err != nil {
+		t.Fatalf("got error writing to file: err")
+	}
+	if c.CPU.States.AF.Hi != 0x00 {
+		t.Fatalf("got error writing to file: A")
+	}
+
+	// Now we've created it the file will be open
+	// Close it.
+	c.CPU.States.DE.SetU16(0x0200)
+	err = BdosSysCallFileClose(c)
+	if err != nil {
+		t.Fatalf("failed to close file, after creation")
+	}
+
+	// Now we can open it and confirm it has the data we expect
+	var data []byte
+	data, err = os.ReadFile(name)
+	if err != nil {
+		t.Fatalf("failed to read file: %s", err)
+	}
+
+	if len(data) != 128 {
+		t.Fatalf("file created isn't a multiple of the block size")
+	}
+
+	if data[0] != 'S' {
+		t.Fatalf("wrong contents")
+	}
+	if data[1] != 't' {
+		t.Fatalf("wrong contents")
+	}
+	if data[2] != 'e' {
+		t.Fatalf("wrong contents")
+	}
+	if data[3] != 'v' {
+		t.Fatalf("wrong contents")
+	}
+	if data[4] != 'e' {
+		t.Fatalf("wrong contents")
+	}
+	if data[5] != 0x00 {
+		t.Fatalf("wrong contents")
+	}
+
+	// Delete the file, if it was present
+	os.Remove(name)
+
+	//
+	// Now try to write to a file that is not open
+	//
+	data = make([]byte, 200)
+	f := fcb.FromBytes(data)
+	c.Memory.SetRange(0x0200, f.AsBytes()...)
+	c.CPU.States.DE.SetU16(0x0200)
+	err = BdosSysCallWrite(c)
+	if err != nil {
+		t.Fatalf("error calling cp/m")
+	}
+	if c.CPU.States.AF.Hi != 0xff {
+		t.Fatalf("expected A-reg to hold an error")
+	}
+}
+
+// TestReadFile tests reading a sequential record from an open file.
+func TestReadFile(t *testing.T) {
+
+	// Create a new helper
+	c, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	c.Memory = new(memory.Memory)
+
+	// Files created in "."
+	c.SetDrives(false)
+
+	//
+	// Now try to read from a file that is not open
+	//
+	data := make([]byte, 200)
+	f := fcb.FromBytes(data)
+	c.Memory.SetRange(0x0200, f.AsBytes()...)
+	c.CPU.States.DE.SetU16(0x0200)
+	err = BdosSysCallRead(c)
+	if err != nil {
+		t.Fatalf("error calling cp/m")
+	}
+	if c.CPU.States.AF.Hi != 0xff {
+		t.Fatalf("expected A-reg to hold an error")
+	}
+}
+
+// TestFileOpen ensures we can open files.
+// This is incomplete, TODO test virtual files too.
+func TestFileOpen(t *testing.T) {
+	// Create a new helper
+	c, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	c.Memory = new(memory.Memory)
+	c.fixupRAM()
+	c.SetDrives(false)
+	defer c.Cleanup()
+
+	// Create a binary
+
+	var file *os.File
+	name := "OPEN.ME"
+	file, err = os.OpenFile(name, os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		t.Fatalf("failed to create test-file")
+	}
+	file.Close()
+	defer os.Remove(name)
+
+	// Create an FCB pointing to the file
+	fcbPtr := fcb.FromString(name)
+	fcbPtr.Drive = 05
+	c.Memory.SetRange(0x0200, fcbPtr.AsBytes()...)
+
+	// Call Open
+	c.CPU.States.DE.SetU16(0x0200)
+	err = BdosSysCallFileOpen(c)
+	if err != nil {
+		t.Fatalf("failed to open file: err")
+	}
+	if c.CPU.States.AF.Hi != 0x00 {
+		t.Fatalf("failed to open file: A=%02X", c.CPU.States.AF.Hi)
+	}
+
+	// Try to open an embedded file
+	c.SetStaticFilesystem(static.GetContent())
+	fcbPtr = fcb.FromString("A:!CTRLC.COM")
+	c.Memory.SetRange(0x0200, fcbPtr.AsBytes()...)
+
+	// Call Open
+	c.CPU.States.DE.SetU16(0x0200)
+	err = BdosSysCallFileOpen(c)
+	if err != nil {
+		t.Fatalf("failed to open embedded file: err")
+	}
+	if c.CPU.States.AF.Hi != 0x00 {
+		t.Fatalf("failed to open embedded file: A=%02X", c.CPU.States.AF.Hi)
+	}
+
+	// Try to open a file with no name
+	data := make([]byte, 200)
+	f := fcb.FromBytes(data)
+	c.Memory.SetRange(0x0200, f.AsBytes()...)
+	c.CPU.States.DE.SetU16(0x0200)
+	err = BdosSysCallFileOpen(c)
+	if err != nil {
+		t.Fatalf("failed to open file: err")
+	}
+	if c.CPU.States.AF.Hi != 0xFF {
+		t.Fatalf("failed to open file: A=%02X", c.CPU.States.AF.Hi)
 	}
 
 }

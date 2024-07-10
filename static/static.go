@@ -8,4 +8,9 @@ package static
 import "embed"
 
 //go:embed */*
-var Content embed.FS
+var content embed.FS
+
+// GetContent returns the embedded filesystem we store within this package.
+func GetContent() embed.FS {
+	return content
+}

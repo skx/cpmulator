@@ -9,7 +9,7 @@ import (
 func TestStatic(t *testing.T) {
 
 	// Read the subdirectory
-	files, err := Content.ReadDir("A")
+	files, err := GetContent().ReadDir("A")
 	if err != nil {
 		t.Fatalf("error reading contents")
 	}
