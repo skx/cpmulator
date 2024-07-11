@@ -198,6 +198,7 @@ func TestFind(t *testing.T) {
 
 	c.fixupRAM()
 	c.SetDrives(false)
+	c.SetStaticFilesystem(static.GetContent())
 	defer c.Cleanup()
 
 	// Create a pattern in an FCB
@@ -239,6 +240,47 @@ func TestFind(t *testing.T) {
 
 	if found != 5 {
 		t.Fatalf("found wrong number of files, got %d", found)
+	}
+
+	// Try again, this time looking at embedded resources
+	// Create a pattern in an FCB
+	name = "A:!*.COM"
+	fcbPtr = fcb.FromString(name)
+
+	// Save it into RAM
+	c.Memory.SetRange(0x0200, fcbPtr.AsBytes()...)
+
+	found = 0
+
+	// Call FindFirst
+	c.CPU.States.DE.SetU16(0x0200)
+	err = BdosSysCallFindFirst(c)
+
+	if err != nil {
+		t.Fatalf("error calling find first:err")
+	}
+	if c.CPU.States.AF.Hi != 0x00 {
+		t.Fatalf("error calling find first:A")
+	}
+	found++
+
+	// Now we call findNext, until it fails
+	for {
+		c.CPU.States.DE.SetU16(0x0200)
+		err = BdosSysCallFindNext(c)
+
+		if err != nil {
+			t.Fatalf("error calling find next:err")
+		}
+		if c.CPU.States.AF.Hi != 0x00 {
+			break
+		}
+		found++
+
+	}
+
+	if found != 4 {
+		t.Fatalf("found wrong number of embedded files, got %d", found)
 	}
 }
 
@@ -955,6 +997,7 @@ func TestReadFile(t *testing.T) {
 	if c.CPU.States.AF.Hi != 0xff {
 		t.Fatalf("expected A-reg to hold an error")
 	}
+
 }
 
 // TestFileOpen ensures we can open files.
@@ -996,6 +1039,21 @@ func TestFileOpen(t *testing.T) {
 		t.Fatalf("failed to open file: A=%02X", c.CPU.States.AF.Hi)
 	}
 
+	// Try to open a file that doesn't exist
+	fcbPtr = fcb.FromString("invalid.txt")
+	fcbPtr.Drive = 9
+	c.Memory.SetRange(0x0200, fcbPtr.AsBytes()...)
+
+	// Call Open
+	c.CPU.States.DE.SetU16(0x0200)
+	err = BdosSysCallFileOpen(c)
+	if err != nil {
+		t.Fatalf("failed to open file: err")
+	}
+	if c.CPU.States.AF.Hi != 0xFF {
+		t.Fatalf("failed to open file: A=%02X", c.CPU.States.AF.Hi)
+	}
+
 	// Try to open an embedded file
 	c.SetStaticFilesystem(static.GetContent())
 	fcbPtr = fcb.FromString("A:!CTRLC.COM")
@@ -1009,6 +1067,13 @@ func TestFileOpen(t *testing.T) {
 	}
 	if c.CPU.States.AF.Hi != 0x00 {
 		t.Fatalf("failed to open embedded file: A=%02X", c.CPU.States.AF.Hi)
+	}
+
+	// Close the file
+	c.CPU.States.DE.SetU16(0x0200)
+	err = BdosSysCallFileClose(c)
+	if err != nil {
+		t.Fatalf("failed to close embedded file: err")
 	}
 
 	// Try to open a file with no name
@@ -1101,6 +1166,26 @@ func TestRead(t *testing.T) {
 	}
 
 	//
+	// Try a random read too, just for fun
+	//
+	err = BdosSysCallReadRand(c)
+	if err != nil {
+		t.Fatalf("failed read rand")
+	}
+	if c.Memory.Get(c.dma) != 0x01 {
+		t.Fatalf("wrong value read")
+	}
+	if c.Memory.Get(c.dma+1) != 0x02 {
+		t.Fatalf("wrong value read")
+	}
+	if c.Memory.Get(c.dma+2) != 0xCD {
+		t.Fatalf("wrong value read")
+	}
+	if c.Memory.Get(c.dma+3) != 0xFF {
+		t.Fatalf("wrong value read")
+	}
+
+	//
 	// Read from a virtual file
 	//
 	c.SetStaticFilesystem(static.GetContent())
@@ -1125,6 +1210,17 @@ func TestRead(t *testing.T) {
 	}
 	if c.CPU.States.AF.Hi != 0x00 {
 		t.Fatalf("read (virtual) failed")
+	}
+
+	//
+	// Try a random read too, just for fun
+	//
+	err = BdosSysCallReadRand(c)
+	if err != nil {
+		t.Fatalf("error calling CP/M")
+	}
+	if c.CPU.States.AF.Hi != 0x00 {
+		t.Fatalf("read rand (virtual) failed")
 	}
 
 }
