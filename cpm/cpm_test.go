@@ -48,7 +48,7 @@ func TestSimple(t *testing.T) {
 	}
 
 	// Confirm the output driver is null, as expected
-	if obj.GetOutputDriver() != "null" {
+	if obj.GetOutputDriver().GetName() != "null" {
 		t.Fatalf("console driver name mismatch!")
 	}
 	if obj.GetCCPName() != "ccp" {

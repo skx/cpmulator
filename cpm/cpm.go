@@ -522,9 +522,9 @@ func (cpm *CPM) Cleanup() {
 	cpm.input.Reset()
 }
 
-// GetOutputDriver returns the name of our configured output driver.
-func (cpm *CPM) GetOutputDriver() string {
-	return cpm.output.GetName()
+// GetOutputDriver returns the configured output driver.
+func (cpm *CPM) GetOutputDriver() consoleout.ConsoleDriver {
+	return cpm.output.GetDriver()
 }
 
 // GetCCPName returns the name of the CCP we've been configured to load.
@@ -943,7 +943,7 @@ func (cpm *CPM) RunAutoExec() {
 	}
 
 	// OK we have both files
-	cpm.input.StuffInput("SUBMIT AUTOEXEC")
+	cpm.input.StuffInput("SUBMIT AUTOEXEC\n")
 }
 
 // SetStaticFilesystem allows adding a reference to an embedded filesyste,.
@@ -1007,4 +1007,14 @@ func (cpm *CPM) Out(addr uint8, val uint8) {
 	// Invoke the handler, in cpm_bios.go
 	//
 	cpm.BiosHandler(val)
+}
+
+// StuffText inserts text into the read-buffer of the console
+// input-driver.
+//
+// This is used for two purposes; to drive the "SUBMIT AUTOEXEC"
+// integration at run-time, and to support integration tests to be
+// written.
+func (cpm *CPM) StuffText(input string) {
+	cpm.input.StuffInput(input)
 }

@@ -22,7 +22,7 @@ func TestConsoleInput(t *testing.T) {
 	defer c.Cleanup()
 
 	// ReadChar
-	c.input.StuffInput("s")
+	c.StuffText("s")
 	err = BdosSysCallReadChar(c)
 	if err != nil {
 		t.Fatalf("failed to call CP/M")
@@ -32,7 +32,7 @@ func TestConsoleInput(t *testing.T) {
 	}
 
 	// AuxRead
-	c.input.StuffInput("k")
+	c.StuffText("k")
 	err = BdosSysCallAuxRead(c)
 	if err != nil {
 		t.Fatalf("failed to call CP/M")
@@ -42,7 +42,7 @@ func TestConsoleInput(t *testing.T) {
 	}
 
 	// RawIO
-	c.input.StuffInput("x")
+	c.StuffText("x")
 	c.CPU.States.DE.Lo = 0xFF
 	err = BdosSysCallRawIO(c)
 	if err != nil {
@@ -52,7 +52,7 @@ func TestConsoleInput(t *testing.T) {
 		t.Fatalf("got the wrong input")
 	}
 
-	c.input.StuffInput("x")
+	c.StuffText("x")
 	c.CPU.States.DE.Lo = 0xFE
 	err = BdosSysCallRawIO(c)
 	if err != nil {
@@ -62,7 +62,7 @@ func TestConsoleInput(t *testing.T) {
 		t.Fatalf("got the wrong response")
 	}
 
-	c.input.StuffInput("1")
+	c.StuffText("1")
 	c.CPU.States.DE.Lo = 0xFD
 	err = BdosSysCallRawIO(c)
 	if err != nil {
@@ -72,14 +72,14 @@ func TestConsoleInput(t *testing.T) {
 		t.Fatalf("got the wrong response")
 	}
 
-	c.input.StuffInput("1")
+	c.StuffText("1")
 	c.CPU.States.DE.Lo = 42
 	err = BdosSysCallRawIO(c)
 	if err != nil {
 		t.Fatalf("failed to call CP/M")
 	}
 
-	c.input.StuffInput("1")
+	c.StuffText("1")
 	err = BdosSysCallConsoleStatus(c)
 	if err != nil {
 		t.Fatalf("failed to call CP/M")
@@ -297,7 +297,7 @@ func TestReadLine(t *testing.T) {
 
 	// Stuff some fake input
 	c.input = consolein.New()
-	c.input.StuffInput("steve")
+	c.StuffText("steve\n")
 
 	// Setup a buffer, so we can read 5 characters
 	c.Memory.Set(0x0100, 5)
