@@ -27,6 +27,19 @@ type ConsoleDriver interface {
 	SetWriter(io.Writer)
 }
 
+// ConsoleRecorder is an interface that allows returning the contents that
+// have been previously sent to the console.
+//
+// This is used solely for integration tests.
+type ConsoleRecorder interface {
+
+	// GetOutput returns the contents which have been displayed.
+	GetOutput() string
+
+	// Reset removes any stored state.
+	Reset()
+}
+
 // This is a map of known-drivers
 var handlers = struct {
 	m map[string]Constructor
@@ -68,6 +81,11 @@ func New(name string) (*ConsoleOut, error) {
 	}, nil
 }
 
+// GetDriver allows getting our driver at runtime.
+func (co *ConsoleOut) GetDriver() ConsoleDriver {
+	return co.driver
+}
+
 // ChangeDriver allows changing our driver at runtime.
 func (co *ConsoleOut) ChangeDriver(name string) error {
 
@@ -89,12 +107,12 @@ func (co *ConsoleOut) GetName() string {
 
 // GetDrivers returns all available driver-names.
 //
-// We hide the internal "null" driver.
+// We hide the internal "null", and "logger" drivers.
 func (co *ConsoleOut) GetDrivers() []string {
 	valid := []string{}
 
 	for x := range handlers.m {
-		if x != "null" {
+		if x != "null" && x != "logger" {
 			valid = append(valid, x)
 		}
 	}
