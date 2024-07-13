@@ -119,7 +119,7 @@ func (ci *ConsoleIn) BlockForCharacterNoEcho() (byte, error) {
 	// Do we have faked/stuffed input to process?
 	if len(ci.stuffed) > 0 {
 		c := ci.stuffed[0]
-		ci.stuffed = ci.stuffed[:1]
+		ci.stuffed = ci.stuffed[1:]
 		return c, nil
 	}
 
@@ -160,7 +160,7 @@ func (ci *ConsoleIn) BlockForCharacterWithEcho() (byte, error) {
 	// Do we have faked/stuffed input to process?
 	if len(ci.stuffed) > 0 {
 		c := ci.stuffed[0]
-		ci.stuffed = ci.stuffed[:1]
+		ci.stuffed = ci.stuffed[1:]
 		return c, nil
 	}
 
@@ -204,16 +204,6 @@ func (ci *ConsoleIn) BlockForCharacterWithEcho() (byte, error) {
 // NOTE: We erase the input buffer with ESC, and allow history movement via
 // Ctrl-p and Ctrl-n.
 func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
-
-	// Do we have faked/stuffed input to process?
-	if len(ci.stuffed) > 0 {
-
-		// If so return that fake output, and remove it
-		// to ensure it is only processed once.
-		text := ci.stuffed
-		ci.stuffed = ""
-		return text, nil
-	}
 
 	// Do we need to change state?  If so then do it.
 	if ci.State != Echo {
