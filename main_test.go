@@ -46,8 +46,13 @@ func TestDriveChange(t *testing.T) {
 	out = strings.ReplaceAll(out, "\n", "")
 	out = strings.ReplaceAll(out, "\r", "")
 	if out != `A>C>C>` {
-
 		t.Fatalf("unexpected output '%v'", out)
+	}
+
+	// Reset the text - confirm it is now empty
+	l.Reset()
+	if l.GetOutput() != "" {
+		t.Fatalf("resetting our history didn't work")
 	}
 }
 
@@ -122,5 +127,11 @@ func TestCompleteLighthouse(t *testing.T) {
 	}
 	if !strings.Contains(out, "You won") {
 		t.Fatalf("failed to win")
+	}
+
+	// Reset the text - confirm it is now empty
+	l.Reset()
+	if l.GetOutput() != "" {
+		t.Fatalf("resetting our history didn't work")
 	}
 }
