@@ -298,7 +298,7 @@ func main() {
 	}
 
 	// Show a startup-banner.
-	fmt.Printf("\ncpmulator %s loaded CCP %s, with %s output driver\n", cpmver.GetVersionString(), obj.GetCCPName(), obj.GetOutputDriver())
+	fmt.Printf("\ncpmulator %s loaded CCP %s, with %s output driver\n", cpmver.GetVersionString(), obj.GetCCPName(), obj.GetOutputDriver().GetName())
 
 	// We will load AUTOEXEC.SUB, once, if it exists (*)
 	//
