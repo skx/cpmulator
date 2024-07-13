@@ -19,6 +19,9 @@ func TestName(t *testing.T) {
 		if d.GetName() != nm {
 			t.Fatalf("%s != %s", d.GetName(), nm)
 		}
+		if d.GetDriver().GetName() != nm {
+			t.Fatalf("%s != %s", d.GetDriver().GetName(), nm)
+		}
 	}
 
 	// Lookup a driver that wont exist
@@ -98,6 +101,10 @@ func TestNull(t *testing.T) {
 		t.Fatalf("null driver has the wrong name")
 	}
 
+	if null.GetDriver().GetName() != null.GetName() {
+		t.Fatalf("getting driver went wrong")
+	}
+
 	// ensure we redirect the output
 	tmp := &bytes.Buffer{}
 
@@ -107,6 +114,47 @@ func TestNull(t *testing.T) {
 
 	if tmp.String() != "" {
 		t.Fatalf("got output, expected none: '%s'", tmp.String())
+	}
+}
+
+// TestLogger ensures nothing is written by the logging output driver
+func TestLogger(t *testing.T) {
+
+	// Start with a known-good driver
+	drv, err := New("logger")
+	if err != nil {
+		t.Fatalf("failed to load starting driver %s", err)
+	}
+	if drv.GetName() != "logger" {
+		t.Fatalf("driver has the wrong name")
+	}
+
+	if drv.GetDriver().GetName() != drv.GetName() {
+		t.Fatalf("getting driver went wrong")
+	}
+
+	// ensure we redirect the output
+	tmp := &bytes.Buffer{}
+
+	drv.driver.SetWriter(tmp)
+
+	drv.PutCharacter('s')
+	drv.PutCharacter('t')
+	drv.PutCharacter('e')
+	drv.PutCharacter('v')
+	drv.PutCharacter('e')
+
+	if tmp.String() != "" {
+		t.Fatalf("got output, expected none: '%s'", tmp.String())
+	}
+
+	// Cast the driver to get the history
+	o, ok := drv.GetDriver().(*OutputLoggingDriver)
+	if !ok {
+		t.Fatalf("failed to cast driver")
+	}
+	if o.GetOutput() != "steve" {
+		t.Fatalf("wrong history")
 	}
 }
 
