@@ -38,9 +38,16 @@ func (ol *OutputLoggingDriver) SetWriter(w io.Writer) {
 
 // GetOutput returns our history.
 //
-// This is part of the ConsoleRecorder interface
+// This is part of the ConsoleRecorder interface.
 func (ol *OutputLoggingDriver) GetOutput() string {
 	return ol.history
+}
+
+// Reset truncates our saved history.
+//
+// This is part of the ConsoleRecorder interface.
+func (ol *OutputLoggingDriver) Reset() {
+	ol.history = ""
 }
 
 // init registers our driver, by name.

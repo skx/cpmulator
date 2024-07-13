@@ -28,11 +28,16 @@ type ConsoleDriver interface {
 }
 
 // ConsoleRecorder is an interface that allows returning the contents that
-// have been previously sent to the console
+// have been previously sent to the console.
+//
+// This is used solely for integration tests.
 type ConsoleRecorder interface {
 
-	//GetOutput returns the contents which have been displayed.
+	// GetOutput returns the contents which have been displayed.
 	GetOutput() string
+
+	// Reset removes any stored state.
+	Reset()
 }
 
 // This is a map of known-drivers
