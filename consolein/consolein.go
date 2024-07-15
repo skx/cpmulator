@@ -205,11 +205,6 @@ func (ci *ConsoleIn) BlockForCharacterWithEcho() (byte, error) {
 // Ctrl-p and Ctrl-n.
 func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 
-	// Do we need to change state?  If so then do it.
-	if ci.State != Echo {
-		ci.enableEcho()
-	}
-
 	// Text the user entered
 	text := ""
 
@@ -219,7 +214,23 @@ func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 	// offset from history
 	offset := 0
 
-	// Hacky input-loop
+	// Erase the text the user has entered, both on the screen
+	// and in the input buffer.
+	eraseInput := func() {
+		for len(text) > 0 {
+			text = text[:len(text)-1]
+			fmt.Printf("\b \b")
+		}
+	}
+
+	// Wwe're expecting the user to enter a line of text,
+	// but we process their input in terms of characters.
+	//
+	// We do that so that we can react to special characters
+	// such as Esc, Ctrl-N, Ctrl-C, etc.
+	//
+	// We don't implement Readline, or anything too advanced,
+	// but we make a decent effort regardless.
 	for {
 
 		// Get a character, with no echo.
@@ -230,14 +241,9 @@ func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 
 		// Esc? or Ctrl-X
 		if x == 27 || x == 24 {
-			// remove the character from our text, and overwrite on the console
-			for len(text) > 0 {
-				text = text[:len(text)-1]
-				fmt.Printf("\b \b")
-			}
 
-			// erase the input so far
-			text = ""
+			eraseInput()
+
 			continue
 		}
 
@@ -247,11 +253,7 @@ func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 
 				offset--
 
-				// remove the character from our text, and overwrite on the console
-				for len(text) > 0 {
-					text = text[:len(text)-1]
-					fmt.Printf("\b \b")
-				}
+				eraseInput()
 
 				if len(ci.history)-offset < len(ci.history) {
 					// replace with a suitable value, and show it
@@ -269,11 +271,7 @@ func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 			}
 			offset += 1
 
-			// remove the character from our text, and overwrite on the console
-			for len(text) > 0 {
-				text = text[:len(text)-1]
-				fmt.Printf("\b \b")
-			}
+			eraseInput()
 
 			// replace with a suitable value, and show it
 			text = ci.history[len(ci.history)-offset]

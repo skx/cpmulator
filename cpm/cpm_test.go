@@ -267,7 +267,6 @@ func TestCPMCoverage(t *testing.T) {
 		t.Fatalf("failed to create CP/M object")
 	}
 
-	obj.RunAutoExec()
 	obj.In(0x12)
 	obj.Out(0x12, 0x34)
 
@@ -287,4 +286,64 @@ func TestCPMCoverage(t *testing.T) {
 	if obj.biosErr != ErrUnimplemented {
 		t.Fatalf("expected unimplemented, got %s", obj.biosErr)
 	}
+}
+
+func TestAutoExec(t *testing.T) {
+
+	obj, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CP/M object")
+	}
+
+	// All drives will be in PWD
+	obj.SetDrives(false)
+
+	// Ensure there's _something_ to read
+	obj.StuffText("nothing\n")
+	obj.RunAutoExec()
+
+	out := ""
+	out, err = obj.input.ReadLine(200)
+	if err != nil {
+		t.Fatalf("failed to call ReadLine")
+	}
+	if out != "nothing" {
+		t.Fatalf("strange input read: %s\n", out)
+	}
+
+	// Now create the two files which would drive the
+	// submit-handler.
+	var file1 *os.File
+	var file2 *os.File
+	file1, err = os.OpenFile("SUBMIT.COM", os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		t.Fatalf("failed to create file %s", err)
+	}
+	file2, err = os.OpenFile("AUTOEXEC.SUB", os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		t.Fatalf("failed to create file %s", err)
+	}
+
+	// Close the files, once they exist
+	file1.Close()
+	file2.Close()
+
+	defer func() {
+		os.Remove("SUBMIT.COM")
+		os.Remove("AUTOEXEC.SUB")
+	}()
+
+	// Ensure there's _something_ to read
+	obj.StuffText("nothing\n")
+	obj.RunAutoExec()
+
+	out = ""
+	out, err = obj.input.ReadLine(200)
+	if err != nil {
+		t.Fatalf("failed to call ReadLine")
+	}
+	if out != "SUBMIT AUTOEXEC" {
+		t.Fatalf("strange input read: '%s'\n", out)
+	}
+
 }
