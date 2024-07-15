@@ -1584,6 +1584,16 @@ func BdosSysCallFileSize(cpm *CPM) error {
 	// of records
 	records := int(fileSize / 128)
 
+	// Block size is used so round up, if we need to.
+	if (fileSize % blkSize) != 0 {
+		records += 1
+	}
+
+	// Cap the size appropriately.
+	if records >= 65536 {
+		records = 65536
+	}
+
 	// Store the value in the three fields
 	fcbPtr.R0 = uint8(records & 0xFF)
 	fcbPtr.R1 = uint8(records >> 8)
