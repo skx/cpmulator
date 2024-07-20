@@ -2,9 +2,7 @@
 // within which the emulator executes its programs.
 package memory
 
-import (
-	"os"
-)
+import "os"
 
 // Memory is our structure for representing the 64k of RAM
 // that we run our programs within.

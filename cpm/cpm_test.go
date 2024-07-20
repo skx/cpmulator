@@ -37,11 +37,11 @@ func TestSimple(t *testing.T) {
 	}
 
 	// Write a string of three bytes to the console - again discarded
-	obj.CPU.States.DE.SetU16(0xfe00)
-	obj.Memory.Set(0xfe00, 's')
-	obj.Memory.Set(0xfe01, 'k')
-	obj.Memory.Set(0xfe02, 'x')
-	obj.Memory.Set(0xfe03, '$')
+	obj.CPU.States.DE.SetU16(0xFE00)
+	obj.Memory.Set(0xFE00, 's')
+	obj.Memory.Set(0xFE01, 'k')
+	obj.Memory.Set(0xFE02, 'x')
+	obj.Memory.Set(0xFE03, '$')
 	err = BdosSysCallWriteString(obj)
 	if err != nil {
 		t.Fatalf("failed to call CPM")
@@ -282,7 +282,7 @@ func TestCPMCoverage(t *testing.T) {
 	}
 
 	// Invalid
-	obj.Out(0xFF, 0xff)
+	obj.Out(0xFF, 0xFF)
 	if obj.biosErr != ErrUnimplemented {
 		t.Fatalf("expected unimplemented, got %s", obj.biosErr)
 	}
@@ -337,7 +337,6 @@ func TestAutoExec(t *testing.T) {
 	obj.StuffText("nothing\n")
 	obj.RunAutoExec()
 
-	out = ""
 	out, err = obj.input.ReadLine(200)
 	if err != nil {
 		t.Fatalf("failed to call ReadLine")

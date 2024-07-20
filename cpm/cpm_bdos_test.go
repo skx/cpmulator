@@ -363,7 +363,7 @@ func TestDriveGetSet(t *testing.T) {
 	}
 
 	// Set a drive to a bogus value
-	c.CPU.States.AF.Hi = 0xff
+	c.CPU.States.AF.Hi = 0xFF
 	err = BdosSysCallDriveSet(c)
 	if err != nil {
 		t.Fatalf("failed to call CP/M")
@@ -428,7 +428,7 @@ func TestUserNumber(t *testing.T) {
 	}
 
 	// now get properly
-	c.CPU.States.DE.Lo = 0xff
+	c.CPU.States.DE.Lo = 0xFF
 	err = BdosSysCallUserNumber(c)
 	if err != nil {
 		t.Fatalf("failed to call CPM")
@@ -475,8 +475,8 @@ func TestDriveReset(t *testing.T) {
 
 	// Now reset again and we should see 0xFF to trigger
 	// the submit.com behaviour
-	if getState() != 0xff {
-		t.Fatalf("getState != 0xff")
+	if getState() != 0xFF {
+		t.Fatalf("getState != 0xFF")
 	}
 }
 
@@ -565,7 +565,7 @@ func TestIOByte(t *testing.T) {
 	}
 
 	// set it
-	c.CPU.States.DE.Lo = 0xfe
+	c.CPU.States.DE.Lo = 0xFE
 	err = BdosSysCallSetIOByte(c)
 	if err != nil {
 		t.Fatalf("error in CPM call")
@@ -577,7 +577,7 @@ func TestIOByte(t *testing.T) {
 		t.Fatalf("error in CPM call")
 	}
 
-	if c.CPU.States.AF.Hi != 0xfe {
+	if c.CPU.States.AF.Hi != 0xFE {
 		t.Fatalf("unexpected updated IO byte")
 	}
 }
@@ -597,7 +597,7 @@ func TestBDOSCoverage(t *testing.T) {
 	for _, handler := range c.BDOSSyscalls {
 
 		if handler.Fake {
-			err := handler.Handler(c)
+			err = handler.Handler(c)
 			if err != nil {
 				t.Fatalf("error calling %s\n", handler.Desc)
 			}
@@ -663,7 +663,7 @@ func TestMakeFile(t *testing.T) {
 	c.SetDrives(false)
 
 	fileExists := func(path string) bool {
-		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		if _, err2 := os.Stat(path); errors.Is(err2, os.ErrNotExist) {
 			return false
 		}
 		return true
@@ -703,7 +703,7 @@ func TestMakeFile(t *testing.T) {
 
 	// Why not also try to close a file that is
 	// not open?
-	c.CPU.States.DE.SetU16(0xcdcd)
+	c.CPU.States.DE.SetU16(0xCDCD)
 	err = BdosSysCallFileClose(c)
 	if err != nil {
 		t.Fatalf("failed to close file which wasn't open")
@@ -716,7 +716,7 @@ func TestMakeFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error calling CP/M")
 	}
-	if c.CPU.States.AF.Hi != 0xff {
+	if c.CPU.States.AF.Hi != 0xFF {
 		t.Fatalf("expected error with empty file")
 	}
 
@@ -745,7 +745,7 @@ func TestDelete(t *testing.T) {
 	}
 
 	fileExists := func(path string) bool {
-		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		if _, err2 := os.Stat(path); errors.Is(err2, os.ErrNotExist) {
 			return false
 		}
 		return true
@@ -795,7 +795,7 @@ func TestRename(t *testing.T) {
 	}
 
 	fileExists := func(path string) bool {
-		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		if _, err2 := os.Stat(path); errors.Is(err2, os.ErrNotExist) {
 			return false
 		}
 		return true
@@ -843,7 +843,7 @@ func TestRename(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error calling CP/M")
 	}
-	if c.CPU.States.AF.Hi != 0xff {
+	if c.CPU.States.AF.Hi != 0xFF {
 		t.Fatalf("renaming to an impossible name succeeded")
 	}
 
@@ -863,7 +863,7 @@ func TestWriteFile(t *testing.T) {
 	c.SetDrives(false)
 
 	fileExists := func(path string) bool {
-		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		if _, err2 := os.Stat(path); errors.Is(err2, os.ErrNotExist) {
 			return false
 		}
 		return true
@@ -965,7 +965,7 @@ func TestWriteFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error calling cp/m")
 	}
-	if c.CPU.States.AF.Hi != 0xff {
+	if c.CPU.States.AF.Hi != 0xFF {
 		t.Fatalf("expected A-reg to hold an error")
 	}
 }
@@ -994,7 +994,7 @@ func TestReadFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error calling cp/m")
 	}
-	if c.CPU.States.AF.Hi != 0xff {
+	if c.CPU.States.AF.Hi != 0xFF {
 		t.Fatalf("expected A-reg to hold an error")
 	}
 

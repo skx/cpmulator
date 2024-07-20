@@ -174,11 +174,9 @@ func main() {
 	slog.SetDefault(log)
 
 	// Create a new emulator.
-	obj, err := cpm.New(
-		cpm.WithPrinterPath(*prnPath),
+	obj, err := cpm.New(cpm.WithPrinterPath(*prnPath),
 		cpm.WithConsoleDriver(*console),
-		cpm.WithCCP(*ccp),
-	)
+		cpm.WithCCP(*ccp))
 	if err != nil {
 		fmt.Printf("error creating CPM object: %s\n", err)
 		return
