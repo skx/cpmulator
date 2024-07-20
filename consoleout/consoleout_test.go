@@ -73,7 +73,7 @@ func TestOutput(t *testing.T) {
 		}
 
 		// ensure we redirect the output
-		tmp := &bytes.Buffer{}
+		tmp := new(bytes.Buffer)
 
 		d.driver.SetWriter(tmp)
 
@@ -106,7 +106,7 @@ func TestNull(t *testing.T) {
 	}
 
 	// ensure we redirect the output
-	tmp := &bytes.Buffer{}
+	tmp := new(bytes.Buffer)
 
 	null.driver.SetWriter(tmp)
 
@@ -134,7 +134,7 @@ func TestLogger(t *testing.T) {
 	}
 
 	// ensure we redirect the output
-	tmp := &bytes.Buffer{}
+	tmp := new(bytes.Buffer)
 
 	drv.driver.SetWriter(tmp)
 

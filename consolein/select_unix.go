@@ -12,7 +12,7 @@ import (
 // SELECT to read from STDIN.
 func canSelect() bool {
 
-	fds := &unix.FdSet{}
+	fds := new(unix.FdSet)
 	fds.Set(int(os.Stdin.Fd()))
 
 	// See if input is pending, for a while.

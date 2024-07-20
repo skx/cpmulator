@@ -1,8 +1,6 @@
 package consolein
 
-import (
-	"testing"
-)
+import "testing"
 
 func TestReadline(t *testing.T) {
 
