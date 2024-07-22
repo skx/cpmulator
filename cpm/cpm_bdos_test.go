@@ -1001,7 +1001,6 @@ func TestReadFile(t *testing.T) {
 }
 
 // TestFileOpen ensures we can open files.
-// This is incomplete, TODO test virtual files too.
 func TestFileOpen(t *testing.T) {
 	// Create a new helper
 	c, err := New()
