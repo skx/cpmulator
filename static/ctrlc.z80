@@ -3,9 +3,6 @@
 ;; This uses the custom BIOS function we've added to the BIOS, which was never
 ;; present in real CP/M.  Consider it a hook into the emulator.
 ;;
-;; TODO:
-;;  I guess we need a custom "is cpmulator" BIOS function too.
-;;
 
 FCB1:                 EQU 0x5C
 BDOS_ENTRY_POINT:     EQU 5
