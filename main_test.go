@@ -3,6 +3,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -80,6 +82,9 @@ func TestReadWriteRand(t *testing.T) {
 	if err != nil && err != cpm.ErrHalt {
 		t.Fatalf("failed to run: %s", err)
 	}
+
+	// Remove the generated file
+	os.Remove(filepath.Join("samples", "FOO"))
 }
 
 // TestCompleteLighthouse plays our Lighthouse game, to completion.
