@@ -56,12 +56,8 @@ func BiosSysCallConsoleStatus(cpm *CPM) error {
 func BiosSysCallConsoleInput(cpm *CPM) error {
 
 	out, err := cpm.input.BlockForCharacterNoEcho()
-	if err != nil {
-		return err
-	}
-
 	cpm.CPU.States.AF.Hi = out
-	return nil
+	return err
 }
 
 // BiosSysCallConsoleOutput should write a single character, in the C-register,
@@ -290,11 +286,14 @@ func BiosSysCallReserved1(cpm *CPM) error {
 	// Get terminal size in HL
 	case 0x0005:
 		width, height, err := term.GetSize(int(os.Stdin.Fd()))
+
+		// This will fail on tests, and Windows probably.
+		cpm.CPU.States.HL.Hi = uint8(height)
+		cpm.CPU.States.HL.Lo = uint8(width)
+
 		if err != nil {
 			return err
 		}
-		cpm.CPU.States.HL.Hi = uint8(height)
-		cpm.CPU.States.HL.Lo = uint8(width)
 
 	// Get/Set the debug-flag
 	case 0x0006:

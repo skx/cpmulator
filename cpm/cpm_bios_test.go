@@ -10,7 +10,7 @@ import (
 func TestStatus(t *testing.T) {
 
 	// Create a new helper
-	c, err := New()
+	c, err := New(WithPrinterPath("1.log"))
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
@@ -88,7 +88,7 @@ func TestCustom(t *testing.T) {
 	}
 
 	// Create a new helper
-	c, err := New()
+	c, err := New(WithPrinterPath("2.log"))
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
@@ -288,7 +288,7 @@ func TestCustom(t *testing.T) {
 
 func TestBIOSConsoleInput(t *testing.T) {
 	// Create a new helper
-	c, err := New()
+	c, err := New(WithPrinterPath("3.log"))
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}

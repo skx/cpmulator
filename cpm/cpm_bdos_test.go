@@ -13,7 +13,7 @@ import (
 
 func TestConsoleInput(t *testing.T) {
 	// Create a new helper
-	c, err := New()
+	c, err := New(WithPrinterPath("11.log"))
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
@@ -91,7 +91,7 @@ func TestConsoleInput(t *testing.T) {
 
 func TestUnimplemented(t *testing.T) {
 	// Create a new helper
-	c, err := New()
+	c, err := New(WithPrinterPath("12.log"))
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
@@ -140,7 +140,7 @@ func TestUnimplemented(t *testing.T) {
 // TestBoot  ensures that a "jmp 0x0000" ends the emulation
 func TestBoot(t *testing.T) {
 	// Create a new helper
-	c, err := New()
+	c, err := New(WithPrinterPath("13.log"))
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
@@ -190,7 +190,7 @@ func TestBoot(t *testing.T) {
 // TestFind invokes FindFirst and FindNext
 func TestFind(t *testing.T) {
 	// Create a new helper
-	c, err := New()
+	c, err := New(WithPrinterPath("14.log"))
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
@@ -289,7 +289,7 @@ func TestFind(t *testing.T) {
 func TestReadLine(t *testing.T) {
 
 	// Create a new helper
-	c, err := New()
+	c, err := New(WithPrinterPath("15.log"))
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
@@ -327,13 +327,23 @@ func TestReadLine(t *testing.T) {
 		t.Fatalf("wrong text received")
 	}
 
+	//
+	// Ctrl-C should trigger a reboot, of course
+	//
+	c.CPU.DE.SetU16(0x0000)
+	c.StuffText("\x03\x03foo\n")
+
+	err = BdosSysCallReadString(c)
+	if err != ErrBoot {
+		t.Fatalf("expected reboot from Ctrl-C, got %v", err)
+	}
 }
 
 // TestDriveGetSet tests getting/setting the current drive.
 func TestDriveGetSet(t *testing.T) {
 
 	// Create a new helper
-	c, err := New()
+	c, err := New(WithPrinterPath("16.log"))
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
@@ -384,7 +394,7 @@ func TestDriveGetSet(t *testing.T) {
 func TestSetDMA(t *testing.T) {
 
 	// Create a new helper
-	c, err := New()
+	c, err := New(WithPrinterPath("16.log"))
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
@@ -409,7 +419,7 @@ func TestSetDMA(t *testing.T) {
 func TestUserNumber(t *testing.T) {
 
 	// Create a new helper
-	c, err := New()
+	c, err := New(WithPrinterPath("17.log"))
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
@@ -446,7 +456,7 @@ func TestDriveReset(t *testing.T) {
 
 	getState := func() uint8 {
 		// Create a new helper
-		c, err := New()
+		c, err := New(WithPrinterPath("19.log"))
 		if err != nil {
 			t.Fatalf("failed to create CPM")
 		}
@@ -500,7 +510,7 @@ func TestFileSize(t *testing.T) {
 	}
 
 	// Create a new helper
-	c, err := New()
+	c, err := New(WithPrinterPath("20.log"))
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
@@ -549,7 +559,7 @@ func TestFileSize(t *testing.T) {
 func TestIOByte(t *testing.T) {
 
 	// Create a new helper
-	c, err := New()
+	c, err := New(WithPrinterPath("21.log"))
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
@@ -587,8 +597,11 @@ func TestIOByte(t *testing.T) {
 // increase our coverage.
 func TestBDOSCoverage(t *testing.T) {
 
+	defer func() {
+		os.Remove("22.log")
+	}()
 	// Create a new helper
-	c, err := New()
+	c, err := New(WithPrinterPath("22.log"))
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
@@ -653,7 +666,7 @@ func TestBDOSCoverage(t *testing.T) {
 func TestMakeFile(t *testing.T) {
 
 	// Create a new helper
-	c, err := New()
+	c, err := New(WithPrinterPath("23.log"))
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
@@ -728,7 +741,7 @@ func TestMakeFile(t *testing.T) {
 func TestDelete(t *testing.T) {
 
 	// Create a new helper
-	c, err := New()
+	c, err := New(WithPrinterPath("24.log"))
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
@@ -778,7 +791,7 @@ func TestDelete(t *testing.T) {
 func TestRename(t *testing.T) {
 
 	// Create a new helper
-	c, err := New()
+	c, err := New(WithPrinterPath("25.log"))
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
@@ -853,7 +866,7 @@ func TestRename(t *testing.T) {
 func TestWriteFile(t *testing.T) {
 
 	// Create a new helper
-	c, err := New()
+	c, err := New(WithPrinterPath("26.log"))
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
