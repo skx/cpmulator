@@ -151,6 +151,10 @@ func TestPrinterOutput(t *testing.T) {
 		t.Fatalf("failed to create CPM")
 	}
 
+	if obj.prnPath != file.Name() {
+		t.Fatalf("unexpected filename for printer log")
+	}
+
 	// Now output some characters
 	err = obj.prnC('s')
 	if err != nil {

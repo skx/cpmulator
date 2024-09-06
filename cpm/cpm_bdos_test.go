@@ -597,11 +597,17 @@ func TestIOByte(t *testing.T) {
 // increase our coverage.
 func TestBDOSCoverage(t *testing.T) {
 
-	defer func() {
-		os.Remove("22.log")
-	}()
-	// Create a new helper
-	c, err := New(WithPrinterPath("22.log"))
+	// Create a printer-output file
+	file, err := os.CreateTemp("", "tst-*.prn")
+	if err != nil {
+		t.Fatalf("failed to create temporary file")
+	}
+	defer os.Remove(file.Name())
+
+	// Create a new helper - redirect the printer log because
+	// we'll be invoking BdosSysCallPrinterWrite
+	c, err := New(WithPrinterPath(file.Name()))
+
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
