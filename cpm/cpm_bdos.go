@@ -109,6 +109,12 @@ func BdosSysCallRawIO(cpm *CPM) error {
 
 	switch cpm.CPU.States.DE.Lo {
 	case 0xFF:
+		// Default to nothing pending
+		cpm.CPU.States.AF.Hi = 0x00
+		cpm.CPU.States.AF.Lo = 0x00
+		cpm.CPU.States.HL.Hi = 0x00
+		cpm.CPU.States.HL.Lo = 0x00
+
 		// Return a character without echoing if one is waiting; zero if none is available.
 		if cpm.input.PendingInput() {
 			out, err := cpm.input.BlockForCharacterNoEcho()
@@ -119,27 +125,21 @@ func BdosSysCallRawIO(cpm *CPM) error {
 			cpm.CPU.States.AF.Lo = 0x00
 			cpm.CPU.States.HL.Hi = 0x00
 			cpm.CPU.States.HL.Lo = out
-			return nil
 		}
-		// nothing pending, return 0x00
+		return nil
+	case 0xFE:
+		// Default to nothing pending
 		cpm.CPU.States.AF.Hi = 0x00
 		cpm.CPU.States.AF.Lo = 0x00
 		cpm.CPU.States.HL.Hi = 0x00
 		cpm.CPU.States.HL.Lo = 0x00
-		return nil
-	case 0xFE:
+
 		// Return console input status. Zero if no character is waiting, nonzero otherwise.
 		if cpm.input.PendingInput() {
-
 			cpm.CPU.States.AF.Hi = 0xFF
 			cpm.CPU.States.AF.Lo = 0x00
 			cpm.CPU.States.HL.Hi = 0x00
 			cpm.CPU.States.HL.Lo = 0xFF
-		} else {
-			cpm.CPU.States.AF.Hi = 0x00
-			cpm.CPU.States.AF.Lo = 0x00
-			cpm.CPU.States.HL.Hi = 0x00
-			cpm.CPU.States.HL.Lo = 0x00
 		}
 		return nil
 	case 0xFD:
@@ -267,17 +267,17 @@ func BdosSysCallReadString(cpm *CPM) error {
 // BdosSysCallConsoleStatus tests if we have pending console (character) input.
 func BdosSysCallConsoleStatus(cpm *CPM) error {
 
+	// Default to assuming nothing is pending
+	cpm.CPU.States.AF.Hi = 0x00
+	cpm.CPU.States.AF.Lo = 0x00
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.HL.Lo = 0x00
+
 	if cpm.input.PendingInput() {
 		cpm.CPU.States.AF.Hi = 0xFF
 		cpm.CPU.States.AF.Lo = 0x00
 		cpm.CPU.States.HL.Hi = 0x00
 		cpm.CPU.States.HL.Lo = 0xFF
-
-	} else {
-		cpm.CPU.States.AF.Hi = 0x00
-		cpm.CPU.States.AF.Lo = 0x00
-		cpm.CPU.States.HL.Hi = 0x00
-		cpm.CPU.States.HL.Lo = 0x00
 	}
 	return nil
 }

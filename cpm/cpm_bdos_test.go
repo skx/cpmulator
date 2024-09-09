@@ -282,6 +282,47 @@ func TestFind(t *testing.T) {
 	if found != 4 {
 		t.Fatalf("found wrong number of embedded files, got %d", found)
 	}
+
+	//
+	// Now try to find files that won't exist
+	//
+	name = "*.SKX"
+	fcbPtr = fcb.FromString(name)
+
+	// Save it into RAM
+	c.Memory.SetRange(0x0200, fcbPtr.AsBytes()...)
+
+	// Call FindFirst
+	c.CPU.States.DE.SetU16(0x0200)
+	err = BdosSysCallFindFirst(c)
+
+	if err != nil {
+		t.Fatalf("error calling find first:err")
+	}
+	if c.CPU.States.AF.Hi != 0xFF {
+		t.Fatalf("Expected no matches, but got something else?")
+	}
+
+	//
+	// Finally try to match files with a bogus
+	// directory mapping
+	//
+	c.SetDrives(true)
+	c.SetDrivePath("A", "//½§<¿¿\\z<zZ!2/fdsf/<fð¿¿fdsf\fdsf")
+	c.SetDrivePath("B", "//½§<¿¿\\z<zZ!2/fdsf/<fð¿¿fdsf\fdsf")
+	name = "B:*.CFM"
+	fcbPtr = fcb.FromString(name)
+	fcbPtr.Drive = 1
+	// Save it into RAM
+	c.Memory.SetRange(0x0200, fcbPtr.AsBytes()...)
+
+	// Call FindFirst
+	c.CPU.States.DE.SetU16(0x0200)
+	err = BdosSysCallFindFirst(c)
+
+	if c.CPU.States.AF.Hi != 0xFF {
+		t.Fatalf("error calling find first:A")
+	}
 }
 
 // TestReadLine does a minimal test on STDIN reading, via the faked/stuffed

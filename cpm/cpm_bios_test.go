@@ -306,3 +306,41 @@ func TestBIOSConsoleInput(t *testing.T) {
 	}
 
 }
+
+// Test that an error comes by setting an impossible filename for the printer
+func TestBIOSError(t *testing.T) {
+
+	// Create a new helper
+	c, err := New(WithPrinterPath("C:/fdf/fdsfd/fdsf·\\332\fdsf/fsdf.invlaid"))
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	c.Memory = new(memory.Memory)
+	c.fixupRAM()
+	defer c.Cleanup()
+
+	c.simpleDebug = true
+
+	// Ensure we get an error when printing
+	err = c.prnC('s')
+	if err == nil {
+		t.Fatalf("expected error writing to impossible file")
+	}
+
+	// 5 == LIST / BiosSysCallPrintChar
+	if c.biosErr != nil {
+		t.Fatalf("found an error we didn't expect")
+	}
+
+	// This will fail
+	c.BiosHandler(5)
+
+	// So the error should be set
+	if c.biosErr == nil {
+		t.Fatalf("found no error, but we should have done")
+	}
+
+	// 15 == LISTST == BiosSysCallPrinterStatus
+	c.BiosHandler(15)
+
+}
