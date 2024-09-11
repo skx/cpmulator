@@ -153,8 +153,22 @@ func TestLogger(t *testing.T) {
 	if !ok {
 		t.Fatalf("failed to cast driver")
 	}
+
+	// ensure we have the history we expect.
 	if o.GetOutput() != "steve" {
 		t.Fatalf("wrong history")
+	}
+
+	// And that this keeps updating.
+	drv.PutCharacter(' ')
+	if o.GetOutput() != "steve " {
+		t.Fatalf("wrong history")
+	}
+
+	// reset the history, and confirm it worked.
+	o.Reset()
+	if o.GetOutput() != "" {
+		t.Fatalf("reseting the history didn't succeed")
 	}
 }
 

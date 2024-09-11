@@ -319,6 +319,9 @@ func TestFind(t *testing.T) {
 	// Call FindFirst
 	c.CPU.States.DE.SetU16(0x0200)
 	err = BdosSysCallFindFirst(c)
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
 
 	if c.CPU.States.AF.Hi != 0xFF {
 		t.Fatalf("error calling find first:A")
