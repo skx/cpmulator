@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/skx/cpmulator/consolein"
 	"github.com/skx/cpmulator/fcb"
@@ -1673,5 +1674,24 @@ func BdosSysCallTime(cpm *CPM) error {
 // which specifies which function to run.  I've only seen this invoked in
 // TurboPascal when choosing the "Execute" or "Run" options.
 func BdosSysCallDirectScreenFunctions(cpm *CPM) error {
+	return nil
+}
+
+// BdosSysCallUptime returns the number of "ticks" since the system
+// was booted, it is a custom syscall which is implemented by RunCPM
+// which we implement for compatibility, notable users include v5
+// of BBC BASIC.
+func BdosSysCallUptime(cpm *CPM) error {
+
+	// Get elapsed time, since startup
+	elapsed := time.Since(cpm.launchTime)
+
+	// In nanoseconds
+	timer := elapsed.Nanoseconds()
+
+	// Set it.
+	cpm.CPU.States.HL.SetU16(uint16(timer & 0xFFFF))
+	cpm.CPU.States.DE.SetU16(uint16((timer >> 16) & 0xFFFF))
+
 	return nil
 }

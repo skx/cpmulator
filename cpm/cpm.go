@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/koron-go/z80"
 	"github.com/skx/cpmulator/ccp"
@@ -189,6 +190,9 @@ type CPM struct {
 	// For real debugging we expect the caller to use our Logger, via
 	// the logfile
 	simpleDebug bool
+
+	// launchTime is the time at which the application was launched
+	launchTime time.Time
 }
 
 // ccpoption defines a config-setting option for our constructor.
@@ -426,6 +430,11 @@ func New(options ...cpmoption) (*CPM, error) {
 		Handler: BdosSysCallDirectScreenFunctions,
 		Fake:    true,
 	}
+	bdos[248] = CPMHandler{ // used by BBC BASIC v5
+		Desc:    "F_UPTIME",
+		Handler: BdosSysCallUptime,
+		Fake:    true,
+	}
 
 	//
 	// Create and populate our syscall table for the BIOS syscalls.
@@ -504,6 +513,7 @@ func New(options ...cpmoption) (*CPM, error) {
 		output:       driver,        // default
 		prnPath:      "printer.log", // default
 		start:        0x0100,
+		launchTime:   time.Now(),
 	}
 
 	// Allow options to override our defaults
