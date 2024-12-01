@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/skx/cpmulator/consolein"
 	"github.com/skx/cpmulator/fcb"
@@ -1374,4 +1375,40 @@ func TestRead(t *testing.T) {
 		t.Fatalf("read rand (virtual) failed")
 	}
 
+}
+
+func TestTicks(t *testing.T) {
+
+	// Create a new helper
+	c, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+
+	// Ensure we have a launch time that was in the past.
+	if !c.launchTime.Before(time.Now()) {
+		t.Fatalf("time travel isn't possible")
+	}
+
+	// Call the function
+	err = BdosSysCallUptime(c)
+	if err != nil {
+		t.Fatalf("unexpected error getting ticks")
+	}
+
+	// Get the before time.
+	a := c.CPU.States.HL.U16()
+
+	// Call the function
+	err = BdosSysCallUptime(c)
+	if err != nil {
+		t.Fatalf("unexpected error getting ticks")
+	}
+
+	// Get the after time.
+	b := c.CPU.States.HL.U16()
+
+	if a == b {
+		t.Fatalf("no time has passed %d %d", a, b)
+	}
 }
