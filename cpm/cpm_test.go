@@ -306,7 +306,7 @@ func TestAutoExec(t *testing.T) {
 	obj.StuffText("nothing\n")
 	obj.RunAutoExec()
 
-	out := ""
+	var out string
 	out, err = obj.input.ReadLine(200)
 	if err != nil {
 		t.Fatalf("failed to call ReadLine")
