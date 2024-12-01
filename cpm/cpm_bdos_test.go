@@ -27,6 +27,10 @@ func TestConsoleInput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to call CP/M")
 	}
+	err = BdosSysCallReadChar(c)
+	if err == nil {
+		t.Fatalf("expected error, got none")
+	}
 	if c.CPU.States.AF.Hi != 's' {
 		t.Fatalf("got the wrong input")
 	}
@@ -39,6 +43,10 @@ func TestConsoleInput(t *testing.T) {
 	}
 	if c.CPU.States.AF.Hi != 'k' {
 		t.Fatalf("got the wrong input")
+	}
+	err = BdosSysCallAuxRead(c)
+	if err == nil {
+		t.Fatalf("expected to get an error, but didn't")
 	}
 
 	// RawIO
@@ -785,6 +793,87 @@ func TestMakeFile(t *testing.T) {
 
 	// Delete the file, if it was present
 	os.Remove(name)
+}
+
+func TestCloseDollar(t *testing.T) {
+
+	// Create a new helper
+	c, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	c.Memory = new(memory.Memory)
+
+	// Files created in "."
+	c.SetDrives(false)
+
+	fileExists := func(path string) bool {
+		if _, err2 := os.Stat(path); errors.Is(err2, os.ErrNotExist) {
+			return false
+		}
+		return true
+	}
+
+	// Create an FCB pointing to a file
+	name := "KEMP$.$ME"
+	if fileExists(name) {
+		t.Fatalf("file already exists")
+	}
+
+	fcbPtr := fcb.FromString(name)
+	fcbPtr.Drive = 5
+	c.Memory.SetRange(0x0200, fcbPtr.AsBytes()...)
+
+	// Call the creation function
+	c.CPU.States.DE.SetU16(0x0200)
+	err = BdosSysCallMakeFile(c)
+	if err != nil {
+		t.Fatalf("error calling CP/M")
+	}
+
+	if c.CPU.States.AF.Hi != 0x00 {
+		t.Fatalf("creation failed")
+	}
+	if !fileExists(name) {
+		t.Fatalf("failed to create file")
+	}
+
+	//
+	// Now we've created the file we'll write to it.
+	//
+	// Fill the DMA area
+	c.Memory.Set(c.dma+0, 'S')
+	c.Memory.Set(c.dma+1, 't')
+	c.Memory.Set(c.dma+2, 'e')
+	c.Memory.Set(c.dma+3, 'v')
+	c.Memory.Set(c.dma+4, 'e')
+	c.Memory.Set(c.dma+5, 0x00)
+	c.CPU.States.DE.SetU16(0x0200)
+	err = BdosSysCallWrite(c)
+	if err != nil {
+		t.Fatalf("got error writing to file: err")
+	}
+	if c.CPU.States.AF.Hi != 0x00 {
+		t.Fatalf("got error writing to file: A")
+	}
+
+	// Change the file size - first get the updated size
+	xxx := c.Memory.GetRange(0x0200, fcb.SIZE)
+	fcbPtr = fcb.FromBytes(xxx)
+	fcbPtr.RC = 0
+	c.Memory.SetRange(0x0200, fcbPtr.AsBytes()...)
+
+	// Now we've created it the file will be open
+	// Close it.
+	c.CPU.States.DE.SetU16(0x0200)
+	err = BdosSysCallFileClose(c)
+	if err != nil {
+		t.Fatalf("failed to close file, after creation")
+	}
+
+	// Delete the file, if it was present
+	os.Remove(name)
+
 }
 
 // TestDelete tests we can delete a file.
