@@ -402,7 +402,7 @@ func TestDriveGetSet(t *testing.T) {
 	}
 	c.Memory = new(memory.Memory)
 
-	// Get the drive, wahtever it is
+	// Get the drive, whatever it is
 	err = BdosSysCallDriveGet(c)
 	if err != nil {
 		t.Fatalf("failed to call CP/M")

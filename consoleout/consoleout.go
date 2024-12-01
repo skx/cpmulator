@@ -1,4 +1,4 @@
-// Package consoleout is an abstruction over console output.
+// Package consoleout is an abstraction over console output.
 //
 // We know we need an ANSI/RAW output, and we have an ADM-3A driver,
 // so we want to create a factory that can instantiate and change a driver,
