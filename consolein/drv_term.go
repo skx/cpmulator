@@ -94,15 +94,18 @@ func (ti *TermboxInput) pollKeyboard(ctx context.Context) {
 // TearDown resets the state of the terminal, disables the background polling of characters
 // and generally gets us ready for exit.
 func (ti *TermboxInput) TearDown() {
-
 	// Cancel the keyboard reading
-	ti.Cancel()
+	if ti.Cancel != nil {
+		ti.Cancel()
+	}
 
 	// Terminate the GUI.
 	termbox.Close()
 
 	// Restore the terminal
-	term.Restore(int(os.Stdin.Fd()), ti.oldState)
+	if ti.oldState != nil {
+		term.Restore(int(os.Stdin.Fd()), ti.oldState)
+	}
 }
 
 // StuffInput inserts fake values into our input-buffer
@@ -154,6 +157,6 @@ func (ti *TermboxInput) GetName() string {
 // init registers our driver, by name.
 func init() {
 	Register("term", func() ConsoleInput {
-		return &TermboxInput{}
+		return new(TermboxInput)
 	})
 }

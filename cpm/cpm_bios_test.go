@@ -294,7 +294,7 @@ func TestBIOSConsoleInput(t *testing.T) {
 	}
 	c.Memory = new(memory.Memory)
 	c.fixupRAM()
-	defer c.Cleanup()
+	defer c.IOTearDown()
 
 	c.input.StuffInput("s")
 	err = BiosSysCallConsoleInput(c)
@@ -317,7 +317,7 @@ func TestBIOSError(t *testing.T) {
 	}
 	c.Memory = new(memory.Memory)
 	c.fixupRAM()
-	defer c.Cleanup()
+	defer c.IOTearDown()
 
 	c.simpleDebug = true
 

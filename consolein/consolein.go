@@ -47,7 +47,7 @@ var handlers = struct {
 }{m: make(map[string]Constructor)}
 
 // This is the count of Ctrl-C which we keep track of to allow "reboots"
-var interruptCount int = 1
+var interruptCount int = 2
 
 // history holds previous (line) input.
 var history []string

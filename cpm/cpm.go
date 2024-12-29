@@ -549,7 +549,7 @@ func New(options ...cpmoption) (*CPM, error) {
 	return tmp, nil
 }
 
-// IOTearDown cleans up the state of the terminal, if necessary.
+// IOSetup ensures that our I/O is ready.
 func (cpm *CPM) IOSetup() {
 	cpm.input.Setup()
 }

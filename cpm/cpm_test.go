@@ -95,7 +95,7 @@ func TestSimple(t *testing.T) {
 		t.Fatalf("failed to run binary!")
 	}
 
-	defer obj.Cleanup()
+	defer obj.IOTearDown()
 }
 
 func TestBogusConstructor(t *testing.T) {

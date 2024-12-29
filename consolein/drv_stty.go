@@ -152,6 +152,6 @@ func (si *STTYInput) GetName() string {
 // init registers our driver, by name.
 func init() {
 	Register("stty", func() ConsoleInput {
-		return &STTYInput{}
+		return new(STTYInput)
 	})
 }

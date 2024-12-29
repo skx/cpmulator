@@ -96,7 +96,7 @@ func TestCtrlC(t *testing.T) {
 
 	ch := ConsoleIn{}
 
-	if interruptCount != 1 {
+	if interruptCount != 2 {
 		t.Fatalf("unexpected default interrupt count")
 	}
 
