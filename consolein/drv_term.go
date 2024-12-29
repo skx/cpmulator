@@ -104,7 +104,10 @@ func (ti *TermboxInput) TearDown() {
 
 	// Restore the terminal
 	if ti.oldState != nil {
-		term.Restore(int(os.Stdin.Fd()), ti.oldState)
+		err := term.Restore(int(os.Stdin.Fd()), ti.oldState)
+		if err != nil {
+			fmt.Printf("failed to restore terminal:%s\n", err)
+		}
 	}
 }
 
