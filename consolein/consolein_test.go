@@ -92,6 +92,41 @@ func TestReadlineSTTY(t *testing.T) {
 	}
 }
 
+// TestOverview just calls most of the methods, as an overview, to bump coverage.
+func TestOverview(t *testing.T) {
+
+	// Create a helper
+	x := STTYInput{}
+
+	ch := ConsoleIn{}
+	ch.driver = &x
+
+	ch.Setup()
+	defer ch.TearDown()
+
+	ch.StuffInput("1.2.3.4.5.6.7.8.9.0\n")
+
+	if !ch.PendingInput() {
+		t.Fatalf("should have pending input")
+	}
+
+	c, err := ch.BlockForCharacterNoEcho()
+	if err != nil {
+		t.Fatalf("unexpected error")
+	}
+	if c != '1' {
+		t.Fatalf("wrong character")
+	}
+
+	c, err = ch.BlockForCharacterWithEcho()
+	if err != nil {
+		t.Fatalf("unexpected error")
+	}
+	if c != '.' {
+		t.Fatalf("wrong character")
+	}
+}
+
 func TestCtrlC(t *testing.T) {
 
 	ch := ConsoleIn{}
