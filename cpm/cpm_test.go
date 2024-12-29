@@ -11,7 +11,7 @@ import (
 func TestSimple(t *testing.T) {
 
 	// Create a new CP/M helper
-	obj, err := New(WithConsoleDriver("null"), WithInputDriver("stty"))
+	obj, err := New(WithOutputDriver("null"), WithInputDriver("stty"))
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
@@ -103,7 +103,7 @@ func TestSimple(t *testing.T) {
 
 func TestBogusConstructor(t *testing.T) {
 
-	_, err := New(WithConsoleDriver("bogus"))
+	_, err := New(WithOutputDriver("bogus"))
 	if err == nil {
 		t.Fatalf("expected error, bogus console driver, got none")
 	}

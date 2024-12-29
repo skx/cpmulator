@@ -217,9 +217,9 @@ func WithPrinterPath(path string) cpmoption {
 	}
 }
 
-// WithConsoleDriver allows the console driver to be created in our
+// WithOutputDriver allows the console driver to be created in our
 // constructor.
-func WithConsoleDriver(name string) cpmoption {
+func WithOutputDriver(name string) cpmoption {
 
 	return func(c *CPM) error {
 
@@ -250,7 +250,7 @@ func WithInputDriver(name string) cpmoption {
 }
 
 // New returns a new emulation object.  We support default options,
-// and new defaults may be specified via WithConsoleDriver, etc, etc.
+// and new defaults may be specified via WithOutputDriver, etc, etc.
 func New(options ...cpmoption) (*CPM, error) {
 
 	//

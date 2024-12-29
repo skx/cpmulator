@@ -190,7 +190,7 @@ func main() {
 
 	// Create a new emulator.
 	obj, err := cpm.New(cpm.WithPrinterPath(*prnPath),
-		cpm.WithConsoleDriver(*console),
+		cpm.WithOutputDriver(*console),
 		cpm.WithInputDriver(*input),
 		cpm.WithCCP(*ccp))
 	if err != nil {
