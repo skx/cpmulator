@@ -33,7 +33,7 @@ func (ad *AnsiOutputDriver) SetWriter(w io.Writer) {
 
 // init registers our driver, by name.
 func init() {
-	Register("ansi", func() ConsoleDriver {
+	Register("ansi", func() ConsoleOutput {
 		return &AnsiOutputDriver{
 			writer: os.Stdout,
 		}

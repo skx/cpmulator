@@ -19,6 +19,10 @@ var ErrInterrupted error = fmt.Errorf("INTERRUPTED")
 //
 // Providing this interface is implemented an object may register itself,
 // by name, via the Register method.
+//
+// You can compare this interface to the corresponding ConsoleOutput one,
+// that delegates everything to the drivers rather than having some wrapper
+// methods building upon the drivers as we do here.
 type ConsoleInput interface {
 
 	// Setup performs any specific setup which is required.

@@ -155,7 +155,7 @@ func (a3a *Adm3AOutputDriver) SetWriter(w io.Writer) {
 
 // init registers our driver, by name.
 func init() {
-	Register("adm-3a", func() ConsoleDriver {
+	Register("adm-3a", func() ConsoleOutput {
 		return &Adm3AOutputDriver{
 			writer: os.Stdout,
 		}

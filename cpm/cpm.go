@@ -565,7 +565,7 @@ func (cpm *CPM) GetInputDriver() consolein.ConsoleInput {
 }
 
 // GetOutputDriver returns the configured output driver.
-func (cpm *CPM) GetOutputDriver() consoleout.ConsoleDriver {
+func (cpm *CPM) GetOutputDriver() consoleout.ConsoleOutput {
 	return cpm.output.GetDriver()
 }
 

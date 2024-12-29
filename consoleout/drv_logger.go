@@ -52,7 +52,7 @@ func (ol *OutputLoggingDriver) Reset() {
 
 // init registers our driver, by name.
 func init() {
-	Register("logger", func() ConsoleDriver {
+	Register("logger", func() ConsoleOutput {
 		return &OutputLoggingDriver{
 			writer: os.Stdout,
 		}

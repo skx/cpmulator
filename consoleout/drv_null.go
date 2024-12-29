@@ -35,7 +35,7 @@ func (no *NullOutputDriver) SetWriter(w io.Writer) {
 
 // init registers our driver, by name.
 func init() {
-	Register("null", func() ConsoleDriver {
+	Register("null", func() ConsoleOutput {
 		return &NullOutputDriver{
 			writer: os.Stdout,
 		}
