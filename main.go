@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	cpmccp "github.com/skx/cpmulator/ccp"
+	"github.com/skx/cpmulator/consolein"
 	"github.com/skx/cpmulator/consoleout"
 	"github.com/skx/cpmulator/cpm"
 	"github.com/skx/cpmulator/static"
@@ -28,19 +29,21 @@ func main() {
 	//
 	// Parse the command-line flags for this driver-application
 	//
-	cd := flag.String("cd", "", "Change to this directory before launching")
-	createDirectories := flag.Bool("create", false, "Create subdirectories on the host computer for each CP/M drive.")
-	console := flag.String("console", "adm-3a", "The name of the console output driver to use (adm-3a or ansi).")
 	ccp := flag.String("ccp", "ccpz", "The name of the CCP that we should run (ccp vs. ccpz).")
-	useDirectories := flag.Bool("directories", false, "Use subdirectories on the host computer for CP/M drives.")
-	logPath := flag.String("log-path", "", "Specify the file to write debug logs to.")
+	cd := flag.String("cd", "", "Change to this directory before launching")
+	console := flag.String("console", "adm-3a", "The name of the console output driver to use (adm-3a or ansi).")
+	createDirectories := flag.Bool("create", false, "Create subdirectories on the host computer for each CP/M drive.")
+	input := flag.String("input", "term", "The name of the console input driver to use (term or stty).")
 	logAll := flag.Bool("log-all", false, "Log the output of all functions, including the noisy Console I/O ones.")
+	logPath := flag.String("log-path", "", "Specify the file to write debug logs to.")
 	prnPath := flag.String("prn-path", "print.log", "Specify the file to write printer-output to.")
 	showVersion := flag.Bool("version", false, "Report our version, and exit.")
+	useDirectories := flag.Bool("directories", false, "Use subdirectories on the host computer for CP/M drives.")
 
 	// listing
 	listCcps := flag.Bool("list-ccp", false, "Dump the list of embedded CCPs.")
-	listConsole := flag.Bool("list-console-drivers", false, "Dump the list of valid console drivers.")
+	listOutput := flag.Bool("list-output-drivers", false, "Dump the list of valid console output drivers.")
+	listInput := flag.Bool("list-input-drivers", false, "Dump the list of valid console input drivers.")
 	listSyscalls := flag.Bool("list-syscalls", false, "Dump the list of implemented BIOS/BDOS syscall functions.")
 
 	// drives
@@ -73,8 +76,19 @@ func main() {
 		return
 	}
 
-	// Are we dumping console drivers?
-	if *listConsole {
+	// Are we dumping console input drivers?
+	if *listInput {
+		obj, _ := consolein.New("null")
+		valid := obj.GetDrivers()
+
+		for _, name := range valid {
+			fmt.Printf("%s\n", name)
+		}
+		return
+	}
+
+	// Are we dumping console output drivers?
+	if *listOutput {
 		obj, _ := consoleout.New("null")
 		valid := obj.GetDrivers()
 
@@ -83,6 +97,7 @@ func main() {
 		}
 		return
 	}
+
 	// Are we dumping syscalls?
 	if *listSyscalls {
 
@@ -176,6 +191,7 @@ func main() {
 	// Create a new emulator.
 	obj, err := cpm.New(cpm.WithPrinterPath(*prnPath),
 		cpm.WithConsoleDriver(*console),
+		cpm.WithInputDriver(*input),
 		cpm.WithCCP(*ccp))
 	if err != nil {
 		fmt.Printf("error creating CPM object: %s\n", err)
@@ -187,8 +203,12 @@ func main() {
 		obj.LogNoisy()
 	}
 
+	// I/O SETUP
+	obj.IOSetup()
+
+	// I/O TearDown
 	// When we're finishing we'll reset some (console) state.
-	defer obj.Cleanup()
+	defer obj.IOTearDown()
 
 	// change directory?
 	//
@@ -296,7 +316,7 @@ func main() {
 	}
 
 	// Show a startup-banner.
-	fmt.Printf("\ncpmulator %s loaded CCP %s, with %s output driver\n", cpmver.GetVersionString(), obj.GetCCPName(), obj.GetOutputDriver().GetName())
+	fmt.Printf("\ncpmulator %s CCP %s, input driver %s, output driver %s\n", cpmver.GetVersionString(), obj.GetCCPName(), obj.GetInputDriver().GetName(), obj.GetOutputDriver().GetName())
 
 	// We will load AUTOEXEC.SUB, once, if it exists (*)
 	//

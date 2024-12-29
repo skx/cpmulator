@@ -13,7 +13,7 @@ Over time this project has become more complete, and I've now implemented enough
 * BBC and Microsoft BASIC.
 * Wordstar.
 
-As things stand this project is "complete".  I'd like to increase the test-coverage for my own reassurance, but I've now reached a point where all the binaries I've tried to execute work as expected.  If you find a program that _doesn't_ work please [open an issue](https://github.com/skx/cpmulator/issues), beyond that I think this project is "complete" and future development will be minimal, and sporadic.
+As things stand this project is "complete".  I'd like to increase the test-coverage for my own reassurance, but I've now reached a point where all the binaries I've tried to execute work as expected.  If you find a program that _doesn't_ work please [open an issue](https://github.com/skx/cpmulator/issues), otherwise I suspect ongoing development will be minimal, and sporadic.
 
 > **NOTE** I've not implemented any notion of disk-support.  This means that opening, reading/writing, and closing files is absolutely fine, but any API call that refers to tracks, sectors, or disks will fail (with an "unimplemented syscall" error).
 
@@ -64,16 +64,16 @@ Releases will be made as/when features seem to justify it, but it should be note
 
 # Portability
 
-The CP/M input handlers need to disable echoing when reading (single) characters from STDIN.  There isn't a simple and portable solution for this in golang, although the appropriate primitives exist so building such support isn't impossible.
+The CP/M input handlers need to disable echoing when reading (single) characters from STDIN.  There isn't a simple and portable solution for this in golang, although the appropriate primitives exist so building such support isn't impossible, it just relies upon writing per-environment support, using something like the [ReadPassword](https://pkg.go.dev/golang.org/x/term#ReadPassword) function from the standard-library.
 
-Usage of is demonstrated in the standard library:
+I sidestepped this whole problem initially, just invoking the `stty` binary to enable/disable the echoing of characters on-demand, but that only works on Linux, BSD, and Mac hosts.  To be properly portable I had to use the [termbox](https://github.com/nsf/termbox-go) library for all input, but that means we get no scrollback/history so there's a tradeoff to be made.
 
-* [x/term package](https://pkg.go.dev/golang.org/x/term)
-  * [ReadPassword](https://pkg.go.dev/golang.org/x/term#ReadPassword) - ReadPassword reads a line of input from a terminal without local echo.
+By default input will be read via `termbox` but you may you specify a different driver via the CLI arguments:
 
-Unfortunately there is no code there for reading only a _single character_, rather than a complete line.  In the interest of expediency I resort to executing the `stty` binary, rather than attempting to use the `x/term` package to manage echo/noecho state myself, and this means the code in this repository isn't 100% portable; it will work on Linux and MacOS hosts, but not Windows.
-
-I've got an open bug about fixing the console (input), [#65](https://github.com/skx/cpmulator/issues/65).
+* `cpmulator -input xxx`
+  * Use the input-driver named `xxx`.
+* `cpmulator -list-input-drivers`
+  * List all available input-drivers.
 
 
 
@@ -139,7 +139,7 @@ $ cpmulator /path/to/binary [optional-args]
 
 ## Command Line Flags
 
-There are several command-line options which are shown in the output of `cpmulator -help`, but the following summary shows the most important/useful options:
+There are many available command-line options, which are shown in the output of `cpmulator -help`, but the following summary shows the most important/useful options:
 
 * `-cd /path/to/directory`
   * Change to the given directory before running.
@@ -152,6 +152,7 @@ There are several command-line options which are shown in the output of `cpmulat
   * All output which CP/M sends to the "printer" will be written to the given file.
 * `-list-syscalls`
   * Dump the list of implemented BDOS and BIOS syscalls.
+* `-list-input-drivers` and `-list-output-drivers` to see the available I/O driver-names, which may be enabled via `-input` and `-output`.
 * `-version`
   * Show the version number of the emulator, and exit.
 

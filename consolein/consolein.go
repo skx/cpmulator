@@ -1,210 +1,169 @@
-// Package consolein handles the reading of console input
-// for our emulator.
+// Package consolein is an abstraction over console input.
 //
-// The package supports the minimum required functionality
-// we need - which boils down to reading a single character
-// of input, with and without echo, and reading a line of text.
-//
-// Note that no output functions are handled by this package,
-// it is exclusively used for input.
+// We support two methods of getting input, whilst selectively
+// disabling/enabling echo - the use of `termbox' and the use of
+// the `stty` binary.
 package consolein
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
 	"strings"
 	"unicode"
-
-	"golang.org/x/term"
 )
 
-// Status is used to record our current state
-type Status int
+// ErrInterrupted is returned if the user presses Ctrl-C when in our ReadLine function.
+var ErrInterrupted error = fmt.Errorf("INTERRUPTED")
 
-var (
-	// Unknown means we don't know the status of echo/noecho
-	Unknown Status = 0
+// ConsoleInput is the interface that must be implemented by anything
+// that wishes to be used as an input driver.
+//
+// Providing this interface is implemented an object may register itself,
+// by name, via the Register method.
+type ConsoleInput interface {
 
-	// Echo means that input will echo characters.
-	Echo Status = 1
+	// Setup performs any specific setup which is required.
+	Setup()
 
-	// NoEcho means that input will not echo characters.
-	NoEcho Status = 2
+	// TearDown performs any specific cleanup which is required.
+	TearDown()
 
-	// ErrInterrupted is returned if the user presses Ctrl-C when in our ReadLine function.
-	ErrInterrupted = fmt.Errorf("INTERRUPTED")
-)
+	// StuffInput saves fake-input into the drivers' buffer, to be returned later.
+	StuffInput(input string)
 
-// ConsoleIn holds our state
+	// PendingInput returns true if there is pending input available to be read.
+	PendingInput() bool
+
+	// BlockForCharacterNoEcho reads a single character from the console, without
+	// echoing it.
+	BlockForCharacterNoEcho() (byte, error)
+
+	// GetName will return the name of the driver.
+	GetName() string
+}
+
+// This is a map of known-drivers
+var handlers = struct {
+	m map[string]Constructor
+}{m: make(map[string]Constructor)}
+
+// This is the count of Ctrl-C which we keep track of to allow "reboots"
+var interruptCount int = 1
+
+// history holds previous (line) input.
+var history []string
+
+// Constructor is the signature of a constructor-function
+// which is used to instantiate an instance of a driver.
+type Constructor func() ConsoleInput
+
+// Register makes a console driver available, by name.
+//
+// When one needs to be created the constructor can be called
+// to create an instance of it.
+func Register(name string, obj Constructor) {
+	handlers.m[name] = obj
+}
+
+// ConsoleIn holds our state, which is basically just a
+// pointer to the object handling our input
 type ConsoleIn struct {
-	// State holds our current echo state; either Echo, NoEcho, or Unknown.
-	State Status
 
-	// InterruptCount holds the number of consecutive Ctrl-Cs which are necessary
-	// to trigger an interrupt response from ReadLine
-	InterruptCount int
-
-	// stuffed holds fake input which has been forced into the buffer used
-	// by ReadLine
-	stuffed string
-
-	// history holds previous (line) input.
-	history []string
+	// driver is the thing that actually reads our output.
+	driver ConsoleInput
 }
 
-// New is our constructor.
-func New() *ConsoleIn {
-	t := &ConsoleIn{
-		State:          Unknown,
-		InterruptCount: 2,
+// New is our constructore, it creates an input device which uses
+// the specified driver.
+func New(name string) (*ConsoleIn, error) {
+
+	// Do we have a constructor with the given name?
+	ctor, ok := handlers.m[name]
+	if !ok {
+		return nil, fmt.Errorf("failed to lookup driver by name '%s'", name)
 	}
-	return t
+
+	// OK we do, return ourselves with that driver.
+	return &ConsoleIn{
+		driver: ctor(),
+	}, nil
 }
 
-// StuffInput forces input into the buffer which our ReadLine function will
-// return.  It is used solely for the AUTOEXEC.SUB behaviour by our driver.
-func (ci *ConsoleIn) StuffInput(text string) {
-	ci.stuffed = text
+// GetDriver allows getting our driver at runtime.
+func (co *ConsoleIn) GetDriver() ConsoleInput {
+	return co.driver
 }
 
-// SetInterruptCount updates the number of consecutive Ctrl-Cs which are necessary
-// to trigger an interrupt in ReadLine.
-func (ci *ConsoleIn) SetInterruptCount(val int) {
-	ci.InterruptCount = val
+// GetName returns the name of our selected driver.
+func (co *ConsoleIn) GetName() string {
+	return co.driver.GetName()
 }
 
-// GetInterruptCount returns the number of consecutive Ctrl-Cs which are necessary
-// to trigger an interrupt in ReadLine.
-func (ci *ConsoleIn) GetInterruptCount() int {
-	return ci.InterruptCount
+// GetDrivers returns all available driver-names.
+func (co *ConsoleIn) GetDrivers() []string {
+	valid := []string{}
+
+	for x := range handlers.m {
+		valid = append(valid, x)
+	}
+	return valid
 }
 
-// PendingInput returns true if there is pending input from STDIN..
+// Setup proxies into our registered console-input driver.
+func (co *ConsoleIn) Setup() {
+	co.driver.Setup()
+}
+
+// TearDown proxies into our registered console-input driver.
+func (co *ConsoleIn) TearDown() {
+	co.driver.TearDown()
+}
+
+// StuffInput proxies into our registered console-input driver.
+func (co *ConsoleIn) StuffInput(input string) {
+	co.driver.StuffInput(input)
+}
+
+// SetInterruptCount sets the number of consecutive Ctrl-C characters
+// are required to trigger a reboot.
 //
-// Note that we have to set RAW mode, without this input is laggy
-// and zork doesn't run.
-func (ci *ConsoleIn) PendingInput() bool {
-
-	// Do we have faked/stuffed input to process?
-	if len(ci.stuffed) > 0 {
-		return true
-	}
-
-	// switch stdin into 'raw' mode
-	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
-	if err != nil {
-		return false
-	}
-
-	// Platform-specific code in select_XXXX.go
-	res := canSelect()
-
-	// restore the state of the terminal to avoid mixing RAW/Cooked
-	err = term.Restore(int(os.Stdin.Fd()), oldState)
-	if err != nil {
-		return false
-	}
-
-	// Return true if we have something ready to read.
-	return res
+// This function DOES NOT proxy to our registered console-input driver.
+func (co *ConsoleIn) SetInterruptCount(val int) {
+	interruptCount = val
 }
 
-// BlockForCharacterNoEcho returns the next character from the console, blocking until
-// one is available.
+// GetInterruptCount retrieves the number of consecutive Ctrl-C characters are required to trigger a reboot.
 //
-// NOTE: This function should not echo keystrokes which are entered.
-func (ci *ConsoleIn) BlockForCharacterNoEcho() (byte, error) {
-
-	// Do we have faked/stuffed input to process?
-	if len(ci.stuffed) > 0 {
-		c := ci.stuffed[0]
-		ci.stuffed = ci.stuffed[1:]
-		return c, nil
-	}
-
-	// Do we need to change state?  If so then do it.
-	if ci.State != NoEcho {
-		ci.disableEcho()
-	}
-
-	// switch stdin into 'raw' mode
-	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
-	if err != nil {
-		return 0x00, fmt.Errorf("error making raw terminal %s", err)
-	}
-
-	// read only a single byte
-	b := make([]byte, 1)
-	_, err = os.Stdin.Read(b)
-	if err != nil {
-		return 0x00, fmt.Errorf("error reading a byte from stdin %s", err)
-	}
-
-	// restore the state of the terminal to avoid mixing RAW/Cooked
-	err = term.Restore(int(os.Stdin.Fd()), oldState)
-	if err != nil {
-		return 0x00, fmt.Errorf("error restoring terminal state %s", err)
-	}
-
-	// Return the character we read
-	return b[0], nil
+// This function DOES NOT proxy to our registered console-input driver.
+func (co *ConsoleIn) GetInterruptCount() int {
+	return interruptCount
 }
 
-// BlockForCharacterWithEcho returns the next character from the console,
-// blocking until one is available.
-//
-// NOTE: Characters should be echo'd as they are input.
-func (ci *ConsoleIn) BlockForCharacterWithEcho() (byte, error) {
-
-	// Do we have faked/stuffed input to process?
-	if len(ci.stuffed) > 0 {
-		c := ci.stuffed[0]
-		ci.stuffed = ci.stuffed[1:]
-		return c, nil
-	}
-
-	// Do we need to change state?  If so then do it.
-	if ci.State != Echo {
-		ci.enableEcho()
-	}
-
-	// switch stdin into 'raw' mode
-	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
-	if err != nil {
-		return 0x00, fmt.Errorf("error making raw terminal %s", err)
-	}
-
-	// read only a single byte
-	b := make([]byte, 1)
-	_, err = os.Stdin.Read(b)
-	if err != nil {
-		return 0x00, fmt.Errorf("error reading a byte from stdin %s", err)
-	}
-
-	// restore the state of the terminal to avoid mixing RAW/Cooked
-	err = term.Restore(int(os.Stdin.Fd()), oldState)
-	if err != nil {
-		return 0x00, fmt.Errorf("error restoring terminal state %s", err)
-	}
-
-	fmt.Printf("%c", b[0])
-	return b[0], nil
+// PendingInput proxies into our registered console-input driver.
+func (co *ConsoleIn) PendingInput() bool {
+	return co.driver.PendingInput()
 }
 
-// ReadLine reads a line of input from the console, truncating to the
-// length specified.
-//
-// Note: We should enable echo in this function.
-//
-// NOTE: A user pressing Ctrl-C will be caught, and this will trigger the BDOS
-// function to reboot.  We have a variable holding the number of consecutive
-// Ctrl-C characters are required to trigger this behaviour.
-//
-// NOTE: We erase the input buffer with ESC, and allow history movement via
-// Ctrl-p and Ctrl-n.
-func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
+// BlockForCharacterNoEcho proxies into our registered console-input driver.
+func (co *ConsoleIn) BlockForCharacterNoEcho() (byte, error) {
+	return co.driver.BlockForCharacterNoEcho()
+}
 
+// BlockForCharacterWithEcho blocks for input and shows that input before it
+// is returned.
+//
+// This function DOES NOT proxy to our registered console-input driver.
+func (co *ConsoleIn) BlockForCharacterWithEcho() (byte, error) {
+	c, err := co.driver.BlockForCharacterNoEcho()
+	if err == nil {
+		fmt.Printf("%c", c)
+	}
+	return c, err
+}
+
+// ReadLine handles the input of a single line of text.
+//
+// This function DOES NOT proxy to our registered console-input driver.
+func (co *ConsoleIn) ReadLine(max uint8) (string, error) {
 	// Text the user entered
 	text := ""
 
@@ -223,7 +182,7 @@ func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 		}
 	}
 
-	// Wwe're expecting the user to enter a line of text,
+	// We're expecting the user to enter a line of text,
 	// but we process their input in terms of characters.
 	//
 	// We do that so that we can react to special characters
@@ -234,7 +193,7 @@ func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 	for {
 
 		// Get a character, with no echo.
-		x, err := ci.BlockForCharacterNoEcho()
+		x, err := co.driver.BlockForCharacterNoEcho()
 		if err != nil {
 			return "", err
 		}
@@ -255,9 +214,9 @@ func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 
 				eraseInput()
 
-				if len(ci.history)-offset < len(ci.history) {
+				if len(history)-offset < len(history) {
 					// replace with a suitable value, and show it
-					text = ci.history[len(ci.history)-offset]
+					text = history[len(history)-offset]
 					fmt.Printf("%s", text)
 				}
 			}
@@ -266,7 +225,7 @@ func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 
 		// Ctrl-P?
 		if x == 16 {
-			if offset >= len(ci.history) {
+			if offset >= len(history) {
 				continue
 			}
 			offset += 1
@@ -274,7 +233,7 @@ func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 			eraseInput()
 
 			// replace with a suitable value, and show it
-			text = ci.history[len(ci.history)-offset]
+			text = history[len(history)-offset]
 			fmt.Printf("%s", text)
 
 			continue
@@ -290,7 +249,7 @@ func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 
 				// If we've hit our limit of consecutive Ctrl-Cs
 				// then we return the interrupted error-code
-				if ctrlCount == ci.InterruptCount {
+				if ctrlCount == interruptCount {
 					return "", ErrInterrupted
 				}
 			}
@@ -305,12 +264,12 @@ func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 
 			if text != "" {
 				// If we have no history, save it.
-				if len(ci.history) == 0 {
-					ci.history = append(ci.history, text)
+				if len(history) == 0 {
+					history = append(history, text)
 				} else {
 					// otherwise only add if different to previous entry.
-					if text != ci.history[len(ci.history)-1] {
-						ci.history = append(ci.history, text)
+					if text != history[len(history)-1] {
+						history = append(history, text)
 					}
 				}
 			}
@@ -354,21 +313,4 @@ func (ci *ConsoleIn) ReadLine(max uint8) (string, error) {
 
 	// Return the text
 	return text, nil
-}
-
-// Reset restores echo.
-func (ci *ConsoleIn) Reset() {
-	ci.enableEcho()
-}
-
-// disableEcho is the single place where we disable echoing.
-func (ci *ConsoleIn) disableEcho() {
-	_ = exec.Command("stty", "-F", "/dev/tty", "-echo").Run()
-	ci.State = NoEcho
-}
-
-// enableEcho is the single place where we enable echoing.
-func (ci *ConsoleIn) enableEcho() {
-	_ = exec.Command("stty", "-F", "/dev/tty", "echo").Run()
-	ci.State = Echo
 }
