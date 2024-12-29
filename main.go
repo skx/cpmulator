@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 
@@ -31,9 +32,9 @@ func main() {
 	//
 	ccp := flag.String("ccp", "ccpz", "The name of the CCP that we should run (ccp vs. ccpz).")
 	cd := flag.String("cd", "", "Change to this directory before launching")
-	console := flag.String("console", "adm-3a", "The name of the console output driver to use (adm-3a or ansi).")
+	console := flag.String("console", cpm.DefaultOutputDriver, "The name of the console output driver to use (adm-3a or ansi).")
 	createDirectories := flag.Bool("create", false, "Create subdirectories on the host computer for each CP/M drive.")
-	input := flag.String("input", "term", "The name of the console input driver to use (term or stty).")
+	input := flag.String("input", cpm.DefaultInputDriver, "The name of the console input driver to use (term or stty).")
 	logAll := flag.Bool("log-all", false, "Log the output of all functions, including the noisy Console I/O ones.")
 	logPath := flag.String("log-path", "", "Specify the file to write debug logs to.")
 	prnPath := flag.String("prn-path", "print.log", "Specify the file to write printer-output to.")
@@ -80,9 +81,14 @@ func main() {
 	if *listInput {
 		obj, _ := consolein.New("null")
 		valid := obj.GetDrivers()
+		slices.Sort(valid)
 
 		for _, name := range valid {
-			fmt.Printf("%s\n", name)
+			suffix := ""
+			if name == cpm.DefaultInputDriver {
+				suffix = "\t[default]"
+			}
+			fmt.Printf("%s%s\n", name, suffix)
 		}
 		return
 	}
@@ -92,8 +98,14 @@ func main() {
 		obj, _ := consoleout.New("null")
 		valid := obj.GetDrivers()
 
+		slices.Sort(valid)
+
 		for _, name := range valid {
-			fmt.Printf("%s\n", name)
+			suffix := ""
+			if name == cpm.DefaultOutputDriver {
+				suffix = "\t[default]"
+			}
+			fmt.Printf("%s%s\n", name, suffix)
 		}
 		return
 	}

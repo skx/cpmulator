@@ -47,6 +47,12 @@ var (
 	//
 	// It should be handled and expected by callers.
 	ErrUnimplemented = errors.New("UNIMPLEMENTED")
+
+	// DefaultInputDriver contains the name of the default console input driver.
+	DefaultInputDriver string = "term"
+
+	// DefaultOutputDriver contains the name of the default console output driver.
+	DefaultOutputDriver string = "adm-3a"
 )
 
 // CPMHandlerType contains the signature of a function we use to
@@ -217,8 +223,7 @@ func WithPrinterPath(path string) cpmoption {
 	}
 }
 
-// WithOutputDriver allows the console driver to be created in our
-// constructor.
+// WithOutputDriver allows the default console output driver to be changed in our constructor.
 func WithOutputDriver(name string) cpmoption {
 
 	return func(c *CPM) error {
@@ -233,8 +238,7 @@ func WithOutputDriver(name string) cpmoption {
 	}
 }
 
-// WithInputDriver allows the console input driver to be created in our
-// constructor.
+// WithInputDriver allows the default console input driver to be changed in our constructor.
 func WithInputDriver(name string) cpmoption {
 
 	return func(c *CPM) error {
@@ -512,13 +516,13 @@ func New(options ...cpmoption) (*CPM, error) {
 	}
 
 	// Default output driver
-	oDriver, err := consoleout.New("adm-3a")
+	oDriver, err := consoleout.New(DefaultOutputDriver)
 	if err != nil {
 		return nil, err
 	}
 
 	// Default input driver
-	iDriver, err := consolein.New("term")
+	iDriver, err := consolein.New(DefaultInputDriver)
 	if err != nil {
 		return nil, err
 	}
