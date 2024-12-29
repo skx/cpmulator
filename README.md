@@ -62,22 +62,6 @@ Releases will be made as/when features seem to justify it, but it should be note
 
 
 
-# Portability
-
-The CP/M input handlers need to disable echoing when reading (single) characters from STDIN.  There isn't a simple and portable solution for this in golang, although the appropriate primitives exist so building such support isn't impossible, it just relies upon writing per-environment support, using something like the [ReadPassword](https://pkg.go.dev/golang.org/x/term#ReadPassword) function from the standard-library.
-
-I sidestepped this whole problem initially, just invoking the `stty` binary to enable/disable the echoing of characters on-demand, but that only works on Linux, BSD, and Mac hosts.  To be properly portable I had to use the [termbox](https://github.com/nsf/termbox-go) library for all input, but that means we get no scrollback/history so there's a tradeoff to be made.
-
-By default input will be read via `termbox` but you may you specify a different driver via the CLI arguments:
-
-* `cpmulator -input xxx`
-  * Use the input-driver named `xxx`.
-* `cpmulator -list-input-drivers`
-  * List all available input-drivers.
-
-
-
-
 # Usage
 
 If you launch `cpmulator` with no arguments then the default CCP ("console command processor") will be launched, dropping you into a familiar shell:
@@ -174,7 +158,7 @@ This allows you to customize the emulator, or perform other "one-time" setup via
 
 There are a small number of [extensions](EXTENSIONS.md) added to the BIOS functionality we provide, and these extensions allow changing the behaviour of the emulator at runtime.
 
-The behaviour changing is achieved by having a small number of .COM files invoke the extension functions, and these binaries are embedded within our emulator to improve ease of use, via the [static/](static/) directory in our source-tree - This means no matter what you'll always find some binaries installed on A:, despite not being present in reality.
+The behaviour changing is achieved by having a small number of .COM files invoke the extension functions, and these binaries are embedded within our emulator to improve ease of use, via the [static/](static/) directory in our source-tree.  This means no matter what you'll always find some binaries installed on A:, despite not being present in reality.
 
 > **NOTE** To avoid naming collisions all our embedded binaries are named with a `!` prefix, except for `#.COM` which is designed to be used as a comment-binary.
 
@@ -198,6 +182,8 @@ We default to pretending our output device is an ADM-3A terminal, this can be ch
 Run `A:!CONSOLE ansi` to disable the output emulation, or `A:!CONSOLE adm-3a` to restore it.
 
 You'll see that the [cpm-dist](https://github.com/skx/cpm-dist) repository contains a version of Wordstar, and that behaves differently depending on the selected output handler.  Changing the handler at run-time is a neat bit of behaviour.
+
+You'll note it is **not** possible to change the console _input_ driver at runtime, I think once you know which works best upon your system it doesn't make sense to change this interactively.
 
 
 ### Debug Handling
@@ -323,6 +309,22 @@ The implementation of the syscalls is the core of our emulator, and they can be 
   * https://www.seasip.info/Cpm/bdos.html
 * [cpm/cpm_bios.go](cpm/cpm_bios.go) - BIOS functions.
   * https://www.seasip.info/Cpm/bios.html
+
+
+
+
+# Portability
+
+The CP/M input handlers need to disable echoing when reading (single) characters from STDIN.  There isn't a simple and portable solution for this in golang, although the appropriate primitives exist so building such support isn't impossible, it just relies upon writing per-environment support, using something like the [ReadPassword](https://pkg.go.dev/golang.org/x/term#ReadPassword) function from the standard-library.
+
+I sidestepped this whole problem initially, just invoking the `stty` binary to enable/disable the echoing of characters on-demand, but that only works on Linux, BSD, and Mac hosts.  To be properly portable I had to use the [termbox](https://github.com/nsf/termbox-go) library for all input, but that means we get no scrollback/history so there's a tradeoff to be made.
+
+By default input will be read via `termbox` but you may you specify a different driver via the CLI arguments:
+
+* `cpmulator -input xxx`
+  * Use the input-driver named `xxx`.
+* `cpmulator -list-input-drivers`
+  * List all available input-drivers.
 
 
 
