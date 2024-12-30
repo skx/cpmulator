@@ -1,3 +1,5 @@
+//go:build unix
+
 // drv_stty creates a console input-driver which uses the
 // `stty` binary to set our echo/no-echo state.
 //
@@ -10,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 
+	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 )
 
@@ -56,6 +59,25 @@ func (si *STTYInput) TearDown() {
 	}
 }
 
+// canSelect contains a platform-specific implementation of code that tries to use
+// SELECT to read from STDIN.
+func canSelect() bool {
+
+	fds := new(unix.FdSet)
+	fds.Set(int(os.Stdin.Fd()))
+
+	// See if input is pending, for a while.
+	tv := unix.Timeval{Usec: 200}
+
+	// via select with timeout
+	nRead, err := unix.Select(1, fds, nil, nil, &tv)
+	if err != nil {
+		return false
+	}
+
+	return (nRead > 0)
+}
+
 // PendingInput returns true if there is pending input from STDIN..
 //
 // Note that we have to set RAW mode, without this input is laggy
@@ -73,7 +95,7 @@ func (si *STTYInput) PendingInput() bool {
 		return false
 	}
 
-	// Platform-specific code in select_XXXX.go
+	// Can we read from STDIN?
 	res := canSelect()
 
 	// restore the state of the terminal to avoid mixing RAW/Cooked
