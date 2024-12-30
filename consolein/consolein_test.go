@@ -13,10 +13,10 @@ func TestReadlineSTTY(t *testing.T) {
 	// Simple readline
 	// Here \x10 is the Ctrl-P which would use the previous history
 	// as we're just created we have none so it is ignored.
-	x.StuffInput("s\x10teve\n")
+	ch.StuffInput("s\x10teve\n")
 	out, err := ch.ReadLine(20)
 	if err != nil {
-		t.Fatalf("unexpected error")
+		t.Fatalf("unexpected error: %s", err)
 	}
 	if out != "steve" {
 		t.Fatalf("Unexpected output '%s'", out)
@@ -24,14 +24,14 @@ func TestReadlineSTTY(t *testing.T) {
 
 	// Ctrl-C at start of the line should trigger a reboot-error
 	//	x.stuffed = string([]byte{0x03, 0x03, 0x00}a)
-	x.StuffInput("\x03\x03steve")
+	ch.StuffInput("\x03\x03steve")
 	_, err = ch.ReadLine(20)
 	if err != ErrInterrupted {
 		t.Fatalf("unexpected error %s", err)
 	}
 
 	// Ctrl-C at the middle of a line should not
-	x.StuffInput("steve\x03\x03steve\n")
+	ch.StuffInput("steve\x03\x03steve\n")
 	out, err = ch.ReadLine(20)
 	if err != nil {
 		t.Fatalf("unexpected error %s", err)
@@ -41,7 +41,7 @@ func TestReadlineSTTY(t *testing.T) {
 	}
 
 	// Ctrl-B overwrites
-	x.StuffInput("steve\b\b\b\b\bHello\n")
+	ch.StuffInput("steve\b\b\b\b\bHello\n")
 	out, err = ch.ReadLine(20)
 	if err != nil {
 		t.Fatalf("unexpected error %s", err)
@@ -51,7 +51,7 @@ func TestReadlineSTTY(t *testing.T) {
 	}
 
 	// ESC resets input
-	x.StuffInput("steve\x1BHello\n")
+	ch.StuffInput("steve\x1BHello\n")
 	out, err = ch.ReadLine(20)
 	if err != nil {
 		t.Fatalf("unexpected error %s", err)
@@ -61,7 +61,7 @@ func TestReadlineSTTY(t *testing.T) {
 	}
 
 	// Too much input?  We truncate
-	x.StuffInput("I like to move it, move it\n")
+	ch.StuffInput("I like to move it, move it\n")
 	out, err = ch.ReadLine(5)
 	if err != nil {
 		t.Fatalf("unexpected error %s", err)
@@ -72,7 +72,7 @@ func TestReadlineSTTY(t *testing.T) {
 
 	// Add some history, and return the last value
 	history = append(history, "I like to move it")
-	x.StuffInput("ste\x10\n")
+	ch.StuffInput("ste\x10\n")
 	out, err = ch.ReadLine(5)
 	if err != nil {
 		t.Fatalf("unexpected error %s", err)
@@ -82,7 +82,7 @@ func TestReadlineSTTY(t *testing.T) {
 	}
 
 	// Go back and forward in history
-	x.StuffInput("\x10\x10\x10\x0e\n")
+	ch.StuffInput("\x10\x10\x10\x0e\n")
 	out, err = ch.ReadLine(10)
 	if err != nil {
 		t.Fatalf("unexpected error %s", err)
@@ -146,8 +146,14 @@ func TestPending(t *testing.T) {
 	// Create a helper
 	x := STTYInput{}
 
-	x.StuffInput("foo")
-	if !x.PendingInput() {
+	ch := ConsoleIn{}
+	ch.driver = &x
+
+	ch.Setup()
+	defer ch.TearDown()
+
+	ch.StuffInput("foo")
+	if !ch.PendingInput() {
 		t.Fatalf("we should have pending input, but see none")
 	}
 

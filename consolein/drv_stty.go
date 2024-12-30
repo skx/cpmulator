@@ -41,10 +41,6 @@ type STTYInput struct {
 
 	// state holds our state
 	state EchoStatus
-
-	// stuffed holds fake input which has been forced into the buffer used
-	// by ReadLine
-	stuffed string
 }
 
 // Setup is a NOP.
@@ -84,11 +80,6 @@ func canSelect() bool {
 // and zork doesn't run.
 func (si *STTYInput) PendingInput() bool {
 
-	// Do we have faked/stuffed input to process?
-	if len(si.stuffed) > 0 {
-		return true
-	}
-
 	// switch stdin into 'raw' mode
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
@@ -108,23 +99,11 @@ func (si *STTYInput) PendingInput() bool {
 	return res
 }
 
-// StuffInput inserts fake values into our input-buffer
-func (si *STTYInput) StuffInput(input string) {
-	si.stuffed = input
-}
-
 // BlockForCharacterNoEcho returns the next character from the console, blocking until
 // one is available.
 //
 // NOTE: This function should not echo keystrokes which are entered.
 func (si *STTYInput) BlockForCharacterNoEcho() (byte, error) {
-
-	// Do we have faked/stuffed input to process?
-	if len(si.stuffed) > 0 {
-		c := si.stuffed[0]
-		si.stuffed = si.stuffed[1:]
-		return c, nil
-	}
 
 	// Do we need to change state?  If so then do it.
 	if si.state != NoEcho {

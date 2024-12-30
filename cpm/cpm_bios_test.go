@@ -14,13 +14,13 @@ func TestStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
-
+	c.StuffText("")
 	err = BiosSysCallConsoleStatus(c)
 	if err != nil {
 		t.Fatalf("failed to call CPM")
 	}
 	if c.CPU.States.AF.Hi != 0x00 {
-		t.Fatalf("console status was wrong")
+		t.Fatalf("console status was wrong %02X", c.CPU.States.AF.Hi)
 	}
 
 	c.input.StuffInput("S")

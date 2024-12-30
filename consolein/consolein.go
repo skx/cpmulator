@@ -31,9 +31,6 @@ type ConsoleInput interface {
 	// TearDown performs any specific cleanup which is required.
 	TearDown()
 
-	// StuffInput saves fake-input into the drivers' buffer, to be returned later.
-	StuffInput(input string)
-
 	// PendingInput returns true if there is pending input available to be read.
 	PendingInput() bool
 
@@ -50,8 +47,11 @@ var handlers = struct {
 	m map[string]Constructor
 }{m: make(map[string]Constructor)}
 
-// This is the count of Ctrl-C which we keep track of to allow "reboots"
+// interruptCount is the count of consecutive Ctrl-Cs which will trigger a "reboot".
 var interruptCount int = 2
+
+// stuffed holds pending input
+var stuffed string = ""
 
 // history holds previous (line) input.
 var history []string
@@ -130,7 +130,7 @@ func (co *ConsoleIn) TearDown() {
 
 // StuffInput proxies into our registered console-input driver.
 func (co *ConsoleIn) StuffInput(input string) {
-	co.driver.StuffInput(input)
+	stuffed = input
 }
 
 // SetInterruptCount sets the number of consecutive Ctrl-C characters
@@ -150,11 +150,25 @@ func (co *ConsoleIn) GetInterruptCount() int {
 
 // PendingInput proxies into our registered console-input driver.
 func (co *ConsoleIn) PendingInput() bool {
+
+	// if there is stuffed input we have something ready to read
+	if len(stuffed) > 0 {
+		return true
+	}
+
 	return co.driver.PendingInput()
 }
 
 // BlockForCharacterNoEcho proxies into our registered console-input driver.
 func (co *ConsoleIn) BlockForCharacterNoEcho() (byte, error) {
+
+	// Do we have faked/stuffed input to process?
+	if len(stuffed) > 0 {
+		c := stuffed[0]
+		stuffed = stuffed[1:]
+		return c, nil
+	}
+
 	return co.driver.BlockForCharacterNoEcho()
 }
 
@@ -163,6 +177,15 @@ func (co *ConsoleIn) BlockForCharacterNoEcho() (byte, error) {
 //
 // This function DOES NOT proxy to our registered console-input driver.
 func (co *ConsoleIn) BlockForCharacterWithEcho() (byte, error) {
+
+	// Do we have faked/stuffed input to process?
+	if len(stuffed) > 0 {
+		c := stuffed[0]
+		stuffed = stuffed[1:]
+		fmt.Printf("%c", c)
+		return c, nil
+	}
+
 	c, err := co.driver.BlockForCharacterNoEcho()
 	if err == nil {
 		fmt.Printf("%c", c)
@@ -203,7 +226,7 @@ func (co *ConsoleIn) ReadLine(max uint8) (string, error) {
 	for {
 
 		// Get a character, with no echo.
-		x, err := co.driver.BlockForCharacterNoEcho()
+		x, err := co.BlockForCharacterNoEcho()
 		if err != nil {
 			return "", err
 		}

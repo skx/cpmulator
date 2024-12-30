@@ -27,10 +27,6 @@ type TermboxInput struct {
 	// Cancel holds a context which can be used to close our polling goroutine
 	Cancel context.CancelFunc
 
-	// stuffed holds fake input which has been forced into the buffer used
-	// by ReadLine
-	stuffed string
-
 	// keyBuffer builds up keys read "in the background", via termbox
 	keyBuffer []rune
 }
@@ -111,20 +107,9 @@ func (ti *TermboxInput) TearDown() {
 	}
 }
 
-// StuffInput inserts fake values into our input-buffer
-func (ti *TermboxInput) StuffInput(input string) {
-	ti.stuffed = input
-}
-
 // PendingInput returns true if there is pending input from STDIN.
 func (ti *TermboxInput) PendingInput() bool {
 
-	// Do we have faked/stuffed input to process?
-	if len(ti.stuffed) > 0 {
-		return true
-	}
-
-	// Otherwise only if we've read stuff.
 	return len(ti.keyBuffer) > 0
 }
 
@@ -134,14 +119,6 @@ func (ti *TermboxInput) PendingInput() bool {
 // NOTE: This function should not echo keystrokes which are entered.
 func (ti *TermboxInput) BlockForCharacterNoEcho() (byte, error) {
 
-	// Do we have faked/stuffed input to process?
-	if len(ti.stuffed) > 0 {
-		c := ti.stuffed[0]
-		ti.stuffed = ti.stuffed[1:]
-		return c, nil
-	}
-
-	// Otherwise only if we've read stuff.
 	for len(ti.keyBuffer) == 0 {
 		time.Sleep(1 * time.Millisecond)
 	}
