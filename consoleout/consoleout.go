@@ -8,6 +8,7 @@ package consoleout
 import (
 	"fmt"
 	"io"
+	"strings"
 )
 
 // ConsoleOutput is the interface that must be implemented by anything
@@ -59,6 +60,9 @@ type Constructor func() ConsoleOutput
 // When one needs to be created the constructor can be called
 // to create an instance of it.
 func Register(name string, obj Constructor) {
+	// Downcase for consistency.
+	name = strings.ToLower(name)
+
 	handlers.m[name] = obj
 }
 
@@ -73,6 +77,8 @@ type ConsoleOut struct {
 // New is our constructore, it creates an output device which uses
 // the specified driver.
 func New(name string) (*ConsoleOut, error) {
+	// Downcase for consistency.
+	name = strings.ToLower(name)
 
 	// Do we have a constructor with the given name?
 	ctor, ok := handlers.m[name]

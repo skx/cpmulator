@@ -65,6 +65,9 @@ type Constructor func() ConsoleInput
 // When one needs to be created the constructor can be called
 // to create an instance of it.
 func Register(name string, obj Constructor) {
+	// Downcase for consistency.
+	name = strings.ToLower(name)
+
 	handlers.m[name] = obj
 }
 
@@ -79,6 +82,9 @@ type ConsoleIn struct {
 // New is our constructore, it creates an input device which uses
 // the specified driver.
 func New(name string) (*ConsoleIn, error) {
+
+	// Downcase for consistency.
+	name = strings.ToLower(name)
 
 	// Do we have a constructor with the given name?
 	ctor, ok := handlers.m[name]
