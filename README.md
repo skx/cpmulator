@@ -136,7 +136,7 @@ There are many available command-line options, which are shown in the output of 
   * All output which CP/M sends to the "printer" will be written to the given file.
 * `-list-syscalls`
   * Dump the list of implemented BDOS and BIOS syscalls.
-* `-list-input-drivers` and `-list-output-drivers` to see the available I/O driver-names, which may be enabled via `-input` and `-output`.
+* `-list-input-drivers` and `-list-output-drivers` to see the available I/O driver-names, which may then be selected via the `-input` and `-output` flags.
 * `-version`
   * Show the version number of the emulator, and exit.
 
@@ -156,7 +156,7 @@ This allows you to customize the emulator, or perform other "one-time" setup via
 
 ## Runtime Behaviour Changes
 
-There are a small number of [extensions](EXTENSIONS.md) added to the BIOS functionality we provide, and these extensions allow changing the behaviour of the emulator at runtime.
+There are a small number of [extensions](EXTENSIONS.md) added to the BIOS functionality we provide, and these extensions allow changing some aspects of the emulator at runtime.
 
 The behaviour changing is achieved by having a small number of .COM files invoke the extension functions, and these binaries are embedded within our emulator to improve ease of use, via the [static/](static/) directory in our source-tree.  This means no matter what you'll always find some binaries installed on A:, despite not being present in reality.
 
@@ -177,7 +177,7 @@ The binary `A:!CTRLC.COM` which lets you change this at runtime.  Run `A:!CTRLC 
 
 ### Console Output
 
-We default to pretending our output device is an ADM-3A terminal, this can be changed via the `-console` command-line flag at startup.  Additionally it can be changed at runtime via `A:!CONSOLE.COM`.
+We default to pretending our output device is an ADM-3A terminal, this can be changed via the `-output` command-line flag (previously `-console`) at startup.  Additionally it can be changed at runtime via `A:!CONSOLE.COM`.
 
 Run `A:!CONSOLE ansi` to disable the output emulation, or `A:!CONSOLE adm-3a` to restore it.
 
@@ -194,7 +194,7 @@ runtime.
 
 `A:!DEBUG.COM` will show the state of the flag, and it can be enabled with `A:!DEBUG 1` or disabled with `!DEBUG 0`.
 
-Finally `A:!VERSION.COM` will show you the version of the emulator you're running, as would the startup banner itself.
+Finally `A:!VERSION.COM` will show you the version of the emulator you're running.
 
 
 
