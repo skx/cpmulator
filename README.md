@@ -194,6 +194,8 @@ runtime.
 
 `A:!DEBUG.COM` will show the state of the flag, and it can be enabled with `A:!DEBUG 1` or disabled with `!DEBUG 0`.
 
+Finally `A:!VERSION.COM` will show you the version of the emulator you're running, as would the startup banner itself.
+
 
 
 
