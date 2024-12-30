@@ -15,19 +15,21 @@ import (
 
 // Flavour contains details about a possible CCP the user might run.
 type Flavour struct {
-	// Name has the name of the CCP.
+	// Name contains the public-facing name of the CCP.
 	//
 	// NOTE: This name is visible to end-users, and will be used in the "-ccp" command-line flag,
-	// or as the name when changing at run-time via the "CCP.COM" utility.
+	// or as the name when changing at run-time via the "A:!CCP.COM" binary.
 	Name string
 
-	// Description has the description of the CCP.
+	// Description contains the description of the CCP.
 	Description string
 
 	// Bytes contains the raw binary content.
 	Bytes []uint8
 
-	// Origin contains the start/load location of the CCP.
+	// Start specifies the memory-address, within RAM, to which the raw bytes should be loaded and to which control should be passed.
+	//
+	// (i.e. This must match the ORG specified in the CCP source code.)
 	Start uint16
 }
 

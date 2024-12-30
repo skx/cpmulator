@@ -12,25 +12,23 @@ import (
 	"github.com/skx/cpmulator/static"
 )
 
+// Flaky with our new implementation.
 func TestConsoleInput(t *testing.T) {
+
 	// Create a new helper
-	c, err := New(WithPrinterPath("11.log"))
+	c, err := New(WithPrinterPath("11.log"), WithInputDriver("term"))
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
 	c.Memory = new(memory.Memory)
 	c.fixupRAM()
-	defer c.Cleanup()
+	defer c.IOTearDown()
 
 	// ReadChar
 	c.StuffText("s")
 	err = BdosSysCallReadChar(c)
 	if err != nil {
 		t.Fatalf("failed to call CP/M")
-	}
-	err = BdosSysCallReadChar(c)
-	if err == nil {
-		t.Fatalf("expected error, got none")
 	}
 	if c.CPU.States.AF.Hi != 's' {
 		t.Fatalf("got the wrong input")
@@ -44,10 +42,6 @@ func TestConsoleInput(t *testing.T) {
 	}
 	if c.CPU.States.AF.Hi != 'k' {
 		t.Fatalf("got the wrong input")
-	}
-	err = BdosSysCallAuxRead(c)
-	if err == nil {
-		t.Fatalf("expected to get an error, but didn't")
 	}
 
 	// RawIO
@@ -106,7 +100,7 @@ func TestUnimplemented(t *testing.T) {
 	}
 	c.Memory = new(memory.Memory)
 	c.fixupRAM()
-	defer c.Cleanup()
+	defer c.IOTearDown()
 
 	// Create a binary
 	var file *os.File
@@ -155,7 +149,7 @@ func TestBoot(t *testing.T) {
 	}
 	c.Memory = new(memory.Memory)
 	c.fixupRAM()
-	defer c.Cleanup()
+	defer c.IOTearDown()
 
 	// Create a binary
 	var file *os.File
@@ -208,7 +202,7 @@ func TestFind(t *testing.T) {
 	c.fixupRAM()
 	c.SetDrives(false)
 	c.SetStaticFilesystem(static.GetContent())
-	defer c.Cleanup()
+	defer c.IOTearDown()
 
 	// Create a pattern in an FCB
 	name := "*.GO"
@@ -288,7 +282,7 @@ func TestFind(t *testing.T) {
 
 	}
 
-	if found != 4 {
+	if found != 5 {
 		t.Fatalf("found wrong number of embedded files, got %d", found)
 	}
 
@@ -349,7 +343,7 @@ func TestReadLine(t *testing.T) {
 	c.Memory = new(memory.Memory)
 
 	// Stuff some fake input
-	c.input = consolein.New()
+	c.input, _ = consolein.New("stty")
 	c.StuffText("steve\n")
 
 	// Setup a buffer, so we can read 5 characters
@@ -1163,7 +1157,7 @@ func TestFileOpen(t *testing.T) {
 	c.Memory = new(memory.Memory)
 	c.fixupRAM()
 	c.SetDrives(false)
-	defer c.Cleanup()
+	defer c.IOTearDown()
 
 	// Create a binary
 

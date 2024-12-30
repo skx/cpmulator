@@ -13,7 +13,7 @@ Over time this project has become more complete, and I've now implemented enough
 * BBC and Microsoft BASIC.
 * Wordstar.
 
-As things stand this project is "complete".  I'd like to increase the test-coverage for my own reassurance, but I've now reached a point where all the binaries I've tried to execute work as expected.  If you find a program that _doesn't_ work please [open an issue](https://github.com/skx/cpmulator/issues), beyond that I think this project is "complete" and future development will be minimal, and sporadic.
+As things stand this project is "complete".  I'd like to increase the test-coverage for my own reassurance, but I've now reached a point where all the binaries I've tried to execute work as expected.  If you find a program that _doesn't_ work please [open an issue](https://github.com/skx/cpmulator/issues), otherwise I suspect ongoing development will be minimal, and sporadic.
 
 > **NOTE** I've not implemented any notion of disk-support.  This means that opening, reading/writing, and closing files is absolutely fine, but any API call that refers to tracks, sectors, or disks will fail (with an "unimplemented syscall" error).
 
@@ -58,22 +58,6 @@ Releases will be made as/when features seem to justify it, but it should be note
   * "G:", then "ZORK1" - to play zork1.
   * "P:", then "TURBO" - to run turbo pascal.
   * "E:", then "WS" - to run wordstar.
-
-
-
-
-# Portability
-
-The CP/M input handlers need to disable echoing when reading (single) characters from STDIN.  There isn't a simple and portable solution for this in golang, although the appropriate primitives exist so building such support isn't impossible.
-
-Usage of is demonstrated in the standard library:
-
-* [x/term package](https://pkg.go.dev/golang.org/x/term)
-  * [ReadPassword](https://pkg.go.dev/golang.org/x/term#ReadPassword) - ReadPassword reads a line of input from a terminal without local echo.
-
-Unfortunately there is no code there for reading only a _single character_, rather than a complete line.  In the interest of expediency I resort to executing the `stty` binary, rather than attempting to use the `x/term` package to manage echo/noecho state myself, and this means the code in this repository isn't 100% portable; it will work on Linux and MacOS hosts, but not Windows.
-
-I've got an open bug about fixing the console (input), [#65](https://github.com/skx/cpmulator/issues/65).
 
 
 
@@ -139,7 +123,7 @@ $ cpmulator /path/to/binary [optional-args]
 
 ## Command Line Flags
 
-There are several command-line options which are shown in the output of `cpmulator -help`, but the following summary shows the most important/useful options:
+There are many available command-line options, which are shown in the output of `cpmulator -help`, but the following summary shows the most important/useful options:
 
 * `-cd /path/to/directory`
   * Change to the given directory before running.
@@ -152,6 +136,7 @@ There are several command-line options which are shown in the output of `cpmulat
   * All output which CP/M sends to the "printer" will be written to the given file.
 * `-list-syscalls`
   * Dump the list of implemented BDOS and BIOS syscalls.
+* `-list-input-drivers` and `-list-output-drivers` to see the available I/O driver-names, which may then be selected via the `-input` and `-output` flags.
 * `-version`
   * Show the version number of the emulator, and exit.
 
@@ -171,9 +156,9 @@ This allows you to customize the emulator, or perform other "one-time" setup via
 
 ## Runtime Behaviour Changes
 
-There are a small number of [extensions](EXTENSIONS.md) added to the BIOS functionality we provide, and these extensions allow changing the behaviour of the emulator at runtime.
+There are a small number of [extensions](EXTENSIONS.md) added to the BIOS functionality we provide, and these extensions allow changing some aspects of the emulator at runtime.
 
-The behaviour changing is achieved by having a small number of .COM files invoke the extension functions, and these binaries are embedded within our emulator to improve ease of use, via the [static/](static/) directory in our source-tree - This means no matter what you'll always find some binaries installed on A:, despite not being present in reality.
+The behaviour changing is achieved by having a small number of .COM files invoke the extension functions, and these binaries are embedded within our emulator to improve ease of use, via the [static/](static/) directory in our source-tree.  This means no matter what you'll always find some binaries installed on A:, despite not being present in reality.
 
 > **NOTE** To avoid naming collisions all our embedded binaries are named with a `!` prefix, except for `#.COM` which is designed to be used as a comment-binary.
 
@@ -192,11 +177,13 @@ The binary `A:!CTRLC.COM` which lets you change this at runtime.  Run `A:!CTRLC 
 
 ### Console Output
 
-We default to pretending our output device is an ADM-3A terminal, this can be changed via the `-console` command-line flag at startup.  Additionally it can be changed at runtime via `A:!CONSOLE.COM`.
+We default to pretending our output device is an ADM-3A terminal, this can be changed via the `-output` command-line flag (previously `-console`) at startup.  Additionally it can be changed at runtime via `A:!CONSOLE.COM`.
 
 Run `A:!CONSOLE ansi` to disable the output emulation, or `A:!CONSOLE adm-3a` to restore it.
 
 You'll see that the [cpm-dist](https://github.com/skx/cpm-dist) repository contains a version of Wordstar, and that behaves differently depending on the selected output handler.  Changing the handler at run-time is a neat bit of behaviour.
+
+You'll note it is **not** possible to change the console _input_ driver at runtime, I think once you know which works best upon your system it doesn't make sense to change this interactively.
 
 
 ### Debug Handling
@@ -206,6 +193,8 @@ have a "quick debug" option which will merely log the syscalls which are invoked
 runtime.
 
 `A:!DEBUG.COM` will show the state of the flag, and it can be enabled with `A:!DEBUG 1` or disabled with `!DEBUG 0`.
+
+Finally `A:!VERSION.COM` will show you the version of the emulator you're running.
 
 
 
@@ -322,6 +311,22 @@ The implementation of the syscalls is the core of our emulator, and they can be 
   * https://www.seasip.info/Cpm/bdos.html
 * [cpm/cpm_bios.go](cpm/cpm_bios.go) - BIOS functions.
   * https://www.seasip.info/Cpm/bios.html
+
+
+
+
+# Portability
+
+The CP/M input handlers need to disable echoing when reading (single) characters from STDIN.  There isn't a simple and portable solution for this in golang, although the appropriate primitives exist so building such support isn't impossible, it just relies upon writing per-environment support, using something like the [ReadPassword](https://pkg.go.dev/golang.org/x/term#ReadPassword) function from the standard-library.
+
+I sidestepped this whole problem initially, just invoking the `stty` binary to enable/disable the echoing of characters on-demand, but that only works on Linux, BSD, and Mac hosts.  To be properly portable I had to use the [termbox](https://github.com/nsf/termbox-go) library for all input, but that means we get no scrollback/history so there's a tradeoff to be made.
+
+By default input will be read via `termbox` but you may you specify a different driver via the CLI arguments:
+
+* `cpmulator -input xxx`
+  * Use the input-driver named `xxx`.
+* `cpmulator -list-input-drivers`
+  * List all available input-drivers.
 
 
 

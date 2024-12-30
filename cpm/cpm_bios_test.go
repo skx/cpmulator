@@ -14,13 +14,13 @@ func TestStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
-
+	c.StuffText("")
 	err = BiosSysCallConsoleStatus(c)
 	if err != nil {
 		t.Fatalf("failed to call CPM")
 	}
 	if c.CPU.States.AF.Hi != 0x00 {
-		t.Fatalf("console status was wrong")
+		t.Fatalf("console status was wrong %02X", c.CPU.States.AF.Hi)
 	}
 
 	c.input.StuffInput("S")
@@ -294,7 +294,7 @@ func TestBIOSConsoleInput(t *testing.T) {
 	}
 	c.Memory = new(memory.Memory)
 	c.fixupRAM()
-	defer c.Cleanup()
+	defer c.IOTearDown()
 
 	c.input.StuffInput("s")
 	err = BiosSysCallConsoleInput(c)
@@ -317,7 +317,7 @@ func TestBIOSError(t *testing.T) {
 	}
 	c.Memory = new(memory.Memory)
 	c.fixupRAM()
-	defer c.Cleanup()
+	defer c.IOTearDown()
 
 	c.simpleDebug = true
 

@@ -8,16 +8,22 @@ package consoleout
 import (
 	"fmt"
 	"io"
+	"strings"
 )
 
-// ConsoleDriver is the interface that must be implemented by anything
+// ConsoleOutput is the interface that must be implemented by anything
 // that wishes to be used as a console driver.
 //
 // Providing this interface is implemented an object may register itself,
 // by name, via the Register method.
-type ConsoleDriver interface {
+//
+// You can compare this to the ConsoleInput interface, which is similar, although
+// in that case the wrapper which creates the instances also implements some common methods.
+type ConsoleOutput interface {
 
-	// PutCharacter will output the specified character to STDOUT.
+	// PutCharacter will output the specified character to the defined writer.
+	//
+	// The writer will default to STDOUT, but can be changed, via SetWriter.
 	PutCharacter(c uint8)
 
 	// GetName will return the name of the driver.
@@ -47,13 +53,16 @@ var handlers = struct {
 
 // Constructor is the signature of a constructor-function
 // which is used to instantiate an instance of a driver.
-type Constructor func() ConsoleDriver
+type Constructor func() ConsoleOutput
 
 // Register makes a console driver available, by name.
 //
 // When one needs to be created the constructor can be called
 // to create an instance of it.
 func Register(name string, obj Constructor) {
+	// Downcase for consistency.
+	name = strings.ToLower(name)
+
 	handlers.m[name] = obj
 }
 
@@ -62,12 +71,14 @@ func Register(name string, obj Constructor) {
 type ConsoleOut struct {
 
 	// driver is the thing that actually writes our output.
-	driver ConsoleDriver
+	driver ConsoleOutput
 }
 
 // New is our constructore, it creates an output device which uses
 // the specified driver.
 func New(name string) (*ConsoleOut, error) {
+	// Downcase for consistency.
+	name = strings.ToLower(name)
 
 	// Do we have a constructor with the given name?
 	ctor, ok := handlers.m[name]
@@ -82,7 +93,7 @@ func New(name string) (*ConsoleOut, error) {
 }
 
 // GetDriver allows getting our driver at runtime.
-func (co *ConsoleOut) GetDriver() ConsoleDriver {
+func (co *ConsoleOut) GetDriver() ConsoleOutput {
 	return co.driver
 }
 

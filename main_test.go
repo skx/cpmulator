@@ -16,7 +16,7 @@ import (
 // changing drives.
 func TestDriveChange(t *testing.T) {
 
-	obj, err := cpm.New(cpm.WithConsoleDriver("logger"))
+	obj, err := cpm.New(cpm.WithOutputDriver("logger"))
 	if err != nil {
 		t.Fatalf("Create CP/M failed")
 	}
@@ -95,7 +95,7 @@ func TestReadWriteRand(t *testing.T) {
 // However it is a great test to see that things work as expected.
 func TestCompleteLighthouse(t *testing.T) {
 
-	obj, err := cpm.New(cpm.WithConsoleDriver("logger"))
+	obj, err := cpm.New(cpm.WithOutputDriver("logger"))
 	if err != nil {
 		t.Fatalf("Create CP/M failed")
 	}

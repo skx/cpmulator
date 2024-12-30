@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 
 	cpmccp "github.com/skx/cpmulator/ccp"
+	"github.com/skx/cpmulator/consolein"
 	"github.com/skx/cpmulator/consoleout"
 	"github.com/skx/cpmulator/cpm"
 	"github.com/skx/cpmulator/static"
@@ -28,20 +30,23 @@ func main() {
 	//
 	// Parse the command-line flags for this driver-application
 	//
-	cd := flag.String("cd", "", "Change to this directory before launching")
-	createDirectories := flag.Bool("create", false, "Create subdirectories on the host computer for each CP/M drive.")
-	console := flag.String("console", "adm-3a", "The name of the console output driver to use (adm-3a or ansi).")
 	ccp := flag.String("ccp", "ccpz", "The name of the CCP that we should run (ccp vs. ccpz).")
-	useDirectories := flag.Bool("directories", false, "Use subdirectories on the host computer for CP/M drives.")
+	cd := flag.String("cd", "", "Change to this directory before launching")
+	console := flag.String("console", "", "The name of the console output driver to use (-list-output-drivers will show valid choices).")
+	createDirectories := flag.Bool("create", false, "Create subdirectories on the host computer for each CP/M drive.")
+	input := flag.String("input", cpm.DefaultInputDriver, "The name of the console input driver to use (-list-input-drivers will show valid choices).")
+	output := flag.String("output", cpm.DefaultOutputDriver, "The name of the console output driver to use (-list-output-drivers will show valid choices).")
+	logAll := flag.Bool("log-all", false, "Log all function invocations, including the noisy console I/O ones.")
 	logPath := flag.String("log-path", "", "Specify the file to write debug logs to.")
-	logAll := flag.Bool("log-all", false, "Log the output of all functions, including the noisy Console I/O ones.")
 	prnPath := flag.String("prn-path", "print.log", "Specify the file to write printer-output to.")
 	showVersion := flag.Bool("version", false, "Report our version, and exit.")
+	useDirectories := flag.Bool("directories", false, "Use subdirectories on the host computer for CP/M drives.")
 
 	// listing
-	listCcps := flag.Bool("list-ccp", false, "Dump the list of embedded CCPs.")
-	listConsole := flag.Bool("list-console-drivers", false, "Dump the list of valid console drivers.")
-	listSyscalls := flag.Bool("list-syscalls", false, "Dump the list of implemented BIOS/BDOS syscall functions.")
+	listCcps := flag.Bool("list-ccp", false, "Dump the list of embedded CCPs, and exit.")
+	listOutput := flag.Bool("list-output-drivers", false, "Dump the list of valid console output drivers, and exit.")
+	listInput := flag.Bool("list-input-drivers", false, "Dump the list of valid console input drivers, and exit.")
+	listSyscalls := flag.Bool("list-syscalls", false, "Dump the list of implemented BIOS/BDOS syscall functions, and exit.")
 
 	// drives
 	drive := make(map[string]*string)
@@ -73,16 +78,39 @@ func main() {
 		return
 	}
 
-	// Are we dumping console drivers?
-	if *listConsole {
-		obj, _ := consoleout.New("null")
+	// Are we dumping console input drivers?
+	if *listInput {
+		obj, _ := consolein.New("null")
 		valid := obj.GetDrivers()
+		slices.Sort(valid)
 
 		for _, name := range valid {
-			fmt.Printf("%s\n", name)
+			suffix := ""
+			if name == cpm.DefaultInputDriver {
+				suffix = "\t[default]"
+			}
+			fmt.Printf("%s%s\n", name, suffix)
 		}
 		return
 	}
+
+	// Are we dumping console output drivers?
+	if *listOutput {
+		obj, _ := consoleout.New("null")
+		valid := obj.GetDrivers()
+
+		slices.Sort(valid)
+
+		for _, name := range valid {
+			suffix := ""
+			if name == cpm.DefaultOutputDriver {
+				suffix = "\t[default]"
+			}
+			fmt.Printf("%s%s\n", name, suffix)
+		}
+		return
+	}
+
 	// Are we dumping syscalls?
 	if *listSyscalls {
 
@@ -173,9 +201,17 @@ func main() {
 	// Set the logger now we've updated as appropriate.
 	slog.SetDefault(log)
 
+	// We used to use "-console", but now we prefer "-output" to match with "-input".
+	out := *output
+	if *console != "" {
+		out = *console
+		fmt.Printf("WARNING: -console is a deprecated flag, prefer to use -output.\r\n")
+	}
+
 	// Create a new emulator.
 	obj, err := cpm.New(cpm.WithPrinterPath(*prnPath),
-		cpm.WithConsoleDriver(*console),
+		cpm.WithOutputDriver(out),
+		cpm.WithInputDriver(*input),
 		cpm.WithCCP(*ccp))
 	if err != nil {
 		fmt.Printf("error creating CPM object: %s\n", err)
@@ -187,8 +223,12 @@ func main() {
 		obj.LogNoisy()
 	}
 
+	// I/O SETUP
+	obj.IOSetup()
+
+	// I/O TearDown
 	// When we're finishing we'll reset some (console) state.
-	defer obj.Cleanup()
+	defer obj.IOTearDown()
 
 	// change directory?
 	//
@@ -233,20 +273,20 @@ func main() {
 			}
 		}
 		if found == 0 {
-			fmt.Printf("WARNING: You've chosen to use subdirectories as drives.\n")
-			fmt.Printf("         i.e. A/ would be used for the contents of A:\n")
-			fmt.Printf("         i.e. B/ would be used for the contents of B:\n")
-			fmt.Printf("\n")
-			fmt.Printf("         However no drive-directories are present!\n")
-			fmt.Printf("\n")
-			fmt.Printf("You could fix this, like so:\n")
-			fmt.Printf("         mkdir A\n")
-			fmt.Printf("         mkdir B\n")
-			fmt.Printf("         mkdir C\n")
-			fmt.Printf("         etc\n")
-			fmt.Printf("\n")
-			fmt.Printf("Or you could launch this program with the '-create' flag.\n")
-			fmt.Printf("That would automatically create directories for drives A-P.\n")
+			fmt.Printf("WARNING: You've chosen to use subdirectories as drives.\r\n")
+			fmt.Printf("         i.e. A/ would be used for the contents of A:\r\n")
+			fmt.Printf("         i.e. B/ would be used for the contents of B:\r\n")
+			fmt.Printf("\r\n")
+			fmt.Printf("         However no drive-directories are present!\r\n")
+			fmt.Printf("\r\n")
+			fmt.Printf("You could fix this, like so:\r\n")
+			fmt.Printf("         mkdir A\r\n")
+			fmt.Printf("         mkdir B\r\n")
+			fmt.Printf("         mkdir C\r\n")
+			fmt.Printf("         etc\r\n")
+			fmt.Printf("\r\n")
+			fmt.Printf("Or you could launch this program with the '-create' flag.\r\n")
+			fmt.Printf("That would automatically create directories for drives A-P.\r\n")
 		}
 	}
 
@@ -296,7 +336,7 @@ func main() {
 	}
 
 	// Show a startup-banner.
-	fmt.Printf("\ncpmulator %s loaded CCP %s, with %s output driver\n", cpmver.GetVersionString(), obj.GetCCPName(), obj.GetOutputDriver().GetName())
+	fmt.Printf("\ncpmulator %s\r\nCCP:%s input driver:%s output driver:%s\n", cpmver.GetVersionString(), obj.GetCCPName(), obj.GetInputDriver().GetName(), obj.GetOutputDriver().GetName())
 
 	// We will load AUTOEXEC.SUB, once, if it exists (*)
 	//

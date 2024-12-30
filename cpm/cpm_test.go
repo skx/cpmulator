@@ -11,7 +11,7 @@ import (
 func TestSimple(t *testing.T) {
 
 	// Create a new CP/M helper
-	obj, err := New(WithConsoleDriver("null"))
+	obj, err := New(WithOutputDriver("null"), WithInputDriver("stty"))
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
@@ -49,6 +49,9 @@ func TestSimple(t *testing.T) {
 
 	// Confirm the output driver is null, as expected
 	if obj.GetOutputDriver().GetName() != "null" {
+		t.Fatalf("console driver name mismatch!")
+	}
+	if obj.GetInputDriver().GetName() != "stty" {
 		t.Fatalf("console driver name mismatch!")
 	}
 	if obj.GetCCPName() != "ccp" {
@@ -95,15 +98,24 @@ func TestSimple(t *testing.T) {
 		t.Fatalf("failed to run binary!")
 	}
 
-	defer obj.Cleanup()
+	defer obj.IOTearDown()
 }
 
 func TestBogusConstructor(t *testing.T) {
 
-	_, err := New(WithConsoleDriver("bogus"))
+	_, err := New(WithOutputDriver("bogus"))
 	if err == nil {
 		t.Fatalf("expected error, bogus console driver, got none")
 	}
+
+	_, err = New(WithInputDriver("bogus"))
+	if err == nil {
+		t.Fatalf("expected error, bogus console driver, got none")
+	}
+
+	x, _ := New(WithInputDriver("stty"))
+	x.IOSetup()
+	x.IOTearDown()
 }
 
 func TestLoadCCP(t *testing.T) {

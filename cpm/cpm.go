@@ -47,6 +47,12 @@ var (
 	//
 	// It should be handled and expected by callers.
 	ErrUnimplemented = errors.New("UNIMPLEMENTED")
+
+	// DefaultInputDriver contains the name of the default console input driver.
+	DefaultInputDriver string = "term"
+
+	// DefaultOutputDriver contains the name of the default console output driver.
+	DefaultOutputDriver string = "adm-3a"
 )
 
 // CPMHandlerType contains the signature of a function we use to
@@ -217,9 +223,8 @@ func WithPrinterPath(path string) cpmoption {
 	}
 }
 
-// WithConsoleDriver allows the console driver to be created in our
-// constructor.
-func WithConsoleDriver(name string) cpmoption {
+// WithOutputDriver allows the default console output driver to be changed in our constructor.
+func WithOutputDriver(name string) cpmoption {
 
 	return func(c *CPM) error {
 
@@ -233,8 +238,23 @@ func WithConsoleDriver(name string) cpmoption {
 	}
 }
 
+// WithInputDriver allows the default console input driver to be changed in our constructor.
+func WithInputDriver(name string) cpmoption {
+
+	return func(c *CPM) error {
+
+		driver, err := consolein.New(name)
+		if err != nil {
+			return err
+		}
+
+		c.input = driver
+		return nil
+	}
+}
+
 // New returns a new emulation object.  We support default options,
-// and new defaults may be specified via WithConsoleDriver, etc, etc.
+// and new defaults may be specified via WithOutputDriver, etc, etc.
 func New(options ...cpmoption) (*CPM, error) {
 
 	//
@@ -496,7 +516,13 @@ func New(options ...cpmoption) (*CPM, error) {
 	}
 
 	// Default output driver
-	driver, err := consoleout.New("adm-3a")
+	oDriver, err := consoleout.New(DefaultOutputDriver)
+	if err != nil {
+		return nil, err
+	}
+
+	// Default input driver
+	iDriver, err := consolein.New(DefaultInputDriver)
 	if err != nil {
 		return nil, err
 	}
@@ -509,8 +535,8 @@ func New(options ...cpmoption) (*CPM, error) {
 		dma:          0x0080,
 		drives:       make(map[string]string),
 		files:        make(map[uint16]FileCache),
-		input:        consolein.New(),
-		output:       driver,        // default
+		input:        iDriver,       // default
+		output:       oDriver,       // default
 		prnPath:      "printer.log", // default
 		start:        0x0100,
 		launchTime:   time.Now(),
@@ -527,13 +553,23 @@ func New(options ...cpmoption) (*CPM, error) {
 	return tmp, nil
 }
 
-// Cleanup cleans up the state of the terminal, if necessary.
-func (cpm *CPM) Cleanup() {
-	cpm.input.Reset()
+// IOSetup ensures that our I/O is ready.
+func (cpm *CPM) IOSetup() {
+	cpm.input.Setup()
+}
+
+// IOTearDown cleans up the state of the terminal, if necessary.
+func (cpm *CPM) IOTearDown() {
+	cpm.input.TearDown()
+}
+
+// GetInputDriver returns the configured input driver.
+func (cpm *CPM) GetInputDriver() consolein.ConsoleInput {
+	return cpm.input.GetDriver()
 }
 
 // GetOutputDriver returns the configured output driver.
-func (cpm *CPM) GetOutputDriver() consoleout.ConsoleDriver {
+func (cpm *CPM) GetOutputDriver() consoleout.ConsoleOutput {
 	return cpm.output.GetDriver()
 }
 

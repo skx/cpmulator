@@ -12,9 +12,9 @@ if [ -d /github/workspace ] ; then
 fi
 
 #
-# We build on only a single platform/arch.
+# We build for many platforms.
 #
-BUILD_PLATFORMS="linux darwin freebsd openbsd netbsd"
+BUILD_PLATFORMS="linux darwin freebsd openbsd netbsd windows"
 BUILD_ARCHS="amd64 386"
 
 # For each platform

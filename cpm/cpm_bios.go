@@ -173,6 +173,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 
 		// Get our version
 		vers := version.GetVersionBanner()
+		vers = strings.ReplaceAll(vers, "\n", "\n\r")
 
 		// Fill the DMA area with NULL bytes
 		addr := cpm.dma

@@ -2,18 +2,21 @@ package consolein
 
 import "testing"
 
-func TestReadline(t *testing.T) {
+func TestReadlineSTTY(t *testing.T) {
 
-	x := New()
-	x.State = Echo
+	// Create a helper
+	x := STTYInput{}
+
+	ch := ConsoleIn{}
+	ch.driver = &x
 
 	// Simple readline
 	// Here \x10 is the Ctrl-P which would use the previous history
 	// as we're just created we have none so it is ignored.
-	x.stuffed = "s\x10teve\n"
-	out, err := x.ReadLine(20)
+	ch.StuffInput("s\x10teve\n")
+	out, err := ch.ReadLine(20)
 	if err != nil {
-		t.Fatalf("unexpected error")
+		t.Fatalf("unexpected error: %s", err)
 	}
 	if out != "steve" {
 		t.Fatalf("Unexpected output '%s'", out)
@@ -21,17 +24,15 @@ func TestReadline(t *testing.T) {
 
 	// Ctrl-C at start of the line should trigger a reboot-error
 	//	x.stuffed = string([]byte{0x03, 0x03, 0x00}a)
-	x.stuffed = "\x03\x03steve"
-	x.State = Echo
-	_, err = x.ReadLine(20)
+	ch.StuffInput("\x03\x03steve")
+	_, err = ch.ReadLine(20)
 	if err != ErrInterrupted {
 		t.Fatalf("unexpected error %s", err)
 	}
 
 	// Ctrl-C at the middle of a line should not
-	x.stuffed = "steve\x03\x03steve\n"
-	x.State = Echo
-	out, err = x.ReadLine(20)
+	ch.StuffInput("steve\x03\x03steve\n")
+	out, err = ch.ReadLine(20)
 	if err != nil {
 		t.Fatalf("unexpected error %s", err)
 	}
@@ -40,9 +41,8 @@ func TestReadline(t *testing.T) {
 	}
 
 	// Ctrl-B overwrites
-	x.stuffed = "steve\b\b\b\b\bHello\n"
-	x.State = Echo
-	out, err = x.ReadLine(20)
+	ch.StuffInput("steve\b\b\b\b\bHello\n")
+	out, err = ch.ReadLine(20)
 	if err != nil {
 		t.Fatalf("unexpected error %s", err)
 	}
@@ -51,9 +51,8 @@ func TestReadline(t *testing.T) {
 	}
 
 	// ESC resets input
-	x.stuffed = "steve\x1BHello\n"
-	x.State = Echo
-	out, err = x.ReadLine(20)
+	ch.StuffInput("steve\x1BHello\n")
+	out, err = ch.ReadLine(20)
 	if err != nil {
 		t.Fatalf("unexpected error %s", err)
 	}
@@ -62,9 +61,8 @@ func TestReadline(t *testing.T) {
 	}
 
 	// Too much input?  We truncate
-	x.stuffed = "I like to move it, move it\n"
-	x.State = Echo
-	out, err = x.ReadLine(5)
+	ch.StuffInput("I like to move it, move it\n")
+	out, err = ch.ReadLine(5)
 	if err != nil {
 		t.Fatalf("unexpected error %s", err)
 	}
@@ -73,10 +71,9 @@ func TestReadline(t *testing.T) {
 	}
 
 	// Add some history, and return the last value
-	x.history = append(x.history, "I like to move it")
-	x.stuffed = "ste\x10\n"
-	x.State = Echo
-	out, err = x.ReadLine(5)
+	history = append(history, "I like to move it")
+	ch.StuffInput("ste\x10\n")
+	out, err = ch.ReadLine(5)
 	if err != nil {
 		t.Fatalf("unexpected error %s", err)
 	}
@@ -84,63 +81,131 @@ func TestReadline(t *testing.T) {
 		t.Fatalf("unexpected output %s", out)
 	}
 
-	// Go back and forwardd in history
-
-	x.stuffed = "\x10\x10\x10\x0e\n"
-	x.State = Echo
-	out, err = x.ReadLine(10)
+	// Go back and forward in history
+	ch.StuffInput("\x10\x10\x10\x0e\n")
+	out, err = ch.ReadLine(10)
 	if err != nil {
 		t.Fatalf("unexpected error %s", err)
 	}
 	if out != "Hello" {
 		t.Fatalf("unexpected output %s", out)
 	}
+}
 
+// TestOverview just calls most of the methods, as an overview, to bump coverage.
+func TestOverview(t *testing.T) {
+
+	// Create a helper
+	x := STTYInput{}
+
+	ch := ConsoleIn{}
+	ch.driver = &x
+
+	ch.Setup()
+	defer ch.TearDown()
+
+	ch.StuffInput("1.2.3.4.5.6.7.8.9.0\n")
+
+	if !ch.PendingInput() {
+		t.Fatalf("should have pending input")
+	}
+
+	c, err := ch.BlockForCharacterNoEcho()
+	if err != nil {
+		t.Fatalf("unexpected error")
+	}
+	if c != '1' {
+		t.Fatalf("wrong character")
+	}
+
+	c, err = ch.BlockForCharacterWithEcho()
+	if err != nil {
+		t.Fatalf("unexpected error")
+	}
+	if c != '.' {
+		t.Fatalf("wrong character")
+	}
 }
 
 func TestCtrlC(t *testing.T) {
 
-	x := New()
+	ch := ConsoleIn{}
 
-	if x.InterruptCount != 2 {
+	if interruptCount != 2 {
 		t.Fatalf("unexpected default interrupt count")
 	}
 
-	x.SetInterruptCount((3))
-	if x.GetInterruptCount() != 3 {
+	ch.SetInterruptCount((3))
+	if ch.GetInterruptCount() != 3 {
 		t.Fatalf("unexpected interrupt count")
 	}
 }
 
 func TestPending(t *testing.T) {
 
-	x := New()
+	// Create a helper
+	x := STTYInput{}
 
-	x.StuffInput("foo")
-	if !x.PendingInput() {
+	ch := ConsoleIn{}
+	ch.driver = &x
+
+	ch.Setup()
+	defer ch.TearDown()
+
+	ch.StuffInput("foo")
+	if !ch.PendingInput() {
 		t.Fatalf("we should have pending input, but see none")
 	}
 
 }
 
-// TestExec is just here for coverate
-func TestExec(t *testing.T) {
+// TestDriverRegistration performs some sanity-check on our driver-registration.
+func TestDriverRegistration(t *testing.T) {
 
-	x := New()
-
-	// No echo
-	x.disableEcho()
-	if x.State != NoEcho {
-		t.Fatalf("unexpected state")
+	if len(handlers.m) != 2 {
+		t.Fatalf("wrong number of handlers")
 	}
 
-	x.enableEcho()
-	if x.State != Echo {
-		t.Fatalf("unexpected state")
+	_, ok := handlers.m["term"]
+	if !ok {
+		t.Fatalf("failed to find expected handler, term")
+	}
+	_, err := New("term")
+	if err != nil {
+		t.Fatalf("failed to find expected handler, term")
 	}
 
-	x.Reset()
-	if x.State != Echo {
-		t.Fatalf("unexpected state")
+	_, ok = handlers.m["stty"]
+	if !ok {
+		t.Fatalf("failed to find expected handler, stty")
 	}
+	_, err = New("stty")
+	if err != nil {
+		t.Fatalf("failed to find expected handler, term")
+	}
+
+	_, ok = handlers.m["bogus"]
+	if ok {
+		t.Fatalf("found unexpected handler!")
+	}
+	_, err = New("bogus")
+	if err == nil {
+		t.Fatalf("failed to find expected handler, term")
+	}
+
+	obj, err2 := New("stty")
+	if err2 != nil {
+		t.Fatalf("error looking up driver")
+	}
+	drv := obj.GetDriver()
+	if drv.GetName() != "stty" {
+		t.Fatalf("naming mismatch on driver!")
+	}
+	if obj.GetName() != "stty" {
+		t.Fatalf("naming mismatch on driver!")
+	}
+	if len(obj.GetDrivers()) != 2 {
+		t.Fatalf("driver count is wrong")
+	}
+
 }
