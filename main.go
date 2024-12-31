@@ -25,7 +25,30 @@ var (
 	log *slog.Logger
 )
 
+// Recovery is good
+func recoverPanic() {
+	if r := recover(); r != nil {
+		out := fmt.Sprintf("%s", r)
+
+		fmt.Printf("recovered from panic while running %v\r\n%s\r\n\r\n", os.Args, out)
+		if strings.Contains(out, "termbox") {
+			fmt.Printf("\r\nThis error seems related to terminal/console handling.\r\n")
+			fmt.Printf("\r\nIf you're on a Unix-like system you might try '-input stty' to change input-handler and see if that helps\r\n")
+		}
+
+		fmt.Printf("\r\n\r\nIf this error persists please report a bug:")
+		fmt.Printf("\r\n\r\n  https://github.com/skx/cpmulator/issues/new\r\n\r\n")
+
+	}
+}
+
+// main is our entry point
 func main() {
+
+	//
+	// Catch errors
+	//
+	defer recoverPanic()
 
 	//
 	// Parse the command-line flags for this driver-application
