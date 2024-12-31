@@ -1,6 +1,6 @@
 module github.com/skx/cpmulator
 
-go 1.22.2
+go 1.21.5
 
 require (
 	github.com/koron-go/z80 v0.10.1
