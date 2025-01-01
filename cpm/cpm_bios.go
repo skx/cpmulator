@@ -16,6 +16,7 @@ import (
 
 	"github.com/koron-go/z80"
 	"github.com/skx/cpmulator/ccp"
+	"github.com/skx/cpmulator/consolein"
 	"github.com/skx/cpmulator/consoleout"
 	"github.com/skx/cpmulator/version"
 )
@@ -198,7 +199,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 			cpm.input.SetInterruptCount(int(c))
 		}
 
-	// Get/Set the console driver.
+	// Get/Set the input driver.
 	case 0x0002:
 
 		if de == 0x0000 {
@@ -236,7 +237,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		cpm.output = driver
 
 		if old != str {
-			fmt.Printf("Console driver changed from %s to %s.\n", old, driver.GetName())
+			fmt.Printf("Input driver changed from %s to %s.\n", old, driver.GetName())
 		}
 
 	// Get/Set the CCP
@@ -320,6 +321,51 @@ func BiosSysCallReserved1(cpm *CPM) error {
 			} else {
 				cpm.CPU.States.BC.Lo = 0x00
 			}
+		}
+
+	// Get/Set the output driver.
+	case 0x0007:
+
+		if de == 0x0000 {
+			// Fill the DMA area with NULL bytes
+			addr := cpm.dma
+
+			end := addr + uint16(127)
+			for end > addr {
+				cpm.Memory.Set(end, 0x00)
+				end--
+			}
+
+			// now populate with our console driver
+			str := cpm.input.GetName()
+			for i, c := range str {
+				cpm.Memory.Set(addr+uint16(i), uint8(c))
+			}
+			return nil
+		}
+
+		// Get the string pointed to by DE
+		str := getStringFromMemory(de)
+
+		// Output driver needs to be created
+		driver, err := consolein.New(str)
+
+		// If it failed we're not going to terminate the syscall, or
+		// the emulator, just ignore the attempt.
+		if err != nil {
+			fmt.Printf("%s", err)
+			return nil
+		}
+
+		old := cpm.input
+		oldName := old.GetName()
+		old.TearDown()
+
+		driver.Setup()
+		cpm.input = driver
+
+		if oldName != str {
+			fmt.Printf("Input driver from %s to %s.\n", oldName, driver.GetName())
 		}
 
 	default:

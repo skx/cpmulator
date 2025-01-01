@@ -60,6 +60,8 @@ If DE is 0x0000 then the DMA area is filled with the name of the current driver,
 
 Demonstrated in [static/output.z80](static/output.z80)
 
+See also function 0x07.
+
 
 
 ## Function 0x03: Get/Set CCP
@@ -98,3 +100,16 @@ Debug mode shows a summary of syscalls, and their results.  It is faster
 than using the logfile and it is useful to be able to toggle it at runtime.
 
 Demonstrated in [static/debug.z80](static/debug.z80)
+
+
+
+## Function 0x07: Get/Set Console Input Driver
+
+On entry DE points to a text-string, terminated by NULL, which represents the name of the
+console input driver to use.
+
+If DE is 0x0000 then the DMA area is filled with the name of the current driver, NULL-terminated.
+
+Demonstrated in [static/input.z80](static/input.z80)
+
+See also function 0x02.
