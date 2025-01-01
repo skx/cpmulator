@@ -143,7 +143,7 @@ func TestCustom(t *testing.T) {
 	}
 
 	// 0x0002
-	// Get/Set console driver
+	// Get/Set console output driver
 	c.CPU.States.HL.SetU16(0x0002)
 	c.CPU.States.DE.SetU16(0x0000)
 	err = BiosSysCallReserved1(c)
@@ -151,7 +151,7 @@ func TestCustom(t *testing.T) {
 		t.Fatalf("error calling reserved function")
 	}
 	str := getStringFromMemory(c, c.dma)
-	if str != "adm-3a" {
+	if str != DefaultOutputDriver {
 		t.Fatalf("wrong console driver '%s'", str)
 	}
 
@@ -282,6 +282,49 @@ func TestCustom(t *testing.T) {
 	}
 	if c.CPU.States.BC.Lo != 0x01 {
 		t.Fatalf("setting flag failed")
+	}
+
+	// 0x0007
+	// Get/Set console input driver
+	c.CPU.States.HL.SetU16(0x0007)
+	c.CPU.States.DE.SetU16(0x0000)
+	err = BiosSysCallReserved1(c)
+	if err != nil {
+		t.Fatalf("error calling reserved function")
+	}
+	str = getStringFromMemory(c, c.dma)
+	if str != DefaultInputDriver {
+		t.Fatalf("wrong console driver '%s'", str)
+	}
+
+	// set to "stty"
+	c.CPU.States.HL.SetU16(0x0007)
+	c.CPU.States.DE.SetU16(0xFE00)
+	c.Memory.SetRange(0xFE00, []byte{'s', 't', 't', 'y', ' '}...)
+	err = BiosSysCallReserved1(c)
+	if err != nil {
+		t.Fatalf("error calling reserved function")
+	}
+
+	// set to "steve" - this will fail
+	c.CPU.States.HL.SetU16(0x0007)
+	c.CPU.States.DE.SetU16(0xFE00)
+	c.Memory.SetRange(0xFE00, []byte{'s', 't', 'e', 'v', 'e', ' '}...)
+	err = BiosSysCallReserved1(c)
+	if err != nil {
+		t.Fatalf("error calling reserved function")
+	}
+
+	// read it back
+	c.CPU.States.HL.SetU16(0x0007)
+	c.CPU.States.DE.SetU16(0x0000)
+	err = BiosSysCallReserved1(c)
+	if err != nil {
+		t.Fatalf("error calling reserved function")
+	}
+	str = getStringFromMemory(c, c.dma)
+	if str != "stty" {
+		t.Fatalf("wrong console driver '%s'", str)
 	}
 
 }

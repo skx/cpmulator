@@ -175,6 +175,13 @@ Traditionally pressing `Ctrl-C` would reload the CCP, via a soft boot.  I think 
 The binary `A:!CTRLC.COM` which lets you change this at runtime.  Run `A:!CTRLC 0` to disable the Ctrl-C behaviour, or `A:!CTRLC N` to require N consecutive Ctrl-C keystrokes to trigger the restart-behaviour (max: 9).
 
 
+### Console Input
+
+We default to using the portable `termbox-go`-based input-handler, this can be changed via the `-input` command-line flag at startup.  Additionally it can be changed at runtime via `A:!INPUT.COM`.
+
+Run `A:!INPUT stty` to use the non-portable Unix-centric approach which provides a scrollback, and uses the system's `stty` binary to enable/disable character echoing.
+
+
 ### Console Output
 
 We default to pretending our output device is an ADM-3A terminal, this can be changed via the `-output` command-line flag (previously `-console`) at startup.  Additionally it can be changed at runtime via `A:!OUTPUT.COM`.
@@ -182,8 +189,6 @@ We default to pretending our output device is an ADM-3A terminal, this can be ch
 Run `A:!OUTPUT ansi` to disable the output emulation, or `A:!OUTPUT adm-3a` to restore it.
 
 You'll see that the [cpm-dist](https://github.com/skx/cpm-dist) repository contains a version of Wordstar, and that behaves differently depending on the selected output handler.  Changing the handler at run-time is a neat bit of behaviour.
-
-You'll note it is **not** possible to change the console _input_ driver at runtime, I think once you know which works best upon your system it doesn't make sense to change this interactively.
 
 
 ### Debug Handling
