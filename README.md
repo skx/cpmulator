@@ -177,9 +177,9 @@ The binary `A:!CTRLC.COM` which lets you change this at runtime.  Run `A:!CTRLC 
 
 ### Console Output
 
-We default to pretending our output device is an ADM-3A terminal, this can be changed via the `-output` command-line flag (previously `-console`) at startup.  Additionally it can be changed at runtime via `A:!CONSOLE.COM`.
+We default to pretending our output device is an ADM-3A terminal, this can be changed via the `-output` command-line flag (previously `-console`) at startup.  Additionally it can be changed at runtime via `A:!OUTPUT.COM`.
 
-Run `A:!CONSOLE ansi` to disable the output emulation, or `A:!CONSOLE adm-3a` to restore it.
+Run `A:!OUTPUT ansi` to disable the output emulation, or `A:!OUTPUT adm-3a` to restore it.
 
 You'll see that the [cpm-dist](https://github.com/skx/cpm-dist) repository contains a version of Wordstar, and that behaves differently depending on the selected output handler.  Changing the handler at run-time is a neat bit of behaviour.
 

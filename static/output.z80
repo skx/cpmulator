@@ -1,0 +1,102 @@
+;; output.z80 - Set the name of the console driver to use for output
+;;
+;; This uses the custom BIOS function we've added to the BIOS, which was never
+;; present in real CP/M.  Consider it a hook into the emulator.
+;;
+
+FCB1:                 EQU 0x5C
+BDOS_ENTRY_POINT:     EQU 5
+BDOS_OUTPUT_STRING:   EQU 9
+
+        ;;
+        ;; CP/M programs start at 0x100.
+        ;;
+        ORG 100H
+
+        ;; Test that we're running under cpmulator by calling the
+        ;; "is cpmulator" function.
+        ld HL, 0x0000
+        ld a, 31
+        out (0xff), a
+
+        ;; We expect SKX to appear in registers HLA
+        CP 'X'
+        jr nz, not_cpmulator
+
+        LD A, H
+        CP 'S'
+        jr nz, not_cpmulator
+
+        LD A, L
+        CP 'K'
+        jr nz, not_cpmulator
+
+        ;; The FCB will be populated with the first argument,
+        ;; if the first character of that region is a space-character
+        ;; then we've got nothing specified
+        ld a, (FCB1 + 1)
+        cp 0x20                  ; 0x20 = 32 == SPACE
+        jp z, show_driver        ; Got a space, show the console driver name
+
+
+        ;; OK we're running under cpmulator
+        ;; Point DE to the console-string to set, and invoke the function.
+        ld HL, 02
+        ld de, FCB1 + 1
+        ld a, 31
+        out (0xff), a
+
+exit:
+        LD      C,0x00
+        CALL    BDOS_ENTRY_POINT
+
+;; Show the current console driver
+show_driver:
+        LD DE, CONSOLE_PREFIX
+        LD C, BDOS_OUTPUT_STRING
+        CALL BDOS_ENTRY_POINT
+
+        ld HL, 02
+        ld de, 0x0000
+        ld a, 31
+        out (0xff), a
+
+        LD HL, 0x0080
+loopy:
+        LD A, (HL)
+        cp 0
+        JR Z, finished_loop
+        push HL
+             ld e,a
+             ld c, 0x02
+             call 0x0005
+        pop HL
+        inc hl
+        jr loopy
+finished_loop:
+        LD DE, CONSOLE_SUFFIX
+        LD C, BDOS_OUTPUT_STRING
+        CALL BDOS_ENTRY_POINT
+        jr exit
+
+;;
+;; Error Routines
+;;
+
+not_cpmulator:
+        LD DE, WRONG_EMULATOR
+        LD C, BDOS_OUTPUT_STRING
+        call BDOS_ENTRY_POINT
+        jr exit
+
+
+;;
+;; Text output strings.
+;;
+CONSOLE_PREFIX:
+        db "Console driver is set to '$"
+CONSOLE_SUFFIX:
+        db "'", 0x0a, 0x0d, "$"
+WRONG_EMULATOR:
+        db "This binary is not running under cpmulator, aborting.", 0x0a, 0x0d, "$"
+END
