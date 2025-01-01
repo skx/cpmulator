@@ -264,7 +264,7 @@ GETINP:
 ;
 ;   Use the submit file ($$$.sub) which is prepared by a
 ; SUBMIT run. It must be on drive (A) and it will be deleted
-; if and error occures (like eof).
+; if an error occurs (such as an EOF).
 ;
 	LD	A,(CDRIVE)	;select drive 0 if need be.
 	OR	A
@@ -773,7 +773,7 @@ DSELECT:XOR	A		;null out first byte of fcb.
 	JP	DSKSEL		;no. Select it then.
 ;
 ;   Check the drive selection and reset it to the previous
-; drive if it was changed for the preceeding command.
+; drive if it was changed for the preceding command.
 ;
 RESETDR:LD	A,(CHGDRV)	;drive change indicated?
 	OR	A
@@ -836,7 +836,7 @@ DIRECT3:
 	CALL	PRINTB
 	JP	DIRECT5
 DIRECT4:
-	CALL	SPACE		;add seperator between file names.
+	CALL	SPACE		;add separator between file names.
 	LD	A,'|'			; [JSS: Changed this from colon to pipe]
 	CALL	PRINTB
 DIRECT5:CALL	SPACE
@@ -1023,13 +1023,13 @@ RENAME:
 	LD	HL,(INPOINT)		;get input pointer.
 	EX	DE,HL
 	CALL	NONBLANK		;get next non blank character.
-	CP	'='					;only allow an '=' or '<' seperator.
+	CP	'='					;only allow an '=' or '<' separator.
 	JP	Z,RENAME1
 	CP	'<'
 	JP	NZ,RENAME5
 RENAME1:
 	EX	DE,HL
-	INC	HL					;ok, skip seperator.
+	INC	HL					;ok, skip separator.
 	LD	(INPOINT),HL		;save input line pointer.
 	CALL	CONVFST			;convert this second file name now.
 	JP	NZ,RENAME5			;again, no wild cards.
@@ -1234,7 +1234,7 @@ UNKWN8:
 	CALL	DSKSEL		;and reselect it.
 	JP	CMMND1		;back to comand mode.
 ;
-;   Get here if some error occured.
+;   Get here if some error occurred.
 ;
 UNKWN9:
 	CALL	RESETDR		;inproper format.
