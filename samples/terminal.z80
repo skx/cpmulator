@@ -60,7 +60,7 @@ BDOS_OUTPUT_STRING:   EQU 9
         push hl
         push hl
 
-        LD DE, WIDTH_PREFIX
+        LD DE, HEIGHT_PREFIX
         LD C, BDOS_OUTPUT_STRING
         call BDOS_ENTRY_POINT
 
@@ -73,7 +73,7 @@ BDOS_OUTPUT_STRING:   EQU 9
         LD C, BDOS_OUTPUT_STRING
         call BDOS_ENTRY_POINT
 
-        LD DE, HEIGHT_PREFIX
+        LD DE, WIDTH_PREFIX
         LD C, BDOS_OUTPUT_STRING
         call BDOS_ENTRY_POINT
 
