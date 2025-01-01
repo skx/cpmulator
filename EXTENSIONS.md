@@ -47,18 +47,18 @@ Example:
     LD A, 31
     OUT (0xFF), A
 
-Demonstrated in [samples/ctrlc.z80](samples/ctrlc.z80).
+Demonstrated in [static/ctrlc.z80](static/ctrlc.z80).
 
 
 
-## Function 0x02: Get/Set Console Driver
+## Function 0x02: Get/Set Console Output Driver
 
 On entry DE points to a text-string, terminated by NULL, which represents the name of the
 console output driver to use.
 
 If DE is 0x0000 then the DMA area is filled with the name of the current driver, NULL-terminated.
 
-Demonstrated in [samples/console.z80](samples/console.z80)
+Demonstrated in [static/output.z80](static/output.z80)
 
 
 
@@ -69,7 +69,7 @@ CCP to use.
 
 If DE is 0x0000 then the DMA area is filled with the name of the currently active CCP, NULL-terminated.
 
-Demonstrated in [samples/ccp.z80](samples/ccp.z80)
+Demonstrated in [static/ccp.z80](static/ccp.z80)
 
 
 
@@ -97,4 +97,4 @@ Demonstrated in [samples/ccp.z80](samples/ccp.z80)
 Debug mode shows a summary of syscalls, and their results.  It is faster
 than using the logfile and it is useful to be able to toggle it at runtime.
 
-Demonstrated in [samples/debug.z80](samples/debug.z80)
+Demonstrated in [static/debug.z80](static/debug.z80)
