@@ -18,7 +18,7 @@ BDOS_FILE_SIZE:                EQU 35
         ;; then we've got nothing to search for.
         ld a, (FCB1 + 1)
         cp 0x20             ; 0x20 = 32 == SPACE
-        jp nz, got_argument ; Not a space, so we can proceed
+        jr nz, got_argument ; Not a space, so we can proceed
 
         ;;
         ;; No argument, so show the error and exit

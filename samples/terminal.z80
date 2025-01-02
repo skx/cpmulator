@@ -116,7 +116,7 @@ Num2:	inc	a
 show_a_register:
         ld h,0
 	ld l,a
-	jp DispHL
+	jr DispHL
 
 ;;
 ;; Error Routines
