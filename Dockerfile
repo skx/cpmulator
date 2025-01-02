@@ -22,6 +22,7 @@ FROM golang:alpine AS builder
 ARG VERSION
 
 LABEL org.opencontainers.image.source=https://github.com/skx/cpmulator/
+LABEL org.opencontainers.image.description CP/M Emulator written in Golang
 
 # Create a working-directory
 WORKDIR $GOPATH/src/github.com/skx/cpmulator/
