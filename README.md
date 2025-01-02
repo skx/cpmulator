@@ -48,6 +48,31 @@ Releases will be made as/when features seem to justify it, but it should be note
 
 # Quick Start
 
+
+
+## With Docker
+
+If you've got docker installed you can launch things by running:
+
+```sh
+docker run -t -i ghcr.io/skx/cpmulator:master
+```
+
+**NOTE** You must run interactively with the `-t` and `-i` flags, otherwise the console setup will be broken.
+
+Once launched you can explore, for example to run Zork type:
+
+* `G:`
+  * This will change to the G:-drive, which is where I've placed games.
+* `ZORK1`
+  * This will launch the Zork1 binary.
+
+Other examples are given below.
+
+
+
+## Building Locally
+
 * Build/Install this application.
 * Clone the associated repository of binaries:
   * `git clone https://github.com/skx/cpm-dist.git /tmp/cpm-dist`
