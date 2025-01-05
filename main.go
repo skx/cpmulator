@@ -56,6 +56,7 @@ func main() {
 	ccp := flag.String("ccp", "ccpz", "The name of the CCP that we should run (ccp vs. ccpz).")
 	cd := flag.String("cd", "", "Change to this directory before launching")
 	createDirectories := flag.Bool("create", false, "Create subdirectories on the host computer for each CP/M drive.")
+	embedBin := flag.Bool("embed", true, "Should we embed our utility commands into the A: filesystem.")
 	input := flag.String("input", cpm.DefaultInputDriver, "The name of the console input driver to use (-list-input-drivers will show valid choices).")
 	output := flag.String("output", cpm.DefaultOutputDriver, "The name of the console output driver to use (-list-output-drivers will show valid choices).")
 	logAll := flag.Bool("log-all", false, "Log all function invocations, including the noisy console I/O ones.")
@@ -269,7 +270,11 @@ func main() {
 	}
 
 	// Load any embedded files within our binary
-	obj.SetStaticFilesystem(static.GetContent())
+	if *embedBin {
+		obj.SetStaticFilesystem(static.GetContent())
+	} else {
+		obj.SetStaticFilesystem(static.GetEmptyContent())
+	}
 
 	// Default to not using subdirectories for drives
 	obj.SetDrives(false)
