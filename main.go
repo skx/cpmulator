@@ -55,7 +55,6 @@ func main() {
 	//
 	ccp := flag.String("ccp", "ccpz", "The name of the CCP that we should run (ccp vs. ccpz).")
 	cd := flag.String("cd", "", "Change to this directory before launching")
-	console := flag.String("console", "", "The name of the console output driver to use (-list-output-drivers will show valid choices).")
 	createDirectories := flag.Bool("create", false, "Create subdirectories on the host computer for each CP/M drive.")
 	input := flag.String("input", cpm.DefaultInputDriver, "The name of the console input driver to use (-list-input-drivers will show valid choices).")
 	output := flag.String("output", cpm.DefaultOutputDriver, "The name of the console output driver to use (-list-output-drivers will show valid choices).")
@@ -224,16 +223,9 @@ func main() {
 	// Set the logger now we've updated as appropriate.
 	slog.SetDefault(log)
 
-	// We used to use "-console", but now we prefer "-output" to match with "-input".
-	out := *output
-	if *console != "" {
-		out = *console
-		fmt.Printf("WARNING: -console is a deprecated flag, prefer to use -output.\r\n")
-	}
-
 	// Create a new emulator.
 	obj, err := cpm.New(cpm.WithPrinterPath(*prnPath),
-		cpm.WithOutputDriver(out),
+		cpm.WithOutputDriver(*output),
 		cpm.WithInputDriver(*input),
 		cpm.WithCCP(*ccp))
 	if err != nil {
