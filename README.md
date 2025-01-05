@@ -209,7 +209,7 @@ Run `A:!INPUT stty` to use the non-portable Unix-centric approach which provides
 
 ### Console Output
 
-We default to pretending our output device is an ADM-3A terminal, this can be changed via the `-output` command-line flag (previously `-console`) at startup.  Additionally it can be changed at runtime via `A:!OUTPUT.COM`.
+We default to pretending our output device is an ADM-3A terminal, this can be changed via the `-output` command-line flag at startup.  Additionally it can be changed at runtime via `A:!OUTPUT.COM`.
 
 Run `A:!OUTPUT ansi` to disable the output emulation, or `A:!OUTPUT adm-3a` to restore it.
 
