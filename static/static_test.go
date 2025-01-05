@@ -22,3 +22,17 @@ func TestStatic(t *testing.T) {
 		}
 	}
 }
+
+// TestEmpty ensures we have no files.
+func TestEmpty(t *testing.T) {
+
+	// Read the subdirectory
+	files, err := GetEmptyContent().ReadDir(".")
+	if err != nil {
+		t.Fatalf("error reading contents")
+	}
+
+	if len(files) != 0 {
+		t.Fatalf("got files, but expected none")
+	}
+}

@@ -154,6 +154,8 @@ There are many available command-line options, which are shown in the output of 
   * Change to the given directory before running.
 * `-directories`
   * Use directories on the host for drive-contents, discussed later in this document.
+* `-embed`
+  * Enable/Disable the embedded binaries we unconditionally add to the A:-drive.  (The utilities to change the output driver, toggle debugging, etc.)
 * `-log-path /path/to/file`
   * Output debug-logs to the given file, creating it if necessary.
   * **NOTE**: You can run `A:!DEBUG 1` to enable "quick debug logging", and `A:!DEBUG 0` to turn it back off again, at runtime.
@@ -183,7 +185,7 @@ This allows you to customize the emulator, or perform other "one-time" setup via
 
 There are a small number of [extensions](EXTENSIONS.md) added to the BIOS functionality we provide, and these extensions allow changing some aspects of the emulator at runtime.
 
-The behaviour changing is achieved by having a small number of .COM files invoke the extension functions, and these binaries are embedded within our emulator to improve ease of use, via the [static/](static/) directory in our source-tree.  This means no matter what you'll always find some binaries installed on A:, despite not being present in reality.
+The behaviour changing is achieved by having a small number of .COM files invoke the extension functions, and these binaries are embedded within our emulator to improve ease of use, via the [static/](static/) directory in our source-tree.  This means no matter what you'll always find some binaries installed on A:, despite not being present in reality - you can disable the appearance of these binaries via the `-embed=false` command-line flag.
 
 > **NOTE** To avoid naming collisions all our embedded binaries are named with a `!` prefix, except for `#.COM` which is designed to be used as a comment-binary.
 
