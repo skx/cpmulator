@@ -411,8 +411,8 @@ func (co *ConsoleIn) ReadLine(max uint8) (string, error) {
 		if err != nil {
 			fmt.Printf("\r\nerror running command '%s' %s%s\r\n", text, err.Error(), execErr.Bytes())
 		} else {
-			out := string(execOut.Bytes())
-			out += string(execErr.Bytes())
+			out := execOut.String()
+			out += execErr.String()
 			out = strings.ReplaceAll(out, "\n", "\n\r")
 			fmt.Printf("\r\n%s\r\n", out)
 		}
