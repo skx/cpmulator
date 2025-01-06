@@ -327,6 +327,44 @@ func TestCustom(t *testing.T) {
 		t.Fatalf("wrong console driver '%s'", str)
 	}
 
+	// 0x0008
+	// Get/Set host command prefix
+	c.CPU.States.HL.SetU16(0x0008)
+	c.CPU.States.DE.SetU16(0x0000)
+	c.Memory.Set(c.dma, 0x00)
+	err = BiosSysCallReserved1(c)
+	if err != nil {
+		t.Fatalf("error calling reserved function")
+	}
+	str = getStringFromMemory(c, c.dma)
+	if str != "" {
+		t.Fatalf("unexpected systemcommandprefix '%s'", str)
+	}
+
+	// set to "!!"
+	c.CPU.States.HL.SetU16(0x0008)
+	c.CPU.States.DE.SetU16(0xFE00)
+	c.Memory.SetRange(0xFE00, []byte{'!', '!', ' '}...)
+	err = BiosSysCallReserved1(c)
+	if err != nil {
+		t.Fatalf("error calling reserved function")
+	}
+
+	// confirm it worked
+	c.CPU.States.HL.SetU16(0x0008)
+	c.CPU.States.DE.SetU16(0x0000)
+	err = BiosSysCallReserved1(c)
+	if err != nil {
+		t.Fatalf("error calling reserved function")
+	}
+	str = getStringFromMemory(c, c.dma)
+	if str != "!!" {
+		t.Fatalf("unexpected systemcommandprefix '%s'", str)
+	}
+	if c.input.GetSystemCommandPrefix() != "!!" {
+		t.Fatalf("unexpected mismatch in systemcommandprefix")
+	}
+
 }
 
 func TestBIOSConsoleInput(t *testing.T) {
