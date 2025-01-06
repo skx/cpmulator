@@ -368,6 +368,33 @@ func BiosSysCallReserved1(cpm *CPM) error {
 			fmt.Printf("Input driver from %s to %s.\n", oldName, driver.GetName())
 		}
 
+	// Set the host prefix
+	case 0x0008:
+
+		if de == 0x0000 {
+			// Fill the DMA area with NULL bytes
+			addr := cpm.dma
+
+			end := addr + uint16(127)
+			for end > addr {
+				cpm.Memory.Set(end, 0x00)
+				end--
+			}
+
+			// now populate with our current value
+			str := cpm.input.GetSystemCommandPrefix()
+			for i, c := range str {
+				cpm.Memory.Set(addr+uint16(i), uint8(c))
+			}
+			return nil
+		}
+
+		// Get the string pointed to by DE
+		str := getStringFromMemory(de)
+
+		// set it
+		cpm.input.SetSystemCommandPrefix(str)
+
 	default:
 		fmt.Printf("Unknown custom BIOS function HL:%04X, ignoring", hl)
 	}

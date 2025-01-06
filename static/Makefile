@@ -2,7 +2,7 @@
 #
 # The files we wish to generate.
 #
-all: A/\#.COM A/!CCP.COM A/!CTRLC.COM A/!DEBUG.COM A/!INPUT.COM A/!OUTPUT.COM A/!VERSION.COM
+all: A/\#.COM A/!CCP.COM A/!CTRLC.COM A/!DEBUG.COM A/!HOSTCMD.COM A/!INPUT.COM A/!OUTPUT.COM A/!VERSION.COM
 
 # cleanup
 clean:
@@ -22,6 +22,9 @@ A/!CTRLC.COM: ctrlc.z80
 
 A/!DEBUG.COM: debug.z80
 	pasmo debug.z80 A/!DEBUG.COM
+
+A/!HOSTCMD.COM: hostcmd.z80
+	pasmo hostcmd.z80 A/!HOSTCMD.COM
 
 A/!INPUT.COM: input.z80
 	pasmo input.z80 A/!INPUT.COM

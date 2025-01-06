@@ -253,6 +253,15 @@ func WithInputDriver(name string) cpmoption {
 	}
 }
 
+// WithHostExec allows executing commands on the host, by prefixing them with a
+// custom prefix in the Readline primitive.
+func WithHostExec(prefix string) cpmoption {
+	return func(c *CPM) error {
+		c.input.SetSystemCommandPrefix(prefix)
+		return nil
+	}
+}
+
 // New returns a new emulation object.  We support default options,
 // and new defaults may be specified via WithOutputDriver, etc, etc.
 func New(options ...cpmoption) (*CPM, error) {

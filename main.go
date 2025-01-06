@@ -57,6 +57,7 @@ func main() {
 	cd := flag.String("cd", "", "Change to this directory before launching")
 	createDirectories := flag.Bool("create", false, "Create subdirectories on the host computer for each CP/M drive.")
 	embedBin := flag.Bool("embed", true, "Should we embed our utility commands into the A: filesystem.")
+	execPrefix := flag.String("exec-prefix", "", "Execute system commands, on the host, prefixed by this string.")
 	input := flag.String("input", cpm.DefaultInputDriver, "The name of the console input driver to use (-list-input-drivers will show valid choices).")
 	output := flag.String("output", cpm.DefaultOutputDriver, "The name of the console output driver to use (-list-output-drivers will show valid choices).")
 	logAll := flag.Bool("log-all", false, "Log all function invocations, including the noisy console I/O ones.")
@@ -228,6 +229,7 @@ func main() {
 	obj, err := cpm.New(cpm.WithPrinterPath(*prnPath),
 		cpm.WithOutputDriver(*output),
 		cpm.WithInputDriver(*input),
+		cpm.WithHostExec(*execPrefix),
 		cpm.WithCCP(*ccp))
 	if err != nil {
 		fmt.Printf("error creating CPM object: %s\n", err)
