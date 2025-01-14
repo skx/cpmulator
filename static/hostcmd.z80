@@ -51,10 +51,6 @@ exit:
 
 ;; Show the current value
 show_value:
-        LD DE, OUTPUT_PREFIX
-        LD C, BDOS_OUTPUT_STRING
-        CALL BDOS_ENTRY_POINT
-
         ;; just set the first byte of the DMA area to null
         LD HL, 0x0080
         LD (HL), 0x00
@@ -64,7 +60,23 @@ show_value:
         ld a, 31
         out (0xff), a
 
+        ;; Now the DMA area, defaulting to 0x0080
+        ;; will contain the value which is set.
         LD HL, 0x0080
+
+        ;; Is the value null?
+        LD A, (HL)
+        CP 0
+        jr z, unset
+
+
+        LD DE, OUTPUT_PREFIX
+        LD C, BDOS_OUTPUT_STRING
+        CALL BDOS_ENTRY_POINT
+        LD HL, 0x0080
+
+
+        ;; otherwise show the value, character by character.
 loopy:
         LD A, (HL)
         cp 0
@@ -82,6 +94,15 @@ finished_loop:
         CALL BDOS_ENTRY_POINT
         jr exit
 
+
+;; The host command-prefix is unset
+unset:
+        LD DE, UNSET_STRING
+        LD C, BDOS_OUTPUT_STRING
+        CALL BDOS_ENTRY_POINT
+        jr exit
+
+
 ;;
 ;; Error Routines
 ;;
@@ -96,11 +117,12 @@ not_cpmulator:
 ;;
 ;; Text output strings.
 ;;
+UNSET_STRING:
+        db "The prefix for executing commands on the host is unset.", 0x0a, 0x0d, "Running commands on the host is disabled.", 0x0a, 0x0d, "$"
 OUTPUT_PREFIX:
         db "The command-prefix for executing commands on the host is '$"
 OUTPUT_SUFFIX:
-        db "'.", 0x0a, 0x0d
-        db "(An empty value means that host-execution is disabled.)", 0x0a, 0x0d, "$"
+        db "'.", 0x0a, 0x0d, "$"
 WRONG_EMULATOR:
         db "This binary is not running under cpmulator, aborting.", 0x0a, 0x0d, "$"
 END
