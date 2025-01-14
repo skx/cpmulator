@@ -1,6 +1,9 @@
 package consolein
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
 func TestReadlineSTTY(t *testing.T) {
 
@@ -125,6 +128,19 @@ func TestOverview(t *testing.T) {
 	if c != '.' {
 		t.Fatalf("wrong character")
 	}
+
+	// Get the current prefix
+	cur := ch.GetSystemCommandPrefix()
+
+	// change it
+	ch.SetSystemCommandPrefix("foo")
+	if ch.GetSystemCommandPrefix() != "foo" {
+		t.Fatalf("failed to change command prefix")
+	}
+
+	if ch.GetSystemCommandPrefix() == cur {
+		t.Fatalf("failed to change command prefix")
+	}
 }
 
 func TestCtrlC(t *testing.T) {
@@ -208,4 +224,54 @@ func TestDriverRegistration(t *testing.T) {
 		t.Fatalf("driver count is wrong")
 	}
 
+}
+
+func TestSimpleExec(t *testing.T) {
+
+	cwd := func() string {
+		pwd, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("failed to get CWD %s", err)
+		}
+		return pwd
+	}
+
+	// Create a helper
+	x := STTYInput{}
+
+	ch := ConsoleIn{}
+	ch.driver = &x
+
+	ch.Setup()
+	defer ch.TearDown()
+
+	// Setup input to run "cd ."
+	ch.SetSystemCommandPrefix("!!")
+	ch.StuffInput("!!cd .\ninput\n")
+
+	out, err := ch.ReadLine(199)
+	if err != nil {
+		t.Fatalf("error reading input %s", err)
+	}
+	if out != "input" {
+		t.Fatalf("unexpected input %s", out)
+	}
+
+	// Get the CWD before we change
+	before := cwd()
+	ch.StuffInput("!!cd ..\ninput2\n")
+
+	out, err = ch.ReadLine(199)
+	if err != nil {
+		t.Fatalf("error reading input %s", err)
+	}
+	if out != "input2" {
+		t.Fatalf("unexpected input %s", out)
+	}
+
+	// Confirm we changed directory
+	after := cwd()
+	if after == before {
+		t.Fatalf("failed to change directory")
+	}
 }

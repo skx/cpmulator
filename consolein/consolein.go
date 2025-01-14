@@ -6,7 +6,10 @@
 package consolein
 
 import (
+	"bytes"
 	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 	"unicode"
 )
@@ -77,6 +80,10 @@ type ConsoleIn struct {
 
 	// driver is the thing that actually reads our output.
 	driver ConsoleInput
+
+	// systemPrefix is the prefix to use to trigger the execution
+	// of system commands, on the host,  in the ReadLine function
+	systemPrefix string
 }
 
 // New is our constructore, it creates an input device which uses
@@ -96,6 +103,17 @@ func New(name string) (*ConsoleIn, error) {
 	return &ConsoleIn{
 		driver: ctor(),
 	}, nil
+}
+
+// SetSystemCommandPrefix enables the use of system-commands in our readline
+// function.
+func (co *ConsoleIn) SetSystemCommandPrefix(str string) {
+	co.systemPrefix = str
+}
+
+// GetSystemCommandPrefix returns the value of the system-command prefix.
+func (co *ConsoleIn) GetSystemCommandPrefix() string {
+	return co.systemPrefix
 }
 
 // GetDriver allows getting our driver at runtime.
@@ -342,6 +360,65 @@ func (co *ConsoleIn) ReadLine(max uint8) (string, error) {
 	// Too much entered?  Truncate the text.
 	if len(text) > int(max) {
 		text = text[:max]
+	}
+
+	//
+	// Execution of commands, if enabled
+	//
+	if co.systemPrefix != "" && strings.HasPrefix(text, co.systemPrefix) {
+
+		// Strip the prefix, and any spaces.
+		text := text[len(co.systemPrefix):]
+		text = strings.TrimSpace(text)
+
+		// cd is a special command.
+		if strings.HasPrefix(text, "cd ") {
+			bits := strings.Split(text, " ")
+			if len(bits) >= 2 {
+				dir := bits[1]
+				err := os.Chdir(dir)
+				if err != nil {
+					fmt.Printf("\r\nError changing to directory %s: %s\r\n", dir, err)
+				}
+			}
+			return co.ReadLine(max)
+		}
+
+		// Split the command, naively.
+		var bits []string
+		bits = strings.Split(text, " ")
+
+		// Of course we might be using the shell.
+		useShell := false
+		if strings.Contains(text, ">") || strings.Contains(text, "&") || strings.Contains(text, "|") || strings.Contains(text, "<") {
+			useShell = true
+		}
+
+		// If we are we wrap the command.
+		if useShell {
+			bits = []string{"bash", "-c", text}
+		}
+
+		// Prepare to run the command, capturing STDOUT & STDERR
+		cmd := exec.Command(bits[0], bits[1:]...)
+		var execOut bytes.Buffer
+		var execErr bytes.Buffer
+		cmd.Stdout = &execOut
+		cmd.Stderr = &execErr
+
+		// Actually run the command
+		err := cmd.Run()
+		if err != nil {
+			fmt.Printf("\r\nerror running command '%s' %s%s\r\n", text, err.Error(), execErr.Bytes())
+		} else {
+			out := execOut.String()
+			out += execErr.String()
+			out = strings.ReplaceAll(out, "\n", "\n\r")
+			fmt.Printf("\r\n%s\r\n", out)
+		}
+
+		// Read the input again, since we "stole" it via the exec handling.
+		return co.ReadLine(max)
 	}
 
 	// Return the text
