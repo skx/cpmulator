@@ -368,7 +368,7 @@ func (co *ConsoleIn) ReadLine(max uint8) (string, error) {
 	if co.systemPrefix != "" && strings.HasPrefix(text, co.systemPrefix) {
 
 		// Strip the prefix, and any spaces.
-		text := text[len(co.systemPrefix):]
+		text = text[len(co.systemPrefix):]
 		text = strings.TrimSpace(text)
 
 		// cd is a special command.

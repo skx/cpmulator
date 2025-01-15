@@ -32,7 +32,7 @@ func TestEmpty(t *testing.T) {
 		t.Fatalf("error reading contents")
 	}
 
-	if len(files) != 0 {
+	if len(files) > 0 {
 		t.Fatalf("got files, but expected none")
 	}
 }
