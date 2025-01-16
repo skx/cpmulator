@@ -365,5 +365,52 @@ func TestAutoExec(t *testing.T) {
 	if out != "SUBMIT AUTOEXEC" {
 		t.Fatalf("strange input read: '%s'\n", out)
 	}
+}
+
+func TestHostExec(t *testing.T) {
+
+	// Create a new CP/M helper
+	obj, err := New(WithOutputDriver("null"), WithHostExec("!#!"))
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+
+	if obj.input.GetSystemCommandPrefix() != "!#!" {
+		t.Fatalf("WithHostExec didn't work as expected")
+	}
+}
+
+func TestAddressOveride(t *testing.T) {
+
+	// Create a new CP/M helper - default
+	obj, err := New(WithOutputDriver("null"))
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+
+	if obj.bdosAddress != 0xC000 {
+		t.Fatalf("default BDOS address is wrong")
+	}
+
+	// Create a new CP/M helper - with env set
+	t.Setenv("BDOS_ADDRESS", "0x1234")
+	obj, err = New(WithOutputDriver("null"))
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+
+	if obj.bdosAddress != 0x1234 {
+		t.Fatalf("updated BDOS address is wrong")
+	}
+
+	// Create a new CP/M helper - with bogus env set
+	t.Setenv("BDOS_ADDRESS", "steve")
+	obj, err = New(WithOutputDriver("null"))
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	if obj.bdosAddress != 0xC000 {
+		t.Fatalf("updated BDOS address is wrong")
+	}
 
 }
