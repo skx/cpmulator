@@ -14,6 +14,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -146,6 +147,16 @@ type CPM struct {
 	// launch uses a higher location - so that it isn't overwritten by
 	// the programs it launches.
 	start uint16
+
+	// biosAddress contains the address of the BIOS we've faked.
+	//
+	// This might need to be moved, in rare situations.
+	biosAddress uint16
+
+	// bdosAddress contains the address of the fake BDOS we've deployed.
+	//
+	// This might need to be moved, in rare situations.
+	bdosAddress uint16
 
 	// BDOSSyscalls contains details of the BDOS syscalls we
 	// know how to emulate, indexed by their ID.
@@ -536,6 +547,24 @@ func New(options ...cpmoption) (*CPM, error) {
 		return nil, err
 	}
 
+	// Helper to return a number, if it is present in the environment
+	envNumber := func(name string, defValue uint16) uint16 {
+
+		val := os.Getenv(name)
+		if val == "" {
+			return defValue
+		}
+
+		// base is implied, so "0xFEFE" works.
+		num, err := strconv.ParseInt(val, 00, 32)
+		if err != nil {
+			return defValue
+		}
+
+		// Truncate.
+		return uint16(num & 0xFFFF)
+	}
+
 	// Create the emulator object and return it
 	tmp := &CPM{
 		BDOSSyscalls: bdos,
@@ -549,6 +578,8 @@ func New(options ...cpmoption) (*CPM, error) {
 		prnPath:      "printer.log", // default
 		start:        0x0100,
 		launchTime:   time.Now(),
+		biosAddress:  envNumber("BIOS_ADDRESS", 0xCE00),
+		bdosAddress:  envNumber("BDOS_ADDRESS", 0xC000),
 	}
 
 	// Allow options to override our defaults
@@ -585,6 +616,20 @@ func (cpm *CPM) GetOutputDriver() consoleout.ConsoleOutput {
 // GetCCPName returns the name of the CCP we've been configured to load.
 func (cpm *CPM) GetCCPName() string {
 	return cpm.ccp
+}
+
+// GetBIOSAddress returns the address the fake BIOS is deployed at.
+//
+// This is used for the startup banner.
+func (cpm *CPM) GetBIOSAddress() uint16 {
+	return cpm.biosAddress
+}
+
+// GetBDOSAddress returns the address the fake BDOS is deployed at.
+//
+// This is used for the startup banner.
+func (cpm *CPM) GetBDOSAddress() uint16 {
+	return cpm.bdosAddress
 }
 
 // LogNoisy enables logging support for each of the functions which
@@ -646,18 +691,25 @@ func (cpm *CPM) LoadBinary(filename string) error {
 }
 
 // fixupRAM is misnamed - but it patches the RAM with Z80 code to
-// handle "badly behaved" programs that invoke CP/M functions via RST XX
-// instructions, rather than calls to 0x0005
+// handle "badly behaved" programs that invoke CP/M functions by working out
+// the address of the BIOS/BDOS and jumping there directly.
 //
 // We put some code to call the handlers via faked OUT 0xFF,N - where N
 // is the syscall to run.
 //
 // The precise region we patch is unimportant, but we want to make sure
 // we don't overlap with our CCP, or "large programs" loaded at 0x0100.
+//
+// We store the addresses we can use in the cpm-structure, and they can
+// be changed by the user via the BIOS_ADDRESS and BDOS_ADDRESS environmental
+// variables.
 func (cpm *CPM) fixupRAM() {
 	i := 0
-	BIOS := 0xFE00
-	BDOS := 0xF000
+
+	// The two addresses which are important
+	BIOS := int(cpm.biosAddress)
+	BDOS := int(cpm.bdosAddress)
+
 	NENTRY := 30
 
 	SETMEM := func(a int, v int) {
@@ -808,8 +860,8 @@ func (cpm *CPM) Execute(args []string) error {
 	// Set the same value in RAM
 	cpm.Memory.Set(0x0004, cpm.CPU.States.BC.Lo)
 
-	BIOS := uint16(0xFE00)
-	BDOS := uint16(0xF000)
+	BIOS := cpm.biosAddress
+	BDOS := cpm.bdosAddress
 
 	// Setup our breakpoints.
 	//
