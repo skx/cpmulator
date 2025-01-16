@@ -58,6 +58,11 @@ func TestSimple(t *testing.T) {
 		t.Fatalf("ccp name mismatch!")
 	}
 
+	// Ensure our BDOS and BIOS don't equal each other
+	if obj.GetBDOSAddress() == obj.GetBIOSAddress() {
+		t.Fatalf("BIOS and BDOS should be different!")
+	}
+
 	// Create a temporary file with our "RET" program in it.
 	var file *os.File
 	file, err = os.CreateTemp("", "tst-*.com")

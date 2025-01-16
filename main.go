@@ -358,7 +358,7 @@ func main() {
 	}
 
 	// Show a startup-banner.
-	fmt.Printf("\ncpmulator %s\r\nCCP:%s input driver:%s output driver:%s\n", cpmver.GetVersionString(), obj.GetCCPName(), obj.GetInputDriver().GetName(), obj.GetOutputDriver().GetName())
+	fmt.Printf("\ncpmulator %s\r\nConsole input:%s Console output:%s BIOS:0x%04X BDOS:0x%04X CCP:%s\n", cpmver.GetVersionString(), obj.GetInputDriver().GetName(), obj.GetOutputDriver().GetName(), obj.GetBIOSAddress(), obj.GetBDOSAddress(), obj.GetCCPName())
 
 	// We will load AUTOEXEC.SUB, once, if it exists (*)
 	//
