@@ -21,8 +21,8 @@ FROM golang:alpine AS builder
 
 ARG VERSION
 
-LABEL org.opencontainers.image.source=https://github.com/skx/cpmulator/
-LABEL org.opencontainers.image.description CP/M Emulator written in Golang
+LABEL org.opencontainers.image.source="https://github.com/skx/cpmulator/"
+LABEL org.opencontainers.image.description="CP/M Emulator written in Golang"
 
 # Create a working-directory
 WORKDIR $GOPATH/src/github.com/skx/cpmulator/
@@ -52,9 +52,8 @@ USER app
 # Set working directory
 WORKDIR /app
 
-
 # Set entrypoint
 ENTRYPOINT [ "/usr/local/bin/cpmulator" ]
 
-# And ensure we use the subdirectories
+# And ensure we use the subdirectory-support.
 CMD [ "-directories" ]
