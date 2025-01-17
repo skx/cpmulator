@@ -33,6 +33,11 @@ for OS in ${BUILD_PLATFORMS[@]}; do
             SUFFIX="${SUFFIX}-${ARCH}"
         fi
 
+        # Windows binaries should end in .EXE
+        if [ "$OS" = "windows" ]; then
+            SUFFIX="${SUFFIX}.exe"
+        fi
+
         echo "Building for ${OS} [${ARCH}] -> ${BASE}-${SUFFIX}"
 
         # Run the build
