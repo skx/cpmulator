@@ -893,35 +893,42 @@ func (cpm *CPM) Execute(args []string) error {
 	}
 
 	for {
+		// Reset the state of any saved error and the halt-flag.
 		cpm.biosErr = nil
 		cpm.CPU.HALT = false
 
-		fmt.Printf("Booting %04X - %v\r\n", cpm.CPU.PC, cpm.CPU.HALT)
-
+		// Launch the Z80 emulator.
+		//
+		// This will basically run forever, or until the CPU is halted
+		// in one of our handlers.
 		err := cpm.CPU.Run(context.Background())
 
-		fmt.Printf("RESULT: %v %v\n", err, cpm.biosErr)
-		if err == ErrBoot || cpm.biosErr == ErrBoot {
-			return ErrBoot
-			//			cpm.CPU.PC = cpm.start
-			continue
-		}
-
-		if err == ErrHalt || cpm.biosErr == ErrHalt {
-			fmt.Printf("Return ErrHalt\r\n")
+		// If the errors are both empty, but the CPU is halted then we exit
+		if err == nil && cpm.biosErr == nil && cpm.CPU.HALT {
 			return ErrHalt
 		}
 
-		if err == ErrExit || cpm.biosErr == ErrExit {
-			fmt.Printf("Return ErrExit\r\n")
+		// An unimplemented system-call was encountered.
+		// That's a fatal-error
+		if err == ErrUnimplemented || cpm.biosErr == ErrUnimplemented {
+			return ErrUnimplemented
+		}
+
+		// The virtual machine was rebooted.
+		if err == ErrBoot || cpm.biosErr == ErrBoot {
 			return ErrBoot
 		}
 
-		if cpm.CPU.HALT {
-			cpm.CPU.HALT = false
+		// Emulation was terminated.
+		if err == ErrHalt || cpm.biosErr == ErrHalt {
+			return ErrHalt
 		}
 
-		fmt.Printf("%v %v\r\n", err, cpm.biosErr)
+		// The emulator exits.
+		// NOTE: We send a different return code here.
+		if err == ErrExit || cpm.biosErr == ErrExit {
+			return ErrBoot
+		}
 	}
 }
 
