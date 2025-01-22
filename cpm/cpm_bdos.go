@@ -1189,7 +1189,8 @@ func BdosSysCallLoginVec(cpm *CPM) error {
 // BdosSysCallDriveGet returns the number of the active drive.
 func BdosSysCallDriveGet(cpm *CPM) error {
 	cpm.CPU.States.AF.Hi = cpm.currentDrive
-
+	cpm.CPU.States.HL.Lo = cpm.currentDrive
+	cpm.CPU.States.HL.Hi = 0x00
 	return nil
 }
 

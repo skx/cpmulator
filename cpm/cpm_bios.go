@@ -8,13 +8,11 @@ package cpm
 
 import (
 	"fmt"
-	"log/slog"
 	"os"
 	"strings"
 
 	"golang.org/x/term"
 
-	"github.com/koron-go/z80"
 	"github.com/skx/cpmulator/ccp"
 	"github.com/skx/cpmulator/consolein"
 	"github.com/skx/cpmulator/consoleout"
@@ -23,20 +21,12 @@ import (
 
 // BiosSysCallColdBoot handles a cold boot.
 func BiosSysCallColdBoot(cpm *CPM) error {
-
-	// Set entry-point to 0x0000 which will result in
-	// a boot-trap.
-	cpm.CPU.States.PC = 0x0000
-	return nil
+	return ErrBoot
 }
 
 // BiosSysCallWarmBoot handles a warm boot.
 func BiosSysCallWarmBoot(cpm *CPM) error {
-
-	// Set entry-point to 0x0000 which will result in
-	// a boot-trap.
-	cpm.CPU.States.PC = 0x0000
-	return nil
+	return ErrBoot
 }
 
 // BiosSysCallConsoleStatus should return 0x00 if there is no input
@@ -400,67 +390,4 @@ func BiosSysCallReserved1(cpm *CPM) error {
 	}
 
 	return nil
-}
-
-// BiosHandler is involved when a BIOS syscall needs to be executed,
-// which is handled via a small trampoline.
-//
-// These are looked up in the BIOSSyscalls map.
-func (cpm *CPM) BiosHandler(val uint8) {
-
-	// Lookup the handler
-	handler, ok := cpm.BIOSSyscalls[val]
-
-	// If it doesn't exist we don't have it implemented.
-	if !ok {
-		slog.Error("Unimplemented BIOS syscall",
-			slog.Int("syscall", int(val)),
-			slog.String("syscallHex", fmt.Sprintf("0x%02X", val)))
-
-		// record the error
-		cpm.biosErr = ErrUnimplemented
-		// halt processing.
-		cpm.CPU.HALT = true
-
-		// stop now.
-		return
-	}
-
-	if !handler.Noisy {
-
-		// show the function being invoked.
-		if cpm.simpleDebug {
-			fmt.Printf("%03d %s\n", val, handler.Desc)
-		}
-
-		// Log the call we're going to make
-		slog.Info("BIOS",
-			slog.String("name", handler.Desc),
-			slog.Int("syscall", int(val)),
-			slog.String("syscallHex", fmt.Sprintf("0x%02X", val)),
-			slog.Group("registers",
-				slog.String("AF", fmt.Sprintf("%04X", cpm.CPU.States.AF.U16())),
-				slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
-				slog.String("DE", fmt.Sprintf("%04X", cpm.CPU.States.DE.U16())),
-				slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16()))))
-	}
-
-	// Otherwise invoke it, and look for any error
-	err := handler.Handler(cpm)
-
-	// If there was an error then record it for later notice.
-	if err != nil {
-		// record the error
-		cpm.biosErr = err
-		// halt processing.
-		cpm.CPU.HALT = true
-	}
-
-	// If A == 0x00 then we set the zero flag
-	if cpm.CPU.States.AF.Hi == 0x00 {
-		cpm.CPU.SetFlag(z80.FlagZ)
-	} else {
-		cpm.CPU.ResetFlag(z80.FlagZ)
-	}
-
 }

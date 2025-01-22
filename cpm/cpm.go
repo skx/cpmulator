@@ -716,27 +716,18 @@ func (cpm *CPM) fixupRAM() {
 		cpm.Memory.Set(uint16(a), uint8(v))
 	}
 
-	// We _should_ add "JUMP TO CCP" here, but instead
-	// we terminate execution via a HALT (0x76) instruction.
-	//
-	// This works regardless of whether CCP is present or not.
-	//
-	// We do the same thing for the jump at 0x0005 because
-	// turbo pascal, and other programs presumably, look at
-	// the following address to see how much free RAM is available.
-	//
-	SETMEM(0x0000, 0x76)                /* HALT */
-	SETMEM(0x0001, ((BIOS + 3) & 0xFF)) /* Fake address of entry-point */
-	SETMEM(0x0002, ((BIOS + 3) >> 8))
-
-	// We setup a fake jump here, because 0x0006 is sometimes
-	// used to find the free RAM and we pretend our BDOS is at 0xDC00
-	SETMEM(0x0005, 0x76)                /* HALT */
-	SETMEM(0x0006, ((BDOS + 6) & 0xFF)) /* Fake Address of entry point */
-	SETMEM(0x0007, ((BDOS + 6) >> 8))
+	SETMEM(0x0000, 0xC3)                    /* JMP */
+	SETMEM(0x0001, (int(cpm.start) & 0xFF)) /* Fake address of entry-point */
+	SETMEM(0x0002, (int(cpm.start) >> 8))
 
 	// Now we setup the initial values of the I/O byte
 	SETMEM(0x0003, 0x00)
+
+	// We setup a fake jump here, because 0x0006 is sometimes
+	// used to find the free RAM and we pretend our BDOS is at 0xDC00
+	SETMEM(0x0005, 0xC3)            /* JMP */
+	SETMEM(0x0006, ((BDOS) & 0xFF)) /* Fake Address of entry point */
+	SETMEM(0x0007, ((BDOS) >> 8))
 
 	// fake BIOS entry points for 30 syscalls.
 	//
@@ -756,7 +747,7 @@ func (cpm *CPM) fixupRAM() {
 		SETMEM(BIOS+3*i+2, (BIOS+NENTRY*3+i*5)>>8)
 
 		/* LD A,<bios-call> - start of bios-entry */
-		SETMEM(BIOS+NENTRY*3+i*5, 0x3E)
+		SETMEM(BIOS+NENTRY*3+i*5+0, 0x3E)
 		SETMEM(BIOS+NENTRY*3+i*5+1, i)
 
 		/* OUT A,0FFH - we use port 0xFF to fake the BIOS call */
@@ -767,6 +758,17 @@ func (cpm *CPM) fixupRAM() {
 		SETMEM(BIOS+NENTRY*3+i*5+4, 0xC9)
 		i++
 	}
+
+	SETMEM(BDOS+0, 0x00) // NOP
+	SETMEM(BDOS+1, 0x00) // NOP
+	SETMEM(BDOS+2, 0x00) // NOP
+	SETMEM(BDOS+3, 0x00) // NOP
+	SETMEM(BDOS+4, 0x00) // NOP
+	SETMEM(BDOS+5, 0x00) // NOP
+	SETMEM(BDOS+6, 0xED) // OUT C, CC
+	SETMEM(BDOS+7, 0x09) //  ""
+	SETMEM(BDOS+8, 0xCC) //  ""
+	SETMEM(BDOS+9, 0xC9) // RET
 
 }
 
@@ -860,23 +862,6 @@ func (cpm *CPM) Execute(args []string) error {
 	// Set the same value in RAM
 	cpm.Memory.Set(0x0004, cpm.CPU.States.BC.Lo)
 
-	BIOS := cpm.biosAddress
-	BDOS := cpm.bdosAddress
-
-	// Setup our breakpoints.
-	//
-	// We configure two:
-	//
-	//  0x0000 - is the boot address of the Z80 processor.
-	//  0x0005 - The CPM BDOS entrypoint.
-	//
-	cpm.CPU.BreakPoints = make(map[uint16]struct{})
-	cpm.CPU.BreakPoints[BIOS] = struct{}{}
-	cpm.CPU.BreakPoints[BIOS+3] = struct{}{}
-	cpm.CPU.BreakPoints[BDOS] = struct{}{}
-	cpm.CPU.BreakPoints[BDOS+6] = struct{}{}
-	cpm.CPU.BreakPoints[0x0005] = struct{}{}
-
 	// Convert our array of CLI arguments to a string.
 	cli := strings.Join(args, " ")
 	cli = strings.TrimSpace(strings.ToUpper(cli))
@@ -905,115 +890,29 @@ func (cpm *CPM) Execute(args []string) error {
 		}
 	}
 
-	// Run forever :)
 	for {
-		// Run until we hit an error
+		cpm.biosErr = nil
+
 		err := cpm.CPU.Run(context.Background())
-
-		// If we ended up here because the I/O handler received
-		// an error, and then HALTed the emulator we'll process it
-		// here.
-		if cpm.biosErr != nil {
-			err = cpm.biosErr
-			cpm.biosErr = nil
-		}
-
-		// Reboot?
-		if cpm.CPU.PC == 0x0000 {
+		if err == ErrBoot || cpm.biosErr == ErrBoot {
 			return ErrBoot
 		}
 
-		// No error?  Then end - the CPU hit a HALT.
-		if err == nil {
+		if err == ErrHalt || cpm.biosErr == ErrHalt {
 			return ErrHalt
 		}
 
-		// Are we being asked to terminate CP/M?  If so return
-		if err == ErrExit {
-			return nil
+		if err == ErrExit || cpm.biosErr == ErrExit {
+			return ErrBoot
 		}
 
-		// An error which wasn't a breakpoint?  Give up
-		if err != z80.ErrBreakPoint {
-			return fmt.Errorf("unexpected error running CPU %s", err)
-		}
-
-		// OK we have a breakpoint error to handle.
-		//
-		// That means we have a CP/M BDOS function to emulate,
-		// the syscall identifier is stored in the C-register.
-		syscall := cpm.CPU.States.BC.Lo
-
-		//
-		// Is there a syscall entry for this number?
-		//
-		handler, exists := cpm.BDOSSyscalls[syscall]
-
-		//
-		// Nope: That will stop execution with a fatal log
-		//
-		if !exists {
-
-			slog.Error("Unimplemented BDOS Syscall",
-				slog.Int("syscall", int(syscall)),
-				slog.String("syscallHex",
-					fmt.Sprintf("0x%02X", syscall)),
-			)
-			return ErrUnimplemented
-		}
-
-		// Log the call we're going to make
-		if !handler.Noisy {
-
-			// show the function being invoked.
-			if cpm.simpleDebug {
-				fmt.Printf("%03d %s\n", syscall, handler.Desc)
-			}
-
-			slog.Info("BDOS",
-				slog.String("name", handler.Desc),
-				slog.Int("syscall", int(syscall)),
-				slog.String("syscallHex", fmt.Sprintf("0x%02X", syscall)),
-				slog.Group("registers",
-					slog.String("AF", fmt.Sprintf("%04X", cpm.CPU.States.AF.U16())),
-					slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
-					slog.String("DE", fmt.Sprintf("%04X", cpm.CPU.States.DE.U16())),
-					slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16()))))
-		}
-
-		// Invoke the handler
-		err = handler.Handler(cpm)
-
-		// Are we being asked to terminate CP/M?  If so return
-		if err == ErrExit {
-			return nil
-		}
-
-		// Are we to reboot?
-		if err == ErrBoot {
-			cpm.CPU.PC = 0x0000
+		if cpm.CPU.HALT {
+			cpm.CPU.HALT = false
 			continue
+
 		}
 
-		// Any other error is fatal.
-		if err != nil {
-			return err
-		}
-
-		// If A == 0x00 then we set the zero flag
-		if cpm.CPU.States.AF.Hi == 0x00 {
-			cpm.CPU.SetFlag(z80.FlagZ)
-		} else {
-			cpm.CPU.ResetFlag(z80.FlagZ)
-		}
-
-		// Return from call by getting the return address
-		// from the stack, and updating the instruction pointer
-		// to continue executing from there.
-		cpm.CPU.PC = cpm.Memory.GetU16(cpm.CPU.SP)
-
-		// We need to remove the entry from the stack to cleanup
-		cpm.CPU.SP += 2
+		fmt.Printf("%v %v\r\n", err, cpm.biosErr)
 	}
 }
 
@@ -1103,17 +1002,149 @@ func (cpm *CPM) In(addr uint8) uint8 {
 // A register and there are far far fewer of them.
 func (cpm *CPM) Out(addr uint8, val uint8) {
 
-	// We use port FF for CP/M calls - via
-	// the compatibility instructions we deployed
-	// in fixRAM.
-	if addr != 0xFF {
+	if cpm.CPU.HALT {
+		fmt.Printf("Out() called when CPU is halted\r\n")
+		return
+	}
+	if cpm.biosErr != nil {
+		fmt.Printf("Out() with pending error: %v\r\n", cpm.biosErr)
 		return
 	}
 
-	//
-	// Invoke the handler, in cpm_bios.go
-	//
-	cpm.BiosHandler(val)
+	cpm.CPU.HALT = false
+	cpm.biosErr = nil
+
+	// We use port FF for BIOS calls.
+	if addr == 0xFF {
+
+		if val != cpm.CPU.AF.Hi {
+			fmt.Printf("WEIRDNESS!!!\r\n")
+		}
+
+		// Lookup the handler
+		handler, ok := cpm.BIOSSyscalls[val]
+
+		// If it doesn't exist we don't have it implemented.
+		if !ok {
+			slog.Error("Unimplemented BIOS syscall",
+				slog.Int("syscall", int(val)),
+				slog.String("syscallHex", fmt.Sprintf("0x%02X", val)))
+
+			// record the error
+			cpm.biosErr = ErrUnimplemented
+			// halt processing.
+			cpm.CPU.HALT = true
+
+			// stop now.
+			return
+		}
+
+		if !handler.Noisy {
+
+			// show the function being invoked.
+			if cpm.simpleDebug {
+				fmt.Printf("%03d %s\n", val, handler.Desc)
+			}
+
+			// Log the call we're going to make
+			slog.Info("BIOS",
+				slog.String("name", handler.Desc),
+				slog.Int("syscall", int(val)),
+				slog.String("syscallHex", fmt.Sprintf("0x%02X", val)),
+				slog.Group("registers",
+					slog.String("AF", fmt.Sprintf("%04X", cpm.CPU.States.AF.U16())),
+					slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
+					slog.String("DE", fmt.Sprintf("%04X", cpm.CPU.States.DE.U16())),
+					slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16()))))
+		}
+
+		// Otherwise invoke it, and look for any error
+		cpm.biosErr = handler.Handler(cpm)
+		if cpm.biosErr != nil {
+			cpm.CPU.HALT = true
+		}
+
+		// show the function being invoked.
+		if cpm.simpleDebug {
+			fmt.Printf("Result:%v\n", cpm.biosErr)
+		}
+
+		// If A == 0x00 then we set the zero flag
+		if cpm.CPU.States.AF.Hi == 0x00 {
+			cpm.CPU.SetFlag(z80.FlagZ)
+		} else {
+			cpm.CPU.ResetFlag(z80.FlagZ)
+		}
+
+		return
+	}
+
+	// We use port CC for BDOS calls
+	if addr == 0xCC {
+
+		if val != cpm.CPU.BC.Lo {
+			fmt.Printf("WEIRDNESS for BDOS/0xCC!!!\r\n")
+		}
+
+		syscall := cpm.CPU.BC.Lo
+
+		//
+		// Is there a syscall entry for this number?
+		//
+		handler, exists := cpm.BDOSSyscalls[syscall]
+
+		//
+		// Nope: That will stop execution with a fatal log
+		//
+		if !exists {
+
+			slog.Error("Unimplemented BDOS Syscall",
+				slog.Int("syscall", int(syscall)),
+				slog.String("syscallHex",
+					fmt.Sprintf("0x%02X", syscall)),
+			)
+			cpm.biosErr = ErrUnimplemented
+			cpm.CPU.HALT = true
+			return
+		}
+
+		// Log the call we're going to make
+		if !handler.Noisy {
+
+			// show the function being invoked.
+			if cpm.simpleDebug {
+				fmt.Printf("%03d %s\n", syscall, handler.Desc)
+			}
+
+			slog.Info("BDOS",
+				slog.String("name", handler.Desc),
+				slog.Int("syscall", int(syscall)),
+				slog.String("syscallHex", fmt.Sprintf("0x%02X", syscall)),
+				slog.Group("registers",
+					slog.String("AF", fmt.Sprintf("%04X", cpm.CPU.States.AF.U16())),
+					slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
+					slog.String("DE", fmt.Sprintf("%04X", cpm.CPU.States.DE.U16())),
+					slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16()))))
+		}
+
+		// Invoke the handler
+		cpm.biosErr = handler.Handler(cpm)
+		if cpm.biosErr != nil {
+			cpm.CPU.HALT = true
+		}
+
+		// show the function being invoked.
+		if cpm.simpleDebug {
+			fmt.Printf("Result:%v\n", cpm.biosErr)
+		}
+
+		// If A == 0x00 then we set the zero flag
+		if cpm.CPU.States.AF.Hi == 0x00 {
+			cpm.CPU.SetFlag(z80.FlagZ)
+		} else {
+			cpm.CPU.ResetFlag(z80.FlagZ)
+		}
+	}
 }
 
 // StuffText inserts text into the read-buffer of the console
