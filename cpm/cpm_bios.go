@@ -21,11 +21,29 @@ import (
 
 // BiosSysCallColdBoot handles a cold boot.
 func BiosSysCallColdBoot(cpm *CPM) error {
+	// Reset all registers
+	cpm.CPU.AF.SetU16(0)
+	cpm.CPU.BC.SetU16(0)
+	cpm.CPU.DE.SetU16(0)
+	cpm.CPU.HL.SetU16(0)
+
+	// Reset the stack on a cold-boot.
+	cpm.CPU.SP = 0xffff
+	// Reset the drive and user-number
+	cpm.currentDrive = 0
+	cpm.Memory.Set(0x0004, 0)
 	return ErrBoot
 }
 
 // BiosSysCallWarmBoot handles a warm boot.
 func BiosSysCallWarmBoot(cpm *CPM) error {
+
+	// Reset all registers
+	cpm.CPU.AF.SetU16(0)
+	cpm.CPU.BC.SetU16(0)
+	cpm.CPU.DE.SetU16(0)
+	cpm.CPU.HL.SetU16(0)
+
 	return ErrBoot
 }
 

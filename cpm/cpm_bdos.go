@@ -29,6 +29,7 @@ const maxRC = 128
 
 // BdosSysCallExit implements the Exit syscall
 func BdosSysCallExit(cpm *CPM) error {
+	cpm.CPU.HALT = true
 	return ErrExit
 }
 

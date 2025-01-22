@@ -578,8 +578,8 @@ func New(options ...cpmoption) (*CPM, error) {
 		prnPath:      "printer.log", // default
 		start:        0x0100,
 		launchTime:   time.Now(),
-		biosAddress:  envNumber("BIOS_ADDRESS", 0xCE00),
-		bdosAddress:  envNumber("BDOS_ADDRESS", 0xC000),
+		biosAddress:  envNumber("BIOS_ADDRESS", 0xFE00),
+		bdosAddress:  envNumber("BDOS_ADDRESS", 0xF000),
 	}
 
 	// Allow options to override our defaults
@@ -716,9 +716,11 @@ func (cpm *CPM) fixupRAM() {
 		cpm.Memory.Set(uint16(a), uint8(v))
 	}
 
-	SETMEM(0x0000, 0xC3)                    /* JMP */
-	SETMEM(0x0001, (int(cpm.start) & 0xFF)) /* Fake address of entry-point */
-	SETMEM(0x0002, (int(cpm.start) >> 8))
+	SETMEM(0x0000, 0xC3)                /* JMP */
+	SETMEM(0x0001, ((BIOS + 3) & 0xFF)) /* Fake address of entry-point */
+	SETMEM(0x0002, ((BIOS + 3) >> 8))
+
+	SETMEM(BIOS, 0xC9) // RET
 
 	// Now we setup the initial values of the I/O byte
 	SETMEM(0x0003, 0x00)
@@ -765,10 +767,10 @@ func (cpm *CPM) fixupRAM() {
 	SETMEM(BDOS+3, 0x00) // NOP
 	SETMEM(BDOS+4, 0x00) // NOP
 	SETMEM(BDOS+5, 0x00) // NOP
-	SETMEM(BDOS+6, 0xED) // OUT C, CC
-	SETMEM(BDOS+7, 0x09) //  ""
-	SETMEM(BDOS+8, 0xCC) //  ""
-	SETMEM(BDOS+9, 0xC9) // RET
+	SETMEM(BDOS+6, 0xED) // OUT (C), C
+	SETMEM(BDOS+7, 0x49) //    ""
+	SETMEM(BDOS+8, 0xC9) // RET
+	SETMEM(BDOS+9, 0x00) // NOP
 
 }
 
@@ -892,24 +894,31 @@ func (cpm *CPM) Execute(args []string) error {
 
 	for {
 		cpm.biosErr = nil
+		cpm.CPU.HALT = false
+
+		fmt.Printf("Booting %04X - %v\r\n", cpm.CPU.PC, cpm.CPU.HALT)
 
 		err := cpm.CPU.Run(context.Background())
+
+		fmt.Printf("RESULT: %v %v\n", err, cpm.biosErr)
 		if err == ErrBoot || cpm.biosErr == ErrBoot {
 			return ErrBoot
+			//			cpm.CPU.PC = cpm.start
+			continue
 		}
 
 		if err == ErrHalt || cpm.biosErr == ErrHalt {
+			fmt.Printf("Return ErrHalt\r\n")
 			return ErrHalt
 		}
 
 		if err == ErrExit || cpm.biosErr == ErrExit {
+			fmt.Printf("Return ErrExit\r\n")
 			return ErrBoot
 		}
 
 		if cpm.CPU.HALT {
 			cpm.CPU.HALT = false
-			continue
-
 		}
 
 		fmt.Printf("%v %v\r\n", err, cpm.biosErr)
@@ -1080,7 +1089,7 @@ func (cpm *CPM) Out(addr uint8, val uint8) {
 	}
 
 	// We use port CC for BDOS calls
-	if addr == 0xCC {
+	if true {
 
 		if val != cpm.CPU.BC.Lo {
 			fmt.Printf("WEIRDNESS for BDOS/0xCC!!!\r\n")
