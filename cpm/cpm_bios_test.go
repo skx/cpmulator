@@ -414,7 +414,8 @@ func TestBIOSError(t *testing.T) {
 	}
 
 	// This will fail
-	c.BiosHandler(5)
+	c.CPU.States.AF.Hi = 0x05
+	c.Out(0xff, 5)
 
 	// So the error should be set
 	if c.biosErr == nil {
@@ -422,6 +423,7 @@ func TestBIOSError(t *testing.T) {
 	}
 
 	// 15 == LISTST == BiosSysCallPrinterStatus
-	c.BiosHandler(15)
+	c.CPU.States.BC.SetU16(15)
+	c.Out(0xff, 15)
 
 }
