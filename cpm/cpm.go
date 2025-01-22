@@ -843,6 +843,7 @@ func (cpm *CPM) Execute(args []string) error {
 		States: z80.States{
 			SPR: z80.SPR{
 				PC: cpm.start,
+				SP: 0xFFFF,
 			},
 		},
 		Memory: cpm.Memory,
@@ -903,7 +904,7 @@ func (cpm *CPM) Execute(args []string) error {
 		// in one of our handlers.
 		err := cpm.CPU.Run(context.Background())
 
-		// If the errors are both empty, but the CPU is halted then we exit
+		// If the errors are both empty, but the CPU is halted then we exit.
 		if err == nil && cpm.biosErr == nil && cpm.CPU.HALT {
 			return ErrHalt
 		}
@@ -1027,139 +1028,125 @@ func (cpm *CPM) Out(addr uint8, val uint8) {
 		return
 	}
 
+	//
+	// Reset our state
+	//
 	cpm.CPU.HALT = false
 	cpm.biosErr = nil
 
+	//
+	// We're going to lookup a handler, based on the
+	// register that makes sense.
+	//
+	var handler CPMHandler
+
+	// Did we find it?  And if so what type was it?
+	var ok bool
+	var callType string
+
+	//
 	// We use port FF for BIOS calls.
+	//
+	// Any other port is a BDOS call.
+	//
 	if addr == 0xFF {
 
+		// If the port and the value don't match then something
+		// fishy is going on.
+		//
+		// Or a CP/M binary is legitimately using an OUT instruction.
+		//
+		// To make sense we log this as a fatal error, and bail.
 		if val != cpm.CPU.AF.Hi {
-			fmt.Printf("WEIRDNESS!!!\r\n")
-		}
-
-		// Lookup the handler
-		handler, ok := cpm.BIOSSyscalls[val]
-
-		// If it doesn't exist we don't have it implemented.
-		if !ok {
-			slog.Error("Unimplemented BIOS syscall",
-				slog.Int("syscall", int(val)),
-				slog.String("syscallHex", fmt.Sprintf("0x%02X", val)))
-
-			// record the error
-			cpm.biosErr = ErrUnimplemented
-			// halt processing.
-			cpm.CPU.HALT = true
-
-			// stop now.
+			slog.Error("Out() mismatch for "+callType+" handler",
+				slog.Int("Value", int(val)),
+				slog.Group("registers",
+					slog.String("AF", fmt.Sprintf("%04X", cpm.CPU.States.AF.U16())),
+				))
 			return
 		}
 
-		if !handler.Noisy {
+		callType = "BIOS"
 
-			// show the function being invoked.
-			if cpm.simpleDebug {
-				fmt.Printf("%03d %s\n", val, handler.Desc)
-			}
+		// Lookup the handler
+		handler, ok = cpm.BIOSSyscalls[val]
 
-			// Log the call we're going to make
-			slog.Info("BIOS",
-				slog.String("name", handler.Desc),
-				slog.Int("syscall", int(val)),
-				slog.String("syscallHex", fmt.Sprintf("0x%02X", val)),
-				slog.Group("registers",
-					slog.String("AF", fmt.Sprintf("%04X", cpm.CPU.States.AF.U16())),
-					slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
-					slog.String("DE", fmt.Sprintf("%04X", cpm.CPU.States.DE.U16())),
-					slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16()))))
-		}
+	} else {
 
-		// Otherwise invoke it, and look for any error
-		cpm.biosErr = handler.Handler(cpm)
-		if cpm.biosErr != nil {
-			cpm.CPU.HALT = true
-		}
-
-		// show the function being invoked.
-		if cpm.simpleDebug {
-			fmt.Printf("Result:%v\n", cpm.biosErr)
-		}
-
-		// If A == 0x00 then we set the zero flag
-		if cpm.CPU.States.AF.Hi == 0x00 {
-			cpm.CPU.SetFlag(z80.FlagZ)
-		} else {
-			cpm.CPU.ResetFlag(z80.FlagZ)
-		}
-
-		return
-	}
-
-	// We use port CC for BDOS calls
-	if true {
-
+		// If the port and the value don't match then something
+		// fishy is going on.
+		//
+		// Or a CP/M binary is legitimately using an OUT instruction.
+		//
+		// To make sense we log this as a fatal error, and bail.
 		if val != cpm.CPU.BC.Lo {
-			fmt.Printf("WEIRDNESS for BDOS/0xCC!!!\r\n")
+			slog.Error("Out() mismatch for "+callType+" handler",
+				slog.Int("Value", int(val)),
+				slog.Group("registers",
+					slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
+				))
+			return
 		}
 
-		syscall := cpm.CPU.BC.Lo
+		callType = "BDOS"
 
 		//
 		// Is there a syscall entry for this number?
 		//
-		handler, exists := cpm.BDOSSyscalls[syscall]
+		handler, ok = cpm.BDOSSyscalls[cpm.CPU.BC.Lo]
 
-		//
-		// Nope: That will stop execution with a fatal log
-		//
-		if !exists {
+	}
 
-			slog.Error("Unimplemented BDOS Syscall",
-				slog.Int("syscall", int(syscall)),
-				slog.String("syscallHex",
-					fmt.Sprintf("0x%02X", syscall)),
-			)
-			cpm.biosErr = ErrUnimplemented
-			cpm.CPU.HALT = true
-			return
-		}
+	// If a handler was not found then we've not implemented
+	// the given syscall.
+	//
+	// Log the failure and return.
+	if !ok {
+		slog.Error("Unimplemented "+callType+" syscall",
+			slog.Int("syscall", int(val)),
+			slog.String("syscallHex", fmt.Sprintf("0x%02X", val)))
 
-		// Log the call we're going to make
-		if !handler.Noisy {
+		cpm.biosErr = ErrUnimplemented
+		cpm.CPU.HALT = true
+		return
+	}
 
-			// show the function being invoked.
-			if cpm.simpleDebug {
-				fmt.Printf("%03d %s\n", syscall, handler.Desc)
-			}
-
-			slog.Info("BDOS",
-				slog.String("name", handler.Desc),
-				slog.Int("syscall", int(syscall)),
-				slog.String("syscallHex", fmt.Sprintf("0x%02X", syscall)),
-				slog.Group("registers",
-					slog.String("AF", fmt.Sprintf("%04X", cpm.CPU.States.AF.U16())),
-					slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
-					slog.String("DE", fmt.Sprintf("%04X", cpm.CPU.States.DE.U16())),
-					slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16()))))
-		}
-
-		// Invoke the handler
-		cpm.biosErr = handler.Handler(cpm)
-		if cpm.biosErr != nil {
-			cpm.CPU.HALT = true
-		}
+	// Log the call, if we should.
+	if !handler.Noisy {
 
 		// show the function being invoked.
 		if cpm.simpleDebug {
-			fmt.Printf("Result:%v\n", cpm.biosErr)
+			fmt.Printf("%03d %s %s\n", val, callType, handler.Desc)
 		}
 
-		// If A == 0x00 then we set the zero flag
-		if cpm.CPU.States.AF.Hi == 0x00 {
-			cpm.CPU.SetFlag(z80.FlagZ)
-		} else {
-			cpm.CPU.ResetFlag(z80.FlagZ)
-		}
+		// Log the call we're going to make
+		slog.Info(callType,
+			slog.String("name", handler.Desc),
+			slog.String("type", callType),
+			slog.Int("syscall", int(val)),
+			slog.String("syscallHex", fmt.Sprintf("0x%02X", val)),
+			slog.Group("registers",
+				slog.String("AF", fmt.Sprintf("%04X", cpm.CPU.States.AF.U16())),
+				slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
+				slog.String("DE", fmt.Sprintf("%04X", cpm.CPU.States.DE.U16())),
+				slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16()))))
+	}
+
+	// Invoke the handler, and save any error that we receive.
+	//
+	// If an error was returned we halt the emulation of the virtual Z80.
+	cpm.biosErr = handler.Handler(cpm)
+	if cpm.biosErr != nil {
+		cpm.CPU.HALT = true
+	}
+
+	// If A == 0x00 then we set the zero flag.
+	//
+	// Not even sure if this is necessary..
+	if cpm.CPU.States.AF.Hi == 0x00 {
+		cpm.CPU.SetFlag(z80.FlagZ)
+	} else {
+		cpm.CPU.ResetFlag(z80.FlagZ)
 	}
 }
 
