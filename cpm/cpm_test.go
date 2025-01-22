@@ -305,6 +305,8 @@ func TestCPMCoverage(t *testing.T) {
 	// Valid: WARMBOOT
 	obj.CPU.HALT = false
 	obj.biosErr = nil
+	obj.CPU.States.AF.Hi = 0x01
+	obj.CPU.States.BC.Lo = 0x01
 	obj.Out(0xFF, 0x01)
 	if obj.biosErr != ErrBoot {
 		t.Fatalf("unexpected error")
