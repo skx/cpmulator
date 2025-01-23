@@ -292,34 +292,34 @@ func TestCPMCoverage(t *testing.T) {
 
 	obj.In(0x12)
 	obj.CPU.HALT = false
-	obj.biosErr = nil
+	obj.syscallErr = nil
 	obj.Out(0x12, 0x34)
 
 	// Valid: COLDBOOT
 	obj.CPU.HALT = false
-	obj.biosErr = nil
+	obj.syscallErr = nil
 	obj.Out(0xFF, 0x00)
-	if obj.biosErr != ErrBoot {
+	if obj.syscallErr != ErrBoot {
 		t.Fatalf("unexpected error")
 	}
 	// Valid: WARMBOOT
 	obj.CPU.HALT = false
-	obj.biosErr = nil
+	obj.syscallErr = nil
 	obj.CPU.States.AF.Hi = 0x01
 	obj.CPU.States.BC.Lo = 0x01
 	obj.Out(0xFF, 0x01)
-	if obj.biosErr != ErrBoot {
+	if obj.syscallErr != ErrBoot {
 		t.Fatalf("unexpected error")
 	}
 
 	// Invalid
 	obj.CPU.HALT = false
-	obj.biosErr = nil
+	obj.syscallErr = nil
 	obj.CPU.States.AF.Hi = 0xFE
 	obj.CPU.States.BC.Lo = 0xFE
 	obj.Out(0xFE, 0xFE)
-	if obj.biosErr != ErrUnimplemented {
-		t.Fatalf("expected unimplemented, got %s", obj.biosErr)
+	if obj.syscallErr != ErrUnimplemented {
+		t.Fatalf("expected unimplemented, got %s", obj.syscallErr)
 	}
 }
 

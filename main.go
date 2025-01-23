@@ -343,12 +343,6 @@ func main() {
 				return
 			}
 
-			// Deliberate stop of execution.
-			if err == cpm.ErrExit {
-				fmt.Printf("\n")
-				return
-			}
-
 			fmt.Printf("Error running %s [%s]: %s\n",
 				program, strings.Join(args, ","), err)
 		}

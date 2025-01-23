@@ -409,7 +409,7 @@ func TestBIOSError(t *testing.T) {
 	}
 
 	// 5 == LIST / BiosSysCallPrintChar
-	if c.biosErr != nil {
+	if c.syscallErr != nil {
 		t.Fatalf("found an error we didn't expect")
 	}
 
@@ -418,7 +418,7 @@ func TestBIOSError(t *testing.T) {
 	c.Out(0xFF, 5)
 
 	// So the error should be set
-	if c.biosErr == nil {
+	if c.syscallErr == nil {
 		t.Fatalf("found no error, but we should have done")
 	}
 

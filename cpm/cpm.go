@@ -1,5 +1,6 @@
-// Package cpm is the main package for our emulator, it uses memory to
-// emulate execution of things at the bios level.
+// Package cpm is the main package for our emulator, it contains
+// the Z80 emulator we're using, along with the memory the running
+// binaries inhabit, and the appropriate glue to wire things together.
 //
 // The package mostly contains the implementation of the syscalls that
 // CP/M programs would expect - along with a little machinery to wire up
@@ -27,19 +28,17 @@ import (
 )
 
 var (
-	// ErrExit will be used to handle a CP/M binary calling Exit.
-	//
-	// It should be handled and expected by callers.
-	ErrExit = errors.New("EXIT")
-
 	// ErrHalt will be used to note that the Z80 emulator executed a HALT
 	// operation, and that terminated the execution of code.
 	//
 	// It should be handled and expected by callers.
 	ErrHalt = errors.New("HALT")
 
-	// ErrBoot will be used to note that the Z80 emulator executed code
-	// at 0x0000 - i.e. a boot attempt
+	// ErrBoot will be used to note that the Z80 emulator executed code should
+	// reboot / restart.
+	//
+	// This is mostly used to handle the CCP restarting after a client application
+	// has terminated.
 	//
 	// It should be handled and expected by callers.
 	ErrBoot = errors.New("BOOT")
@@ -55,8 +54,8 @@ var (
 	// DefaultOutputDriver contains the name of the default console output driver.
 	DefaultOutputDriver string = "adm-3a"
 
-	// DefaultDMA is the default address of the DMA area, post-boot.
-	DefaultDMA uint16 = 0x0080
+	// DefaultDMAAddress is the default address of the DMA area, post-boot.
+	DefaultDMAAddress uint16 = 0x0080
 )
 
 // CPMHandlerType contains the signature of a function we use to
@@ -111,12 +110,11 @@ type FileCache struct {
 // CPM is the object that holds our emulator state.
 type CPM struct {
 
-	// biosErr holds any error created by a BIOS handler.
+	// syscallErr holds any error created by a BIOS or BDOS syscall handler.
 	//
-	// We need this because the handlers we use for BIOS operations
-	// cannot return an error - due to the interface used in the z80
-	// emulator.
-	biosErr error
+	// We need this because the handlers are invoked by our OUT-wrapper and they
+	// do not have the opportunity to return an error-code directly.
+	syscallErr error
 
 	// ccp contains the name of the CCP we should load
 	ccp string
@@ -576,7 +574,7 @@ func New(options ...cpmoption) (*CPM, error) {
 		BDOSSyscalls: bdos,
 		BIOSSyscalls: bios,
 		ccp:          "ccp", // default
-		dma:          DefaultDMA,
+		dma:          DefaultDMAAddress,
 		drives:       make(map[string]string),
 		files:        make(map[uint16]FileCache),
 		input:        iDriver,       // default
@@ -677,8 +675,7 @@ func (cpm *CPM) LoadBinary(filename string) error {
 	// Default to emptying the FCBs and leaving the CLI args empty.
 	//
 	// DMA area / CLI Args
-	cpm.Memory.Set(DefaultDMA, 0x00)
-	cpm.Memory.FillRange(DefaultDMA+1, 31, 0x00)
+	cpm.Memory.FillRange(DefaultDMAAddress, 32, 0x00)
 
 	// FCB1: Default drive, spaces for filenames.
 	cpm.Memory.Set(0x005C, 0x00)
@@ -774,7 +771,6 @@ func (cpm *CPM) fixupRAM() {
 	SETMEM(BDOS+0, 0xED) // OUT (C), C
 	SETMEM(BDOS+1, 0x49) //    ""
 	SETMEM(BDOS+2, 0xC9) // RET
-	SETMEM(BDOS+3, 0x00) // NOP
 
 }
 
@@ -802,8 +798,7 @@ func (cpm *CPM) LoadCCP() error {
 	cpm.Memory.SetRange(helper.Start, helper.Bytes...)
 
 	// DMA area / CLI Args are going to be unset.
-	cpm.Memory.Set(DefaultDMA, 0x00)
-	cpm.Memory.FillRange(DefaultDMA+1, 31, 0x00)
+	cpm.Memory.FillRange(DefaultDMAAddress, 32, 0x00)
 
 	// FCB1: Default drive, spaces for filenames.
 	cpm.Memory.Set(0x005C, 0x00)
@@ -891,15 +886,15 @@ func (cpm *CPM) Execute(args []string) error {
 
 		// Setup the CLI arguments - these are set as a pascal string
 		// (i.e. first byte is the length, then the data follows).
-		cpm.Memory.Set(DefaultDMA, uint8(len(cli)))
+		cpm.Memory.Set(DefaultDMAAddress, uint8(len(cli)))
 		for i, c := range cli {
-			cpm.Memory.SetRange(DefaultDMA+1+uint16(i), uint8(c))
+			cpm.Memory.SetRange(DefaultDMAAddress+1+uint16(i), uint8(c))
 		}
 	}
 
 	for {
 		// Reset the state of any saved error and the halt-flag.
-		cpm.biosErr = nil
+		cpm.syscallErr = nil
 		cpm.CPU.HALT = false
 
 		// Launch the Z80 emulator.
@@ -909,30 +904,24 @@ func (cpm *CPM) Execute(args []string) error {
 		err := cpm.CPU.Run(context.Background())
 
 		// If the errors are both empty, but the CPU is halted then we exit.
-		if err == nil && cpm.biosErr == nil && cpm.CPU.HALT {
+		if err == nil && cpm.syscallErr == nil && cpm.CPU.HALT {
 			return ErrHalt
 		}
 
 		// An unimplemented system-call was encountered.
 		// That's a fatal-error
-		if err == ErrUnimplemented || cpm.biosErr == ErrUnimplemented {
+		if err == ErrUnimplemented || cpm.syscallErr == ErrUnimplemented {
 			return ErrUnimplemented
 		}
 
 		// The virtual machine was rebooted.
-		if err == ErrBoot || cpm.biosErr == ErrBoot {
+		if err == ErrBoot || cpm.syscallErr == ErrBoot {
 			return ErrBoot
 		}
 
 		// Emulation was terminated.
-		if err == ErrHalt || cpm.biosErr == ErrHalt {
+		if err == ErrHalt || cpm.syscallErr == ErrHalt {
 			return ErrHalt
-		}
-
-		// The emulator exits.
-		// NOTE: We send a different return code here.
-		if err == ErrExit || cpm.biosErr == ErrExit {
-			return ErrBoot
 		}
 	}
 }
@@ -973,7 +962,7 @@ func (cpm *CPM) RunAutoExec() {
 	cpm.input.StuffInput("SUBMIT AUTOEXEC\n")
 }
 
-// SetStaticFilesystem allows adding a reference to an embedded filesyste,.
+// SetStaticFilesystem allows adding a reference to an embedded filesystem.
 func (cpm *CPM) SetStaticFilesystem(fs embed.FS) {
 	cpm.static = fs
 }
@@ -1031,12 +1020,12 @@ func (cpm *CPM) Out(addr uint8, val uint8) {
 				slog.Int("Val", int(val))))
 		return
 	}
-	if cpm.biosErr != nil {
+	if cpm.syscallErr != nil {
 		slog.Error("Out() called with pending error",
 			slog.Group("Out",
 				slog.Int("Addr", int(addr)),
 				slog.Int("Val", int(val)),
-				slog.String("Error", cpm.biosErr.Error())))
+				slog.String("Error", cpm.syscallErr.Error())))
 		return
 	}
 
@@ -1044,7 +1033,7 @@ func (cpm *CPM) Out(addr uint8, val uint8) {
 	// Reset our state
 	//
 	cpm.CPU.HALT = false
-	cpm.biosErr = nil
+	cpm.syscallErr = nil
 
 	//
 	// We're going to lookup a handler, based on the
@@ -1110,7 +1099,7 @@ func (cpm *CPM) Out(addr uint8, val uint8) {
 			slog.Int("syscall", int(val)),
 			slog.String("syscallHex", fmt.Sprintf("0x%02X", val)))
 
-		cpm.biosErr = ErrUnimplemented
+		cpm.syscallErr = ErrUnimplemented
 		cpm.CPU.HALT = true
 		return
 	}
@@ -1139,8 +1128,8 @@ func (cpm *CPM) Out(addr uint8, val uint8) {
 	// Invoke the handler, and save any error that we receive.
 	//
 	// If an error was returned we halt the emulation of the virtual Z80.
-	cpm.biosErr = handler.Handler(cpm)
-	if cpm.biosErr != nil {
+	cpm.syscallErr = handler.Handler(cpm)
+	if cpm.syscallErr != nil {
 		cpm.CPU.HALT = true
 	}
 

@@ -35,7 +35,7 @@ func BiosSysCallColdBoot(cpm *CPM) error {
 	cpm.Memory.Set(0x0004, 0)
 
 	// DMA gets reset
-	cpm.dma = DefaultDMA
+	cpm.dma = DefaultDMAAddress
 
 	return ErrBoot
 }
@@ -50,7 +50,7 @@ func BiosSysCallWarmBoot(cpm *CPM) error {
 	cpm.CPU.HL.SetU16(0)
 
 	// DMA gets reset
-	cpm.dma = DefaultDMA
+	cpm.dma = DefaultDMAAddress
 
 	return ErrBoot
 }
