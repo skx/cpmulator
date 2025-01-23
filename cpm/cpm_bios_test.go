@@ -375,7 +375,13 @@ func TestBIOSConsoleInput(t *testing.T) {
 	}
 	c.Memory = new(memory.Memory)
 	c.fixupRAM()
-	defer c.IOTearDown()
+
+	defer func() {
+		tErr := c.IOTearDown()
+		if tErr != nil {
+			t.Fatalf("teardown failed %s", tErr.Error())
+		}
+	}()
 
 	c.input.StuffInput("s")
 	err = BiosSysCallConsoleInput(c)
@@ -398,7 +404,12 @@ func TestBIOSError(t *testing.T) {
 	}
 	c.Memory = new(memory.Memory)
 	c.fixupRAM()
-	defer c.IOTearDown()
+	defer func() {
+		tErr := c.IOTearDown()
+		if tErr != nil {
+			t.Fatalf("teardown failed %s", tErr.Error())
+		}
+	}()
 
 	c.simpleDebug = true
 

@@ -22,7 +22,13 @@ func TestConsoleInput(t *testing.T) {
 	}
 	c.Memory = new(memory.Memory)
 	c.fixupRAM()
-	defer c.IOTearDown()
+
+	defer func() {
+		tErr := c.IOTearDown()
+		if tErr != nil {
+			t.Fatalf("teardown failed %s", tErr.Error())
+		}
+	}()
 
 	// ReadChar
 	c.StuffText("s")
@@ -100,7 +106,13 @@ func TestUnimplemented(t *testing.T) {
 	}
 	c.Memory = new(memory.Memory)
 	c.fixupRAM()
-	defer c.IOTearDown()
+
+	defer func() {
+		tErr := c.IOTearDown()
+		if tErr != nil {
+			t.Fatalf("teardown failed %s", tErr.Error())
+		}
+	}()
 
 	// Create a binary
 	var file *os.File
@@ -149,7 +161,13 @@ func TestBoot(t *testing.T) {
 	}
 	c.Memory = new(memory.Memory)
 	c.fixupRAM()
-	defer c.IOTearDown()
+
+	defer func() {
+		tErr := c.IOTearDown()
+		if tErr != nil {
+			t.Fatalf("teardown failed %s", tErr.Error())
+		}
+	}()
 
 	// Create a binary
 	var file *os.File
@@ -202,7 +220,13 @@ func TestFind(t *testing.T) {
 	c.fixupRAM()
 	c.SetDrives(false)
 	c.SetStaticFilesystem(static.GetContent())
-	defer c.IOTearDown()
+
+	defer func() {
+		tErr := c.IOTearDown()
+		if tErr != nil {
+			t.Fatalf("teardown failed %s", tErr.Error())
+		}
+	}()
 
 	// Create a pattern in an FCB
 	name := "*.GO"
@@ -1157,7 +1181,13 @@ func TestFileOpen(t *testing.T) {
 	c.Memory = new(memory.Memory)
 	c.fixupRAM()
 	c.SetDrives(false)
-	defer c.IOTearDown()
+
+	defer func() {
+		tErr := c.IOTearDown()
+		if tErr != nil {
+			t.Fatalf("teardown failed %s", tErr.Error())
+		}
+	}()
 
 	// Create a binary
 

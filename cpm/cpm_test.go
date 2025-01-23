@@ -103,7 +103,13 @@ func TestSimple(t *testing.T) {
 		t.Fatalf("failed to run binary %v!", err)
 	}
 
-	defer obj.IOTearDown()
+	defer func() {
+		tErr := obj.IOTearDown()
+		if tErr != nil {
+			t.Fatalf("teardown failed %s", tErr.Error())
+		}
+	}()
+
 }
 
 func TestBogusConstructor(t *testing.T) {
@@ -119,8 +125,18 @@ func TestBogusConstructor(t *testing.T) {
 	}
 
 	x, _ := New(WithInputDriver("stty"))
-	x.IOSetup()
-	x.IOTearDown()
+	sErr := x.IOSetup()
+	if sErr != nil {
+		t.Fatalf("failed to setup driver %s", sErr.Error())
+	}
+
+	defer func() {
+		tErr := x.IOTearDown()
+		if tErr != nil {
+			t.Fatalf("teardown failed %s", tErr.Error())
+		}
+	}()
+
 }
 
 func TestLoadCCP(t *testing.T) {

@@ -373,11 +373,22 @@ func BiosSysCallReserved1(cpm *CPM) error {
 			return nil
 		}
 
+		// We need to setup the new driver.
+		//
+		// If this fails we also abort the change-attempt.
+		err = driver.Setup()
+		if err != nil {
+			fmt.Printf("Failed to create new driver %s:%s\r\n", str, err)
+			return nil
+		}
+
 		old := cpm.input
 		oldName := old.GetName()
-		old.TearDown()
+		err = old.TearDown()
+		if err != nil {
+			return err
+		}
 
-		driver.Setup()
 		cpm.input = driver
 
 		if oldName != str {
