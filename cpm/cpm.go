@@ -583,7 +583,7 @@ func New(options ...cpmoption) (*CPM, error) {
 		start:        0x0100,
 		launchTime:   time.Now(),
 		biosAddress:  envNumber("BIOS_ADDRESS", 0xFE00),
-		bdosAddress:  envNumber("BDOS_ADDRESS", 0xF000),
+		bdosAddress:  envNumber("BDOS_ADDRESS", 0xFA00),
 	}
 
 	// Allow options to override our defaults

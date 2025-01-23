@@ -402,7 +402,7 @@ func TestAddressOveride(t *testing.T) {
 		t.Fatalf("failed to create CPM")
 	}
 
-	if obj.bdosAddress != 0xF000 {
+	if obj.bdosAddress != 0xFA00 {
 		t.Fatalf("default BDOS address is wrong, got %04X", obj.bdosAddress)
 	}
 
@@ -423,7 +423,7 @@ func TestAddressOveride(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
-	if obj.bdosAddress != 0xF000 {
+	if obj.bdosAddress != 0xFA00 {
 		t.Fatalf("updated BDOS address is wrong")
 	}
 
