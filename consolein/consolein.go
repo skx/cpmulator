@@ -127,11 +127,15 @@ func (co *ConsoleIn) GetName() string {
 }
 
 // GetDrivers returns all available driver-names.
+//
+// We hide the internal "file" driver.
 func (co *ConsoleIn) GetDrivers() []string {
 	valid := []string{}
 
 	for x := range handlers.m {
-		valid = append(valid, x)
+		if x != "file" {
+			valid = append(valid, x)
+		}
 	}
 	return valid
 }

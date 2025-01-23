@@ -196,7 +196,7 @@ func TestPending(t *testing.T) {
 // TestDriverRegistration performs some sanity-check on our driver-registration.
 func TestDriverRegistration(t *testing.T) {
 
-	expectedCount := 2
+	expectedCount := 3
 	found := len(handlers.m)
 	if found != expectedCount {
 		t.Fatalf("wrong number of handlers.  found %d, expected %d", found, expectedCount)
@@ -241,8 +241,14 @@ func TestDriverRegistration(t *testing.T) {
 		t.Fatalf("naming mismatch on driver!")
 	}
 
+	//
+	// NOTE:
+	//
+	// We expect to find one less than the number of available
+	// drivers in this call, because we hide the "file"-driver.
+	//
 	found = len(obj.GetDrivers())
-	if found != expectedCount {
+	if found != expectedCount-1 {
 		t.Fatalf("wrong number of handlers.  found %d, expected %d", found, expectedCount)
 	}
 }
