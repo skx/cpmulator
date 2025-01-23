@@ -3,6 +3,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,6 +16,9 @@ import (
 // TestDriveChange ensures the drive-letter changes after
 // changing drives.
 func TestDriveChange(t *testing.T) {
+
+	t.Setenv("BDOS_ADDRESS", "0xb000")
+	t.Setenv("BIOS_ADDRESS", "0xbf00")
 
 	obj, err := cpm.New(cpm.WithOutputDriver("logger"))
 	if err != nil {
@@ -62,6 +66,9 @@ func TestDriveChange(t *testing.T) {
 // records - via the external API.
 func TestReadWriteRand(t *testing.T) {
 
+	t.Setenv("BDOS_ADDRESS", "0xb000")
+	t.Setenv("BIOS_ADDRESS", "0xbf00")
+
 	obj, err := cpm.New()
 	if err != nil {
 		t.Fatalf("Create CP/M failed")
@@ -79,7 +86,7 @@ func TestReadWriteRand(t *testing.T) {
 
 	// Run it
 	err = obj.Execute([]string{})
-	if err != nil && err != cpm.ErrHalt {
+	if err != nil && err != cpm.ErrBoot {
 		t.Fatalf("failed to run: %s", err)
 	}
 
@@ -95,6 +102,9 @@ func TestReadWriteRand(t *testing.T) {
 // However it is a great test to see that things work as expected.
 func TestCompleteLighthouse(t *testing.T) {
 
+	t.Setenv("BDOS_ADDRESS", "0xb000")
+	t.Setenv("BIOS_ADDRESS", "0xbf00")
+
 	obj, err := cpm.New(cpm.WithOutputDriver("logger"))
 	if err != nil {
 		t.Fatalf("Create CP/M failed")
@@ -108,11 +118,11 @@ func TestCompleteLighthouse(t *testing.T) {
 
 	obj.SetDrives(false)
 	obj.SetDrivePath("A", "dist/")
-	obj.StuffText("LIHOUSE\nAAAA\ndown\nEXAMINE DESK\nTAKE METEOR\nUP\n\nn\nQUIT\n")
+	obj.StuffText("\nLIHOUSE\nAAAA\ndown\nEXAMINE DESK\nTAKE METEOR\nUP\n\nn\nquit\n")
 
 	// Run it
 	err = obj.Execute([]string{})
-	if err != nil && err != cpm.ErrHalt {
+	if err != nil && err != cpm.ErrBoot {
 		t.Fatalf("failed to run: %s", err)
 	}
 
@@ -126,6 +136,7 @@ func TestCompleteLighthouse(t *testing.T) {
 	// Get the text written to the screen
 	out := l.GetOutput()
 
+	fmt.Printf("\n\nOUTPUT: %s\n\n", out)
 	// Ensure the game was completed - easy path.
 	if !strings.Contains(out, "Congratulations") {
 		t.Fatalf("failed to win")

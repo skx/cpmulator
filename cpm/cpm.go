@@ -54,6 +54,9 @@ var (
 
 	// DefaultOutputDriver contains the name of the default console output driver.
 	DefaultOutputDriver string = "adm-3a"
+
+	// DefaultDMA is the default address of the DMA area, post-boot.
+	DefaultDMA uint16 = 0x0080
 )
 
 // CPMHandlerType contains the signature of a function we use to
@@ -558,9 +561,12 @@ func New(options ...cpmoption) (*CPM, error) {
 		// base is implied, so "0xFEFE" works.
 		num, err := strconv.ParseInt(val, 00, 32)
 		if err != nil {
-			return defValue
+			// If we got FEFE try again with the 0x-prefix
+			num, err = strconv.ParseInt("0x"+val, 00, 32)
+			if err != nil {
+				return defValue
+			}
 		}
-
 		// Truncate.
 		return uint16(num & 0xFFFF)
 	}
@@ -570,7 +576,7 @@ func New(options ...cpmoption) (*CPM, error) {
 		BDOSSyscalls: bdos,
 		BIOSSyscalls: bios,
 		ccp:          "ccp", // default
-		dma:          0x0080,
+		dma:          DefaultDMA,
 		drives:       make(map[string]string),
 		files:        make(map[uint16]FileCache),
 		input:        iDriver,       // default
@@ -671,8 +677,8 @@ func (cpm *CPM) LoadBinary(filename string) error {
 	// Default to emptying the FCBs and leaving the CLI args empty.
 	//
 	// DMA area / CLI Args
-	cpm.Memory.Set(0x0080, 0x00)
-	cpm.Memory.FillRange(0x0081, 31, 0x00)
+	cpm.Memory.Set(DefaultDMA, 0x00)
+	cpm.Memory.FillRange(DefaultDMA+1, 31, 0x00)
 
 	// FCB1: Default drive, spaces for filenames.
 	cpm.Memory.Set(0x005C, 0x00)
@@ -761,16 +767,14 @@ func (cpm *CPM) fixupRAM() {
 		i++
 	}
 
-	SETMEM(BDOS+0, 0x00) // NOP
-	SETMEM(BDOS+1, 0x00) // NOP
-	SETMEM(BDOS+2, 0x00) // NOP
+	//
+	// BDOS code will invoke our host function,
+	// again via an OUT instruction.
+	//
+	SETMEM(BDOS+0, 0xED) // OUT (C), C
+	SETMEM(BDOS+1, 0x49) //    ""
+	SETMEM(BDOS+2, 0xC9) // RET
 	SETMEM(BDOS+3, 0x00) // NOP
-	SETMEM(BDOS+4, 0x00) // NOP
-	SETMEM(BDOS+5, 0x00) // NOP
-	SETMEM(BDOS+6, 0xED) // OUT (C), C
-	SETMEM(BDOS+7, 0x49) //    ""
-	SETMEM(BDOS+8, 0xC9) // RET
-	SETMEM(BDOS+9, 0x00) // NOP
 
 }
 
@@ -798,8 +802,8 @@ func (cpm *CPM) LoadCCP() error {
 	cpm.Memory.SetRange(helper.Start, helper.Bytes...)
 
 	// DMA area / CLI Args are going to be unset.
-	cpm.Memory.Set(0x0080, 0x00)
-	cpm.Memory.FillRange(0x0081, 31, 0x00)
+	cpm.Memory.Set(DefaultDMA, 0x00)
+	cpm.Memory.FillRange(DefaultDMA+1, 31, 0x00)
 
 	// FCB1: Default drive, spaces for filenames.
 	cpm.Memory.Set(0x005C, 0x00)
@@ -887,9 +891,9 @@ func (cpm *CPM) Execute(args []string) error {
 
 		// Setup the CLI arguments - these are set as a pascal string
 		// (i.e. first byte is the length, then the data follows).
-		cpm.Memory.Set(0x0080, uint8(len(cli)))
+		cpm.Memory.Set(DefaultDMA, uint8(len(cli)))
 		for i, c := range cli {
-			cpm.Memory.SetRange(0x0081+uint16(i), uint8(c))
+			cpm.Memory.SetRange(DefaultDMA+1+uint16(i), uint8(c))
 		}
 	}
 
@@ -1000,6 +1004,7 @@ func (cpm *CPM) SetDrivePath(drive string, path string) {
 // This is called by our embedded Z80 emulator.
 func (cpm *CPM) In(addr uint8) uint8 {
 	slog.Debug("I/O IN",
+		slog.String("PC", fmt.Sprintf("%04X", cpm.CPU.PC)),
 		slog.Int("port", int(addr)))
 
 	return 0
