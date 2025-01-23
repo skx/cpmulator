@@ -28,7 +28,7 @@ func BiosSysCallColdBoot(cpm *CPM) error {
 	cpm.CPU.HL.SetU16(0)
 
 	// Reset the stack on a cold-boot.
-	cpm.CPU.SP = 0xffff
+	cpm.CPU.SP = 0xFFFF
 
 	// Reset the drive and user-number on a cold-boot.
 	cpm.currentDrive = 0

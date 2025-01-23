@@ -1063,11 +1063,7 @@ func (cpm *CPM) Out(addr uint8, val uint8) {
 		//
 		// To make sense we log this as a fatal error, and bail.
 		if val != cpm.CPU.AF.Hi {
-			slog.Error("Out() mismatch for "+callType+" handler",
-				slog.Int("Value", int(val)),
-				slog.Group("registers",
-					slog.String("AF", fmt.Sprintf("%04X", cpm.CPU.States.AF.U16())),
-				))
+			slog.Error("Out() mismatch for "+callType+" handler", slog.Int("Value", int(val)), slog.Group("registers", slog.String("AF", fmt.Sprintf("%04X", cpm.CPU.States.AF.U16()))))
 			return
 		}
 
@@ -1085,11 +1081,7 @@ func (cpm *CPM) Out(addr uint8, val uint8) {
 		//
 		// To make sense we log this as a fatal error, and bail.
 		if val != cpm.CPU.BC.Lo {
-			slog.Error("Out() mismatch for "+callType+" handler",
-				slog.Int("Value", int(val)),
-				slog.Group("registers",
-					slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
-				))
+			slog.Error("Out() mismatch for "+callType+" handler", slog.Int("Value", int(val)), slog.Group("registers", slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16()))))
 			return
 		}
 
