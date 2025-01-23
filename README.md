@@ -1,6 +1,6 @@
 # cpmulator - A CP/M emulator written in golang
 
-This repository contains a CP/M emulator, with integrated CCP ("Console Command Processor", i.e. shell), which is designed to run CP/M binaries.  The project was initially created to run [a text-based adventure game](https://github.com/skx/lighthouse-of-doom/), which I wrote a few years ago, to amuse my child.  (That was written in Z80 assembly language targeting CP/M, later I ported to the ZX Spectrum.)
+This repository contains a CP/M emulator, with integrated CCP ("Console Command Processor", i.e. shell), which is designed to run CP/M binaries.  The project was initially created to run [a text-based adventure game](https://github.com/skx/lighthouse-of-doom/) which I wrote a few years ago.  (That game was written in Z80 assembly language targeting CP/M, later it was ported to the ZX Spectrum.)
 
 Over time this project has become more complete, and I've now implemented enough functionity to run many of the well-known CP/M programs:
 
@@ -50,15 +50,15 @@ Releases will be made as/when features seem to justify it, but it should be note
 
 
 
-## With Docker
+## Docker-based Quick Start
 
 If you've got docker installed you can launch things by running:
 
 ```sh
-docker run -t -i ghcr.io/skx/cpmulator:master
+docker run --pull=always -t -i ghcr.io/skx/cpmulator:master
 ```
 
-**NOTE** You must run interactively with the `-t` and `-i` flags, otherwise the console setup will be broken.
+**NOTE** You must run with the `-t` and `-i` flags, otherwise the console will be broken.
 
 Once launched you can explore, for example to run Zork type:
 
@@ -67,11 +67,9 @@ Once launched you can explore, for example to run Zork type:
 * `ZORK1`
   * This will launch the Zork1 binary.
 
-Other examples are given below.
 
 
-
-## Building Locally
+## Local Quick Start
 
 * Build/Install this application.
 * Clone the associated repository of binaries:
@@ -89,7 +87,7 @@ Other examples are given below.
 
 # Usage
 
-If you launch `cpmulator` with no arguments then the default CCP ("console command processor") will be launched, dropping you into a familiar shell:
+If you launch `cpmulator` with no arguments then the default CCP will be launched, dropping you into a shell:
 
 ```sh
 $ cpmulator
@@ -231,33 +229,9 @@ Finally `A:!VERSION.COM` will show you the version of the emulator you're runnin
 
 
 
-# Sample Binaries
-
-I've placed a copy of my own [lighthouse of doom](https://github.com/skx/lighthouse-of-doom/) game within the `dist/` directory, to make it easier for you to get started:
-
-```sh
-$ cd dist/
-$ ../cpmulator LIHOUSE.COM
-..
-Written by Steve Kemp in 2021, version unreleased-git.
-
-  https://github.com/skx/lighthouse-of-doom
-
-Any references to the Paw Patrol are entirely deliberate.
-
-Press any key to start.
-```
-
-A companion repository contains a larger collection of vintage CP/M software you can use with this emulator:
-
-* [https://github.com/skx/cpm-dist](https://github.com/skx/cpm-dist)
-
-
-
-
 # Drives vs. Directories
 
-By default when you launch `cpmulator` with no arguments you'll be presented with the CCP interface, with A: as the current drive.   In this mode A:, B:, C:, and all other drives, will refer to the current-working directory where you launched the emulator from (i.e. they have the same view of files).  This is perhaps the most practical way to get started, but it means that files are repeated across drives:
+By default when you launch `cpmulator` with no arguments you'll be presented with the CCP interface, with A: as the current drive.   In this mode A:, B:, C:, and all other drives, will refer to the current-working directory from which you launched the emulator.  This is perhaps the most practical way to get started, but it means that files are repeated across drives:
 
 * i.e. "`A:FOO`" is the same as "`B:FOO`", and if you delete "`C:FOO`" you'll find it has vanished from all drives.
   * In short "`FOO`" will exist on drives `A:` all the way through to `P:`.
@@ -400,6 +374,8 @@ For reference the memory map of our CP/M looks like this:
 * Reference Documentation
   * [CP/M BDOS function reference](https://www.seasip.info/Cpm/bdos.html).
   * [CP/M BIOS function reference](https://www.seasip.info/Cpm/bios.html).
+  * [CP/M Operating System Manual](http://www.gaby.de/cpm/manuals/archive/cpm22htm/)
+    * Contains an assembler reference, DDT commands, etc, etc.
 * Other emulators which were useful resources when some functionality was unclear:
   * [https://github.com/ivanizag/iz-cpm](https://github.com/ivanizag/iz-cpm)
     * Portable CP/M emulation to run CP/M 2.2 binaries for Z80.
@@ -416,6 +392,8 @@ For reference the memory map of our CP/M looks like this:
 
 The testing that I should do before a release:
 
+* [ ] Confirm DDT can be used to trace execution of a simple binary.
+* [ ] Confirm the A1 Apple Emulator can be launched, and BASIC will run.
 * [ ] Play lighthouse of doom to completion, either victory or death.
 * [ ] Compile a program with ASM & LOAD.  Confirm it runs.
 * [ ] Compile HELLO.C and ECHO.C with Aztec C Compiler.
