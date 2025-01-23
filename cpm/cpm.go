@@ -598,13 +598,13 @@ func New(options ...cpmoption) (*CPM, error) {
 }
 
 // IOSetup ensures that our I/O is ready.
-func (cpm *CPM) IOSetup() {
-	cpm.input.Setup()
+func (cpm *CPM) IOSetup() error {
+	return cpm.input.Setup()
 }
 
 // IOTearDown cleans up the state of the terminal, if necessary.
-func (cpm *CPM) IOTearDown() {
-	cpm.input.TearDown()
+func (cpm *CPM) IOTearDown() error {
+	return cpm.input.TearDown()
 }
 
 // GetInputDriver returns the configured input driver.

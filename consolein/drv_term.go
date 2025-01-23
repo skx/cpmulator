@@ -33,7 +33,7 @@ type TermboxInput struct {
 
 // Setup ensures that the termbox init functions are called, and our
 // terminal is set into RAW mode.
-func (ti *TermboxInput) Setup() {
+func (ti *TermboxInput) Setup() error {
 
 	var err error
 
@@ -41,13 +41,13 @@ func (ti *TermboxInput) Setup() {
 	// we setup termbox.
 	ti.oldState, err = term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	// Setup the terminal.
 	err = termbox.Init()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	// This is "Show Cursor" which termbox hides by default.
@@ -61,6 +61,9 @@ func (ti *TermboxInput) Setup() {
 
 	// Start polling for keyboard input "in the background".
 	go ti.pollKeyboard(ctx)
+
+	// No error
+	return nil
 }
 
 // pollKeyboard runs in a goroutine and collects keyboard input
@@ -89,7 +92,7 @@ func (ti *TermboxInput) pollKeyboard(ctx context.Context) {
 
 // TearDown resets the state of the terminal, disables the background polling of characters
 // and generally gets us ready for exit.
-func (ti *TermboxInput) TearDown() {
+func (ti *TermboxInput) TearDown() error {
 	// Cancel the keyboard reading
 	if ti.Cancel != nil {
 		ti.Cancel()
@@ -101,10 +104,10 @@ func (ti *TermboxInput) TearDown() {
 	// Restore the terminal
 	if ti.oldState != nil {
 		err := term.Restore(int(os.Stdin.Fd()), ti.oldState)
-		if err != nil {
-			fmt.Printf("failed to restore terminal:%s\n", err)
-		}
+		return err
 	}
+
+	return nil
 }
 
 // PendingInput returns true if there is pending input from STDIN.
