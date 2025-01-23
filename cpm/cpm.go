@@ -1025,11 +1025,18 @@ func (cpm *CPM) In(addr uint8) uint8 {
 func (cpm *CPM) Out(addr uint8, val uint8) {
 
 	if cpm.CPU.HALT {
-		fmt.Printf("Out() called when CPU is halted\r\n")
+		slog.Error("Out() called when CPU is halted",
+			slog.Group("Out",
+				slog.Int("Addr", int(addr)),
+				slog.Int("Val", int(val))))
 		return
 	}
 	if cpm.biosErr != nil {
-		fmt.Printf("Out() with pending error: %v\r\n", cpm.biosErr)
+		slog.Error("Out() called with pending error",
+			slog.Group("Out",
+				slog.Int("Addr", int(addr)),
+				slog.Int("Val", int(val)),
+				slog.String("Error", cpm.biosErr.Error())))
 		return
 	}
 
