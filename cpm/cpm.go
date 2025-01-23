@@ -1,5 +1,6 @@
-// Package cpm is the main package for our emulator, it uses memory to
-// emulate execution of things at the bios level.
+// Package cpm is the main package for our emulator, it contains
+// the Z80 emulator we're using, along with the memory the running
+// binaries inhabit, and the appropriate glue to wire things together.
 //
 // The package mostly contains the implementation of the syscalls that
 // CP/M programs would expect - along with a little machinery to wire up
@@ -27,19 +28,17 @@ import (
 )
 
 var (
-	// ErrExit will be used to handle a CP/M binary calling Exit.
-	//
-	// It should be handled and expected by callers.
-	ErrExit = errors.New("EXIT")
-
 	// ErrHalt will be used to note that the Z80 emulator executed a HALT
 	// operation, and that terminated the execution of code.
 	//
 	// It should be handled and expected by callers.
 	ErrHalt = errors.New("HALT")
 
-	// ErrBoot will be used to note that the Z80 emulator executed code
-	// at 0x0000 - i.e. a boot attempt
+	// ErrBoot will be used to note that the Z80 emulator executed code should
+	// reboot / restart.
+	//
+	// This is mostly used to handle the CCP restarting after a client application
+	// has terminated.
 	//
 	// It should be handled and expected by callers.
 	ErrBoot = errors.New("BOOT")
@@ -54,6 +53,9 @@ var (
 
 	// DefaultOutputDriver contains the name of the default console output driver.
 	DefaultOutputDriver string = "adm-3a"
+
+	// DefaultDMAAddress is the default address of the DMA area, post-boot.
+	DefaultDMAAddress uint16 = 0x0080
 )
 
 // CPMHandlerType contains the signature of a function we use to
@@ -108,12 +110,11 @@ type FileCache struct {
 // CPM is the object that holds our emulator state.
 type CPM struct {
 
-	// biosErr holds any error created by a BIOS handler.
+	// syscallErr holds any error created by a BIOS or BDOS syscall handler.
 	//
-	// We need this because the handlers we use for BIOS operations
-	// cannot return an error - due to the interface used in the z80
-	// emulator.
-	biosErr error
+	// We need this because the handlers are invoked by our OUT-wrapper and they
+	// do not have the opportunity to return an error-code directly.
+	syscallErr error
 
 	// ccp contains the name of the CCP we should load
 	ccp string
@@ -558,9 +559,12 @@ func New(options ...cpmoption) (*CPM, error) {
 		// base is implied, so "0xFEFE" works.
 		num, err := strconv.ParseInt(val, 00, 32)
 		if err != nil {
-			return defValue
+			// If we got FEFE try again with the 0x-prefix
+			num, err = strconv.ParseInt("0x"+val, 00, 32)
+			if err != nil {
+				return defValue
+			}
 		}
-
 		// Truncate.
 		return uint16(num & 0xFFFF)
 	}
@@ -570,7 +574,7 @@ func New(options ...cpmoption) (*CPM, error) {
 		BDOSSyscalls: bdos,
 		BIOSSyscalls: bios,
 		ccp:          "ccp", // default
-		dma:          0x0080,
+		dma:          DefaultDMAAddress,
 		drives:       make(map[string]string),
 		files:        make(map[uint16]FileCache),
 		input:        iDriver,       // default
@@ -578,8 +582,8 @@ func New(options ...cpmoption) (*CPM, error) {
 		prnPath:      "printer.log", // default
 		start:        0x0100,
 		launchTime:   time.Now(),
-		biosAddress:  envNumber("BIOS_ADDRESS", 0xCE00),
-		bdosAddress:  envNumber("BDOS_ADDRESS", 0xC000),
+		biosAddress:  envNumber("BIOS_ADDRESS", 0xFE00),
+		bdosAddress:  envNumber("BDOS_ADDRESS", 0xF000),
 	}
 
 	// Allow options to override our defaults
@@ -671,8 +675,7 @@ func (cpm *CPM) LoadBinary(filename string) error {
 	// Default to emptying the FCBs and leaving the CLI args empty.
 	//
 	// DMA area / CLI Args
-	cpm.Memory.Set(0x0080, 0x00)
-	cpm.Memory.FillRange(0x0081, 31, 0x00)
+	cpm.Memory.FillRange(DefaultDMAAddress, 32, 0x00)
 
 	// FCB1: Default drive, spaces for filenames.
 	cpm.Memory.Set(0x005C, 0x00)
@@ -716,27 +719,20 @@ func (cpm *CPM) fixupRAM() {
 		cpm.Memory.Set(uint16(a), uint8(v))
 	}
 
-	// We _should_ add "JUMP TO CCP" here, but instead
-	// we terminate execution via a HALT (0x76) instruction.
-	//
-	// This works regardless of whether CCP is present or not.
-	//
-	// We do the same thing for the jump at 0x0005 because
-	// turbo pascal, and other programs presumably, look at
-	// the following address to see how much free RAM is available.
-	//
-	SETMEM(0x0000, 0x76)                /* HALT */
+	SETMEM(0x0000, 0xC3)                /* JMP */
 	SETMEM(0x0001, ((BIOS + 3) & 0xFF)) /* Fake address of entry-point */
 	SETMEM(0x0002, ((BIOS + 3) >> 8))
 
-	// We setup a fake jump here, because 0x0006 is sometimes
-	// used to find the free RAM and we pretend our BDOS is at 0xDC00
-	SETMEM(0x0005, 0x76)                /* HALT */
-	SETMEM(0x0006, ((BDOS + 6) & 0xFF)) /* Fake Address of entry point */
-	SETMEM(0x0007, ((BDOS + 6) >> 8))
+	SETMEM(BIOS, 0xC9) // RET
 
 	// Now we setup the initial values of the I/O byte
 	SETMEM(0x0003, 0x00)
+
+	// We setup a fake jump here, because 0x0006 is sometimes
+	// used to find the free RAM and we pretend our BDOS is at 0xDC00
+	SETMEM(0x0005, 0xC3)            /* JMP */
+	SETMEM(0x0006, ((BDOS) & 0xFF)) /* Fake Address of entry point */
+	SETMEM(0x0007, ((BDOS) >> 8))
 
 	// fake BIOS entry points for 30 syscalls.
 	//
@@ -756,7 +752,7 @@ func (cpm *CPM) fixupRAM() {
 		SETMEM(BIOS+3*i+2, (BIOS+NENTRY*3+i*5)>>8)
 
 		/* LD A,<bios-call> - start of bios-entry */
-		SETMEM(BIOS+NENTRY*3+i*5, 0x3E)
+		SETMEM(BIOS+NENTRY*3+i*5+0, 0x3E)
 		SETMEM(BIOS+NENTRY*3+i*5+1, i)
 
 		/* OUT A,0FFH - we use port 0xFF to fake the BIOS call */
@@ -767,6 +763,14 @@ func (cpm *CPM) fixupRAM() {
 		SETMEM(BIOS+NENTRY*3+i*5+4, 0xC9)
 		i++
 	}
+
+	//
+	// BDOS code will invoke our host function,
+	// again via an OUT instruction.
+	//
+	SETMEM(BDOS+0, 0xED) // OUT (C), C
+	SETMEM(BDOS+1, 0x49) //    ""
+	SETMEM(BDOS+2, 0xC9) // RET
 
 }
 
@@ -794,8 +798,7 @@ func (cpm *CPM) LoadCCP() error {
 	cpm.Memory.SetRange(helper.Start, helper.Bytes...)
 
 	// DMA area / CLI Args are going to be unset.
-	cpm.Memory.Set(0x0080, 0x00)
-	cpm.Memory.FillRange(0x0081, 31, 0x00)
+	cpm.Memory.FillRange(DefaultDMAAddress, 32, 0x00)
 
 	// FCB1: Default drive, spaces for filenames.
 	cpm.Memory.Set(0x005C, 0x00)
@@ -839,6 +842,7 @@ func (cpm *CPM) Execute(args []string) error {
 		States: z80.States{
 			SPR: z80.SPR{
 				PC: cpm.start,
+				SP: 0xFFFF,
 			},
 		},
 		Memory: cpm.Memory,
@@ -859,23 +863,6 @@ func (cpm *CPM) Execute(args []string) error {
 
 	// Set the same value in RAM
 	cpm.Memory.Set(0x0004, cpm.CPU.States.BC.Lo)
-
-	BIOS := cpm.biosAddress
-	BDOS := cpm.bdosAddress
-
-	// Setup our breakpoints.
-	//
-	// We configure two:
-	//
-	//  0x0000 - is the boot address of the Z80 processor.
-	//  0x0005 - The CPM BDOS entrypoint.
-	//
-	cpm.CPU.BreakPoints = make(map[uint16]struct{})
-	cpm.CPU.BreakPoints[BIOS] = struct{}{}
-	cpm.CPU.BreakPoints[BIOS+3] = struct{}{}
-	cpm.CPU.BreakPoints[BDOS] = struct{}{}
-	cpm.CPU.BreakPoints[BDOS+6] = struct{}{}
-	cpm.CPU.BreakPoints[0x0005] = struct{}{}
 
 	// Convert our array of CLI arguments to a string.
 	cli := strings.Join(args, " ")
@@ -899,121 +886,43 @@ func (cpm *CPM) Execute(args []string) error {
 
 		// Setup the CLI arguments - these are set as a pascal string
 		// (i.e. first byte is the length, then the data follows).
-		cpm.Memory.Set(0x0080, uint8(len(cli)))
+		cpm.Memory.Set(DefaultDMAAddress, uint8(len(cli)))
 		for i, c := range cli {
-			cpm.Memory.SetRange(0x0081+uint16(i), uint8(c))
+			cpm.Memory.SetRange(DefaultDMAAddress+1+uint16(i), uint8(c))
 		}
 	}
 
-	// Run forever :)
 	for {
-		// Run until we hit an error
+		// Reset the state of any saved error and the halt-flag.
+		cpm.syscallErr = nil
+		cpm.CPU.HALT = false
+
+		// Launch the Z80 emulator.
+		//
+		// This will basically run forever, or until the CPU is halted
+		// in one of our handlers.
 		err := cpm.CPU.Run(context.Background())
 
-		// If we ended up here because the I/O handler received
-		// an error, and then HALTed the emulator we'll process it
-		// here.
-		if cpm.biosErr != nil {
-			err = cpm.biosErr
-			cpm.biosErr = nil
-		}
-
-		// Reboot?
-		if cpm.CPU.PC == 0x0000 {
-			return ErrBoot
-		}
-
-		// No error?  Then end - the CPU hit a HALT.
-		if err == nil {
+		// If the errors are both empty, but the CPU is halted then we exit.
+		if err == nil && cpm.syscallErr == nil && cpm.CPU.HALT {
 			return ErrHalt
 		}
 
-		// Are we being asked to terminate CP/M?  If so return
-		if err == ErrExit {
-			return nil
-		}
-
-		// An error which wasn't a breakpoint?  Give up
-		if err != z80.ErrBreakPoint {
-			return fmt.Errorf("unexpected error running CPU %s", err)
-		}
-
-		// OK we have a breakpoint error to handle.
-		//
-		// That means we have a CP/M BDOS function to emulate,
-		// the syscall identifier is stored in the C-register.
-		syscall := cpm.CPU.States.BC.Lo
-
-		//
-		// Is there a syscall entry for this number?
-		//
-		handler, exists := cpm.BDOSSyscalls[syscall]
-
-		//
-		// Nope: That will stop execution with a fatal log
-		//
-		if !exists {
-
-			slog.Error("Unimplemented BDOS Syscall",
-				slog.Int("syscall", int(syscall)),
-				slog.String("syscallHex",
-					fmt.Sprintf("0x%02X", syscall)),
-			)
+		// An unimplemented system-call was encountered.
+		// That's a fatal-error
+		if err == ErrUnimplemented || cpm.syscallErr == ErrUnimplemented {
 			return ErrUnimplemented
 		}
 
-		// Log the call we're going to make
-		if !handler.Noisy {
-
-			// show the function being invoked.
-			if cpm.simpleDebug {
-				fmt.Printf("%03d %s\n", syscall, handler.Desc)
-			}
-
-			slog.Info("BDOS",
-				slog.String("name", handler.Desc),
-				slog.Int("syscall", int(syscall)),
-				slog.String("syscallHex", fmt.Sprintf("0x%02X", syscall)),
-				slog.Group("registers",
-					slog.String("AF", fmt.Sprintf("%04X", cpm.CPU.States.AF.U16())),
-					slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
-					slog.String("DE", fmt.Sprintf("%04X", cpm.CPU.States.DE.U16())),
-					slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16()))))
+		// The virtual machine was rebooted.
+		if err == ErrBoot || cpm.syscallErr == ErrBoot {
+			return ErrBoot
 		}
 
-		// Invoke the handler
-		err = handler.Handler(cpm)
-
-		// Are we being asked to terminate CP/M?  If so return
-		if err == ErrExit {
-			return nil
+		// Emulation was terminated.
+		if err == ErrHalt || cpm.syscallErr == ErrHalt {
+			return ErrHalt
 		}
-
-		// Are we to reboot?
-		if err == ErrBoot {
-			cpm.CPU.PC = 0x0000
-			continue
-		}
-
-		// Any other error is fatal.
-		if err != nil {
-			return err
-		}
-
-		// If A == 0x00 then we set the zero flag
-		if cpm.CPU.States.AF.Hi == 0x00 {
-			cpm.CPU.SetFlag(z80.FlagZ)
-		} else {
-			cpm.CPU.ResetFlag(z80.FlagZ)
-		}
-
-		// Return from call by getting the return address
-		// from the stack, and updating the instruction pointer
-		// to continue executing from there.
-		cpm.CPU.PC = cpm.Memory.GetU16(cpm.CPU.SP)
-
-		// We need to remove the entry from the stack to cleanup
-		cpm.CPU.SP += 2
 	}
 }
 
@@ -1053,7 +962,7 @@ func (cpm *CPM) RunAutoExec() {
 	cpm.input.StuffInput("SUBMIT AUTOEXEC\n")
 }
 
-// SetStaticFilesystem allows adding a reference to an embedded filesyste,.
+// SetStaticFilesystem allows adding a reference to an embedded filesystem.
 func (cpm *CPM) SetStaticFilesystem(fs embed.FS) {
 	cpm.static = fs
 }
@@ -1084,6 +993,7 @@ func (cpm *CPM) SetDrivePath(drive string, path string) {
 // This is called by our embedded Z80 emulator.
 func (cpm *CPM) In(addr uint8) uint8 {
 	slog.Debug("I/O IN",
+		slog.String("PC", fmt.Sprintf("%04X", cpm.CPU.PC)),
 		slog.Int("port", int(addr)))
 
 	return 0
@@ -1103,17 +1013,134 @@ func (cpm *CPM) In(addr uint8) uint8 {
 // A register and there are far far fewer of them.
 func (cpm *CPM) Out(addr uint8, val uint8) {
 
-	// We use port FF for CP/M calls - via
-	// the compatibility instructions we deployed
-	// in fixRAM.
-	if addr != 0xFF {
+	if cpm.CPU.HALT {
+		slog.Error("Out() called when CPU is halted",
+			slog.Group("Out",
+				slog.Int("Addr", int(addr)),
+				slog.Int("Val", int(val))))
+		return
+	}
+	if cpm.syscallErr != nil {
+		slog.Error("Out() called with pending error",
+			slog.Group("Out",
+				slog.Int("Addr", int(addr)),
+				slog.Int("Val", int(val)),
+				slog.String("Error", cpm.syscallErr.Error())))
 		return
 	}
 
 	//
-	// Invoke the handler, in cpm_bios.go
+	// Reset our state
 	//
-	cpm.BiosHandler(val)
+	cpm.CPU.HALT = false
+	cpm.syscallErr = nil
+
+	//
+	// We're going to lookup a handler, based on the
+	// register that makes sense.
+	//
+	var handler CPMHandler
+
+	// Did we find it?  And if so what type was it?
+	var ok bool
+	var callType string
+
+	//
+	// We use port FF for BIOS calls.
+	//
+	// Any other port is a BDOS call.
+	//
+	if addr == 0xFF {
+
+		// If the port and the value don't match then something
+		// fishy is going on.
+		//
+		// Or a CP/M binary is legitimately using an OUT instruction.
+		//
+		// To make sense we log this as a fatal error, and bail.
+		if val != cpm.CPU.AF.Hi {
+			slog.Error("Out() mismatch for "+callType+" handler", slog.Int("Value", int(val)), slog.Group("registers", slog.String("AF", fmt.Sprintf("%04X", cpm.CPU.States.AF.U16()))))
+			return
+		}
+
+		callType = "BIOS"
+
+		// Lookup the handler
+		handler, ok = cpm.BIOSSyscalls[val]
+
+	} else {
+
+		// If the port and the value don't match then something
+		// fishy is going on.
+		//
+		// Or a CP/M binary is legitimately using an OUT instruction.
+		//
+		// To make sense we log this as a fatal error, and bail.
+		if val != cpm.CPU.BC.Lo {
+			slog.Error("Out() mismatch for "+callType+" handler", slog.Int("Value", int(val)), slog.Group("registers", slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16()))))
+			return
+		}
+
+		callType = "BDOS"
+
+		//
+		// Is there a syscall entry for this number?
+		//
+		handler, ok = cpm.BDOSSyscalls[cpm.CPU.BC.Lo]
+
+	}
+
+	// If a handler was not found then we've not implemented
+	// the given syscall.
+	//
+	// Log the failure and return.
+	if !ok {
+		slog.Error("Unimplemented "+callType+" syscall",
+			slog.Int("syscall", int(val)),
+			slog.String("syscallHex", fmt.Sprintf("0x%02X", val)))
+
+		cpm.syscallErr = ErrUnimplemented
+		cpm.CPU.HALT = true
+		return
+	}
+
+	// Log the call, if we should.
+	if !handler.Noisy {
+
+		// show the function being invoked.
+		if cpm.simpleDebug {
+			fmt.Printf("%03d %s %s\n", val, callType, handler.Desc)
+		}
+
+		// Log the call we're going to make
+		slog.Info(callType,
+			slog.String("name", handler.Desc),
+			slog.String("type", callType),
+			slog.Int("syscall", int(val)),
+			slog.String("syscallHex", fmt.Sprintf("0x%02X", val)),
+			slog.Group("registers",
+				slog.String("AF", fmt.Sprintf("%04X", cpm.CPU.States.AF.U16())),
+				slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
+				slog.String("DE", fmt.Sprintf("%04X", cpm.CPU.States.DE.U16())),
+				slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16()))))
+	}
+
+	// Invoke the handler, and save any error that we receive.
+	//
+	// If an error was returned we halt the emulation of the virtual Z80.
+	cpm.syscallErr = handler.Handler(cpm)
+	if cpm.syscallErr != nil {
+		cpm.CPU.HALT = true
+	}
+
+	// If A == 0x00 then we set the zero flag.
+	//
+	// Not even sure if this is necessary..
+	if cpm.CPU.States.AF.Hi == 0x00 {
+		cpm.CPU.SetFlag(z80.FlagZ)
+	} else {
+		cpm.CPU.ResetFlag(z80.FlagZ)
+	}
 }
 
 // StuffText inserts text into the read-buffer of the console

@@ -74,7 +74,7 @@ type ConsoleOut struct {
 	driver ConsoleOutput
 }
 
-// New is our constructore, it creates an output device which uses
+// New is our constructor, it creates an output device which uses
 // the specified driver.
 func New(name string) (*ConsoleOut, error) {
 	// Downcase for consistency.

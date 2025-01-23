@@ -409,19 +409,21 @@ func TestBIOSError(t *testing.T) {
 	}
 
 	// 5 == LIST / BiosSysCallPrintChar
-	if c.biosErr != nil {
+	if c.syscallErr != nil {
 		t.Fatalf("found an error we didn't expect")
 	}
 
 	// This will fail
-	c.BiosHandler(5)
+	c.CPU.States.AF.Hi = 0x05
+	c.Out(0xFF, 5)
 
 	// So the error should be set
-	if c.biosErr == nil {
+	if c.syscallErr == nil {
 		t.Fatalf("found no error, but we should have done")
 	}
 
 	// 15 == LISTST == BiosSysCallPrinterStatus
-	c.BiosHandler(15)
+	c.CPU.States.BC.SetU16(15)
+	c.Out(0xFF, 15)
 
 }

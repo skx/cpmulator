@@ -29,7 +29,8 @@ const maxRC = 128
 
 // BdosSysCallExit implements the Exit syscall
 func BdosSysCallExit(cpm *CPM) error {
-	return ErrExit
+	cpm.CPU.HALT = true
+	return ErrBoot
 }
 
 // BdosSysCallReadChar reads a single character from the console.
@@ -1189,7 +1190,8 @@ func BdosSysCallLoginVec(cpm *CPM) error {
 // BdosSysCallDriveGet returns the number of the active drive.
 func BdosSysCallDriveGet(cpm *CPM) error {
 	cpm.CPU.States.AF.Hi = cpm.currentDrive
-
+	cpm.CPU.States.HL.Lo = cpm.currentDrive
+	cpm.CPU.States.HL.Hi = 0x00
 	return nil
 }
 

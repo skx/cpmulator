@@ -99,8 +99,8 @@ func TestSimple(t *testing.T) {
 
 	// Finally launch it
 	err = obj.Execute([]string{})
-	if err != nil {
-		t.Fatalf("failed to run binary!")
+	if err != ErrBoot {
+		t.Fatalf("failed to run binary %v!", err)
 	}
 
 	defer obj.IOTearDown()
@@ -287,25 +287,39 @@ func TestCPMCoverage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create CP/M object")
 	}
+	// Ensure we have memory
+	obj.Memory = new(memory.Memory)
 
 	obj.In(0x12)
+	obj.CPU.HALT = false
+	obj.syscallErr = nil
 	obj.Out(0x12, 0x34)
 
 	// Valid: COLDBOOT
+	obj.CPU.HALT = false
+	obj.syscallErr = nil
 	obj.Out(0xFF, 0x00)
-	if obj.biosErr != nil {
+	if obj.syscallErr != ErrBoot {
 		t.Fatalf("unexpected error")
 	}
 	// Valid: WARMBOOT
+	obj.CPU.HALT = false
+	obj.syscallErr = nil
+	obj.CPU.States.AF.Hi = 0x01
+	obj.CPU.States.BC.Lo = 0x01
 	obj.Out(0xFF, 0x01)
-	if obj.biosErr != nil {
+	if obj.syscallErr != ErrBoot {
 		t.Fatalf("unexpected error")
 	}
 
 	// Invalid
-	obj.Out(0xFF, 0xFF)
-	if obj.biosErr != ErrUnimplemented {
-		t.Fatalf("expected unimplemented, got %s", obj.biosErr)
+	obj.CPU.HALT = false
+	obj.syscallErr = nil
+	obj.CPU.States.AF.Hi = 0xFE
+	obj.CPU.States.BC.Lo = 0xFE
+	obj.Out(0xFE, 0xFE)
+	if obj.syscallErr != ErrUnimplemented {
+		t.Fatalf("expected unimplemented, got %s", obj.syscallErr)
 	}
 }
 
@@ -388,8 +402,8 @@ func TestAddressOveride(t *testing.T) {
 		t.Fatalf("failed to create CPM")
 	}
 
-	if obj.bdosAddress != 0xC000 {
-		t.Fatalf("default BDOS address is wrong")
+	if obj.bdosAddress != 0xF000 {
+		t.Fatalf("default BDOS address is wrong, got %04X", obj.bdosAddress)
 	}
 
 	// Create a new CP/M helper - with env set
@@ -409,7 +423,7 @@ func TestAddressOveride(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create CPM")
 	}
-	if obj.bdosAddress != 0xC000 {
+	if obj.bdosAddress != 0xF000 {
 		t.Fatalf("updated BDOS address is wrong")
 	}
 

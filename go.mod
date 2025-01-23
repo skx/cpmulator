@@ -4,12 +4,12 @@ go 1.21.5
 
 require (
 	github.com/koron-go/z80 v0.10.1
-	golang.org/x/term v0.27.0
+	golang.org/x/term v0.28.0
 )
 
 require (
 	github.com/nsf/termbox-go v1.1.1
-	golang.org/x/sys v0.28.0
+	golang.org/x/sys v0.29.0
 )
 
 require (

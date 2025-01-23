@@ -51,14 +51,15 @@ This will give output like this:
 
 ## Notes on Syscalls
 
-There will be two kinds of syscalls logged:
+There will be two kinds of syscalls BIOS calls and BDOS calls.
 
-* Those that are invoked via the traditional `call 0x0005`.
-  * This will be logged as `SysCall`.
-* Those that are invoked via "`RST XX`" instructions.
-  * This will be logged as `IOSysCall`.
+We deploy a fake BIOS jump-table and a fake BDOS when the emulator launches.  By default the BIOS jump-table is located at 0xFE00 and the BDOS is located at 0xF000.
 
-In both cases the register values will be logged, individually and as pairs so you can examine them in whichever way you see fit.
+* The BIOS syscalls jump to some code that stores the syscall number in the A-register
+  * Then OUT 0xFF, A is executed.
+  * This sends configures the emulator to carry out the appropriate action.
+* The BDOS entrypoint has a tiny piece of code that just runs "OUT (C),C"
+  * This out instruction is trapped by the emulator and the syscall number can be taken from the C-register.
 
 
 

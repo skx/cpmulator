@@ -86,7 +86,7 @@ type ConsoleIn struct {
 	systemPrefix string
 }
 
-// New is our constructore, it creates an input device which uses
+// New is our constructor, it creates an input device which uses
 // the specified driver.
 func New(name string) (*ConsoleIn, error) {
 
