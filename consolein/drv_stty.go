@@ -44,15 +44,17 @@ type STTYInput struct {
 }
 
 // Setup is a NOP.
-func (si *STTYInput) Setup() {
-	// NOP
+func (si *STTYInput) Setup() error {
+	return nil
 }
 
 // TearDown resets the state of the terminal.
-func (si *STTYInput) TearDown() {
+func (si *STTYInput) TearDown() error {
 	if si.state != Echo {
 		si.enableEcho()
 	}
+
+	return nil
 }
 
 // canSelect contains a platform-specific implementation of code that tries to use

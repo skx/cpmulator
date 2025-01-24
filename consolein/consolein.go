@@ -29,10 +29,10 @@ var ErrInterrupted error = fmt.Errorf("INTERRUPTED")
 type ConsoleInput interface {
 
 	// Setup performs any specific setup which is required.
-	Setup()
+	Setup() error
 
 	// TearDown performs any specific cleanup which is required.
-	TearDown()
+	TearDown() error
 
 	// PendingInput returns true if there is pending input available to be read.
 	PendingInput() bool
@@ -127,23 +127,27 @@ func (co *ConsoleIn) GetName() string {
 }
 
 // GetDrivers returns all available driver-names.
+//
+// We hide the internal "file" driver.
 func (co *ConsoleIn) GetDrivers() []string {
 	valid := []string{}
 
 	for x := range handlers.m {
-		valid = append(valid, x)
+		if x != "file" {
+			valid = append(valid, x)
+		}
 	}
 	return valid
 }
 
 // Setup proxies into our registered console-input driver.
-func (co *ConsoleIn) Setup() {
-	co.driver.Setup()
+func (co *ConsoleIn) Setup() error {
+	return co.driver.Setup()
 }
 
 // TearDown proxies into our registered console-input driver.
-func (co *ConsoleIn) TearDown() {
-	co.driver.TearDown()
+func (co *ConsoleIn) TearDown() error {
+	return co.driver.TearDown()
 }
 
 // StuffInput proxies into our registered console-input driver.

@@ -104,8 +104,17 @@ func TestOverview(t *testing.T) {
 	ch := ConsoleIn{}
 	ch.driver = &x
 
-	ch.Setup()
-	defer ch.TearDown()
+	sErr := ch.Setup()
+	if sErr != nil {
+		t.Fatalf("failed to setup driver %s", sErr.Error())
+	}
+
+	defer func() {
+		tErr := ch.TearDown()
+		if tErr != nil {
+			t.Fatalf("teardown failed %s", tErr.Error())
+		}
+	}()
 
 	ch.StuffInput("1.2.3.4.5.6.7.8.9.0\n")
 
@@ -165,8 +174,17 @@ func TestPending(t *testing.T) {
 	ch := ConsoleIn{}
 	ch.driver = &x
 
-	ch.Setup()
-	defer ch.TearDown()
+	sErr := ch.Setup()
+	if sErr != nil {
+		t.Fatalf("failed to setup driver %s", sErr.Error())
+	}
+
+	defer func() {
+		tErr := ch.TearDown()
+		if tErr != nil {
+			t.Fatalf("teardown failed %s", tErr.Error())
+		}
+	}()
 
 	ch.StuffInput("foo")
 	if !ch.PendingInput() {
@@ -178,8 +196,10 @@ func TestPending(t *testing.T) {
 // TestDriverRegistration performs some sanity-check on our driver-registration.
 func TestDriverRegistration(t *testing.T) {
 
-	if len(handlers.m) != 2 {
-		t.Fatalf("wrong number of handlers")
+	expectedCount := 3
+	found := len(handlers.m)
+	if found != expectedCount {
+		t.Fatalf("wrong number of handlers.  found %d, expected %d", found, expectedCount)
 	}
 
 	_, ok := handlers.m["term"]
@@ -220,10 +240,17 @@ func TestDriverRegistration(t *testing.T) {
 	if obj.GetName() != "stty" {
 		t.Fatalf("naming mismatch on driver!")
 	}
-	if len(obj.GetDrivers()) != 2 {
-		t.Fatalf("driver count is wrong")
-	}
 
+	//
+	// NOTE:
+	//
+	// We expect to find one less than the number of available
+	// drivers in this call, because we hide the "file"-driver.
+	//
+	found = len(obj.GetDrivers())
+	if found != expectedCount-1 {
+		t.Fatalf("wrong number of handlers.  found %d, expected %d", found, expectedCount)
+	}
 }
 
 func TestSimpleExec(t *testing.T) {
@@ -242,8 +269,17 @@ func TestSimpleExec(t *testing.T) {
 	ch := ConsoleIn{}
 	ch.driver = &x
 
-	ch.Setup()
-	defer ch.TearDown()
+	sErr := ch.Setup()
+	if sErr != nil {
+		t.Fatalf("failed to setup driver %s", sErr.Error())
+	}
+
+	defer func() {
+		tErr := ch.TearDown()
+		if tErr != nil {
+			t.Fatalf("teardown failed %s", tErr.Error())
+		}
+	}()
 
 	// Setup input to run "cd ."
 	ch.SetSystemCommandPrefix("!!")

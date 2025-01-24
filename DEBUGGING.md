@@ -76,3 +76,17 @@ Register values matter for some calls, for example the `C_RAWIO` function is inv
 * Finally if no special handling is setup then output the character in `E` to STDOUT.
 
 Most other syscalls are more static, but there are examples where a call's behaviour requires seeing the input register such as `F_USERNUM`.
+
+
+
+## Automated Testing
+
+We have the ability to paste controlled (console) input into the emulator, and this facility is used by the test-script beneath `test/`.
+
+Run:
+
+```
+$ ./test/test.sh
+```
+
+That _should_ run some basic tests, assuming you have the cpm-dist repository cloned alongside this one.

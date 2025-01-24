@@ -25,6 +25,20 @@ ccp: $(wildcard ccp/*.ASM)
 static: $(wildcard ccp/*.z80)
 	cd static && make
 
+#
+# Run the end to end tests
+#
+.PHONY: test
+test:
+	./test/test.sh
+
+#
+# Run the golang tests
+#
+.PHONY: tests
+tests:
+	go test ./...
+
 
 #
 # cpmulator is fast to build.

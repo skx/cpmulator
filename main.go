@@ -242,11 +242,20 @@ func main() {
 	}
 
 	// I/O SETUP
-	obj.IOSetup()
+	err = obj.IOSetup()
+	if err != nil {
+		fmt.Printf("Error setting up the console input driver %s:%s", *input, err)
+		return
+	}
 
 	// I/O TearDown
 	// When we're finishing we'll reset some (console) state.
-	defer obj.IOTearDown()
+	defer func() {
+		err := obj.IOTearDown()
+		if err != nil {
+			fmt.Printf("Error cleaning up console input driver %s:%s", *input, err)
+		}
+	}()
 
 	// change directory?
 	//
