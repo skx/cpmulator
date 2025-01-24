@@ -42,6 +42,10 @@ rm -f test/test.out
 
 
 # We assembled HELLO.ASM into A:HELLO.COM
+if ! grep -q "HELLO\?" test.out; then
+    echo "We expected to see a missing-hello.com reponse"
+    exit 1
+fi
 if ! grep -q "CP/M ASSEMBLER - VER 2.0" test.out; then
     echo "We failed to assemble HELLO.ASM"
     exit 1
