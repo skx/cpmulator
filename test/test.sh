@@ -40,6 +40,28 @@ rm -f test/test.out
 # Now make sure we got some sensible output.
 #
 
+
+# We assembled HELLO.ASM into A:HELLO.COM
+if ! grep -q "CP/M ASSEMBLER - VER 2.0" test.out; then
+    echo "We failed to assemble HELLO.ASM"
+    exit 1
+fi
+if ! grep -q "FIRST ADDRESS 0100" test.out; then
+    echo "We failed to load HELLO.COM"
+    exit 1
+fi
+if ! grep -q "Hello, World!" test.out; then
+    echo "We failed to run the generated HELLO.COM"
+    exit 1
+fi
+
+
+# We drove A1's Emulated Apple Basic to show Cubes
+if ! grep -q "729" test.out; then
+    echo "We failed to 9 cubed from Apple BASIC"
+    exit 1
+fi
+
 # Did we load the lighthouse of doom?
 if ! grep -q "small torch" test.out; then
     echo "We failed to find the small torch"
