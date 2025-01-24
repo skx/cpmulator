@@ -42,7 +42,12 @@ type FileInput struct {
 // will be returned.
 func (fi *FileInput) Setup() error {
 
-	dat, err := os.ReadFile("input.txt")
+	fileName := os.Getenv("INPUT_FILE")
+	if fileName == "" {
+		fileName = "input.txt"
+	}
+
+	dat, err := os.ReadFile(fileName)
 	if err != nil {
 		return err
 	}
@@ -87,6 +92,7 @@ func (fi *FileInput) BlockForCharacterNoEcho() (byte, error) {
 		return x, nil
 	}
 
+	// Input is over.
 	return 0x00, io.EOF
 }
 
