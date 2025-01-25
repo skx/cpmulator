@@ -1,5 +1,7 @@
 G:
 
+DIR ZORK1.*
+
 #
 
 ZORK1
@@ -13,11 +15,8 @@ OPEN SACK
 EAT SANDWICH
 
 QUIT
-
 Y
 
 
-
-EXIT
 
 EXIT

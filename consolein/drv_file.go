@@ -41,6 +41,10 @@ type FileInput struct {
 	// inNewline returns true if we're in the middle of a newline
 	// and we need to inject a fake character.
 	inNewline bool
+
+	// delayUntil is used to see if we're in the middle of a delay,
+	// where we pretend we have no input.
+	delayUntil time.Time
 }
 
 // Setup reads the contents of the file specified by the
@@ -68,7 +72,7 @@ func (fi *FileInput) Setup() error {
 	// Save our offset and data.
 	fi.offset = 0
 	fi.content = dat
-
+	fi.delayUntil = time.Now()
 	return nil
 }
 
@@ -81,26 +85,24 @@ func (fi *FileInput) TearDown() error {
 // can return.  This is always true unless we've exhausted the contents
 // of our input-file.
 func (fi *FileInput) PendingInput() bool {
+
 	time.Sleep(15 * time.Millisecond)
 
-	// If our position is less than the size of the data then
-	// we have data to read, so it is pending.
-	return (fi.offset < len(fi.content))
+	// If we're not in a delay period return the real result
+	if time.Now().After(fi.delayUntil) {
+		return (fi.offset < len(fi.content))
+	}
+
+	// We're in a delay period, so just pretend nothing is happening.
+	return false
 }
 
 // BlockForCharacterNoEcho returns the next character from the file we
 // use to fake our input.
 func (fi *FileInput) BlockForCharacterNoEcho() (byte, error) {
 
-	// This is designed to ensure that we're not too responsive.
-	time.Sleep(15 * time.Millisecond)
-
 	// If we have input available
 	if fi.offset < len(fi.content) {
-
-		// Get the next character, and move past it.
-		x := fi.content[fi.offset]
-		fi.offset++
 
 		// If we have to deal with \r\n instead
 		// of just \n then deal with that.
@@ -108,13 +110,24 @@ func (fi *FileInput) BlockForCharacterNoEcho() (byte, error) {
 			fi.inNewline = false
 			return '', nil
 		}
+
+		// Get the next character, and move past it.
+		x := fi.content[fi.offset]
+		fi.offset++
+
 		if x == '\n' && fi.fakeNewlines {
 			fi.inNewline = true
 		}
 
 		// Also allow a sleep to happen.  Sigh.
 		if x == '#' {
-			time.Sleep(1 * time.Second)
+			fi.delayUntil = time.Now().Add(5 * time.Second)
+			if fi.offset < len(fi.content) {
+				x = fi.content[fi.offset]
+				fi.offset++
+			} else {
+				x = 0x00
+			}
 		}
 
 		return x, nil
