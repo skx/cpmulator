@@ -14,4 +14,9 @@ for i in test/*.in ; do
 
     ./test/run-test.sh "${name}"
 
+    if [ $? -eq 1 ]; then
+        echo "Previous test, ${name}, failed.  Aborting"
+        exit 1
+    fi
+
 done
