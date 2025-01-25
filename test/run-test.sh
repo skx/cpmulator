@@ -10,6 +10,23 @@
 #
 
 
+#
+# Sanity-check
+#
+if [ ! -d ../cpm-dist ] ; then
+    echo "cpm-dist is not present at ../cpm-dist"
+    echo "Aborting"
+    exit 1
+fi
+
+if [ ! -x "$(command -v ansifilter)" ]; then
+    echo "ansifilter is not in your \$PATH"
+    echo "  brew install ansifilter"
+    echo "  apt-get install ansifilter"
+    echo " etc"
+    exit 1
+fi
+
 echo "Running test case: $1"
 input=test/$1.in
 pattern=test/$1.pat
@@ -54,7 +71,7 @@ fi
 #
 export INPUT_FILE="${input}"
 echo " Starting $(date)"
-./cpmulator -input file  -cd ../cpm-dist/ -directories -ccp ccp &> "$output"
+./cpmulator -input file  -cd ../cpm-dist/ -directories -ccp ccp | ansifilter &> "$output"
 echo " Completed $(date)"
 
 #
