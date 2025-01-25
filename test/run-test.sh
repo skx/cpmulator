@@ -71,7 +71,7 @@ fi
 #
 export INPUT_FILE="${input}"
 echo " Starting $(date)"
-./cpmulator -input file  -cd ../cpm-dist/ -directories -ccp ccp | ansifilter &> "$output"
+./cpmulator -input file  -cd ../cpm-dist/ -directories -timeout 120 -ccp ccp | ansifilter &> "$output"
 echo " Completed $(date)"
 
 #

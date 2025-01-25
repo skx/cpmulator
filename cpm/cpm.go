@@ -43,6 +43,9 @@ var (
 	// It should be handled and expected by callers.
 	ErrBoot = errors.New("BOOT")
 
+	// ErrTimeout is used when a timeout occurs
+	ErrTimeout = errors.New("TIMEOUT")
+
 	// ErrUnimplemented will be used to handle a CP/M binary calling an unimplemented syscall.
 	//
 	// It should be handled and expected by callers.
@@ -109,6 +112,9 @@ type FileCache struct {
 
 // CPM is the object that holds our emulator state.
 type CPM struct {
+
+	// context for handling timeout
+	context context.Context
 
 	// syscallErr holds any error created by a BIOS or BDOS syscall handler.
 	//
@@ -270,6 +276,14 @@ func WithInputDriver(name string) cpmoption {
 func WithHostExec(prefix string) cpmoption {
 	return func(c *CPM) error {
 		c.input.SetSystemCommandPrefix(prefix)
+		return nil
+	}
+}
+
+// WithContext allows a context to be passed to the evaluator.
+func WithContext(ctx context.Context) cpmoption {
+	return func(c *CPM) error {
+		c.context = ctx
 		return nil
 	}
 }
@@ -573,6 +587,7 @@ func New(options ...cpmoption) (*CPM, error) {
 	tmp := &CPM{
 		BDOSSyscalls: bdos,
 		BIOSSyscalls: bios,
+		context:      context.Background(),
 		ccp:          "ccp", // default
 		dma:          DefaultDMAAddress,
 		drives:       make(map[string]string),
@@ -893,6 +908,17 @@ func (cpm *CPM) Execute(args []string) error {
 	}
 
 	for {
+		//
+		// Check on our timeout since we're here.
+		//
+		select {
+		case <-cpm.context.Done():
+			return ErrTimeout
+
+		default:
+			// nop
+		}
+
 		// Reset the state of any saved error and the halt-flag.
 		cpm.syscallErr = nil
 		cpm.CPU.HALT = false
@@ -906,6 +932,10 @@ func (cpm *CPM) Execute(args []string) error {
 		// If the errors are both empty, but the CPU is halted then we exit.
 		if err == nil && cpm.syscallErr == nil && cpm.CPU.HALT {
 			return ErrHalt
+		}
+
+		if err == ErrTimeout || cpm.syscallErr == ErrTimeout {
+			return ErrTimeout
 		}
 
 		// An unimplemented system-call was encountered.
@@ -1012,6 +1042,15 @@ func (cpm *CPM) In(addr uint8) uint8 {
 // the C register.  The functions here are invoked with their number in the
 // A register and there are far far fewer of them.
 func (cpm *CPM) Out(addr uint8, val uint8) {
+
+	select {
+	case <-cpm.context.Done():
+		cpm.CPU.HALT = true
+		cpm.syscallErr = ErrTimeout
+		return
+	default:
+		// nop
+	}
 
 	if cpm.CPU.HALT {
 		slog.Error("Out() called when CPU is halted",
