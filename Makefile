@@ -30,7 +30,7 @@ static: $(wildcard ccp/*.z80)
 #
 .PHONY: test
 test:
-	./test/test.sh
+	./test/run-tests.sh
 
 #
 # Run the golang tests

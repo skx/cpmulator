@@ -390,7 +390,7 @@ For reference the memory map of our CP/M looks like this:
 
 # Release Checklist
 
-The testing that I should do before a release:
+The testing that I should do before a release - note that a lot of this is now automated via the contents of [test/](test/):
 
 * [ ] Confirm DDT can be used to trace execution of a simple binary.
 * [ ] Confirm the A1 Apple Emulator can be launched, and BASIC will run.
