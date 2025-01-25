@@ -390,24 +390,27 @@ For reference the memory map of our CP/M looks like this:
 
 # Release Checklist
 
-The testing that I should do before a release - note that a lot of this is now automated via the contents of [test/](test/):
+Before I make a release I carry out testing of the repository state, to avoid any obvious regressions.  The following checklist is the bare minimum I carry out prior to making a new tagged-release.
 
-* [ ] Confirm DDT can be used to trace execution of a simple binary.
-* [ ] Confirm the A1 Apple Emulator can be launched, and BASIC will run.
-* [ ] Play lighthouse of doom to completion, either victory or death.
-* [ ] Compile a program with ASM & LOAD.  Confirm it runs.
-* [ ] Compile HELLO.C and ECHO.C with Aztec C Compiler.
-  * [ ] Confirm the generated binaries run.
-* [ ] Run BBC Basic, and play a game.
+Note that the entries "checked" here are those entries which are tested automatically via the contents of [test/](test/).  (This automated testing essentially launches the emulator and pipes in fake keyboard input, then looks to see that the expected output is generated.  Scripted automation, in other words.)
+
+* [X] Confirm DDT can be used to trace execution of a simple binary.
+* [X] Confirm the A1 Apple Emulator can be launched, and BASIC will run.
+* [X] Play lighthouse of doom to completion, either victory or death.
+* [X] Compile HELLO.ASM with ASM & LOAD.  Confirm
+  * [X] Confirm the generated binary executes successfully.
+* [X] Compile ECHO.C with the Aztec C Compiler.
+  * [X] Confirm the generated binary executes successfully.
+* [X] Run BBC Basic, and play a game.
   * [ ] Test "SAVE" and "LOAD" commands.
   * [ ] Test saving tokenized AND raw versions. (i.e `SAVE "FOO"`, and `SAVE "FOO", A`.)
-* [ ] Compile a program with Turbo Pascal.
-  * [ ] Confirm the generated binary runs.
-* [ ] Play Zork1 for a few turns.
-  * [ ] Test SAVE and RESTORE commands, and confirm they work.
+* [X] Compile HELLO.PAS with Turbo Pascal.
+  * [X] Confirm the generated binary executes successfully.
+* [X] Launch Zork1 and play for a few turns.
+  * [X] Test SAVE and RESTORE commands, and confirm they work.
 * [ ] Test BE.COM
 * [ ] Test STAT.COM
-* [ ] Test some built-in shell-commands; ERA, TYPE, and EXIT.
+* [X] Test some built-in shell-commands; ERA, TYPE, and EXIT.
 
 
 
