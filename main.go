@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -10,6 +11,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"time"
 
 	cpmccp "github.com/skx/cpmulator/ccp"
 	"github.com/skx/cpmulator/consolein"
@@ -64,6 +66,7 @@ func main() {
 	logPath := flag.String("log-path", "", "Specify the file to write debug logs to.")
 	prnPath := flag.String("prn-path", "print.log", "Specify the file to write printer-output to.")
 	showVersion := flag.Bool("version", false, "Report our version, and exit.")
+	timeout := flag.Int("timeout", 0, "Timeout execution after the given number of seconds")
 	useDirectories := flag.Bool("directories", false, "Use subdirectories on the host computer for CP/M drives.")
 
 	// listing
@@ -214,6 +217,13 @@ func main() {
 		defer logFile.Close()
 	}
 
+	ctx := context.Background()
+	var cancel context.CancelFunc
+	if *timeout != 0 {
+		ctx, cancel = context.WithTimeout(context.Background(), time.Duration(*timeout)*time.Second)
+		defer cancel()
+	}
+
 	// Create our logging handler, using the level we've just setup.
 	log = slog.New(
 		slog.NewJSONHandler(
@@ -230,6 +240,7 @@ func main() {
 		cpm.WithOutputDriver(*output),
 		cpm.WithInputDriver(*input),
 		cpm.WithHostExec(*execPrefix),
+		cpm.WithContext(ctx),
 		cpm.WithCCP(*ccp))
 	if err != nil {
 		fmt.Printf("error creating CPM object: %s\n", err)
@@ -342,13 +353,18 @@ func main() {
 
 			// Deliberate stop of execution
 			if err == cpm.ErrHalt {
-				fmt.Printf("\n")
+				fmt.Printf("\r\n")
 				return
 			}
 
 			// Reboot attempt, also fine
 			if err == cpm.ErrBoot {
-				fmt.Printf("\n")
+				fmt.Printf("\r\n")
+				return
+			}
+
+			if err == cpm.ErrTimeout {
+				fmt.Printf("\r\nThe timeout of %d seconds was exceeded.  Terminating!\r\n", *timeout)
 				return
 			}
 
@@ -399,6 +415,11 @@ func main() {
 			// Deliberate stop of execution.
 			if err == cpm.ErrHalt {
 				fmt.Printf("\n")
+				return
+			}
+
+			if err == cpm.ErrTimeout {
+				fmt.Printf("\r\nThe timeout of %d seconds was exceeded.  Terminating!\r\n", *timeout)
 				return
 			}
 
