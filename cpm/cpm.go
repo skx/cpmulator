@@ -587,6 +587,7 @@ func New(options ...cpmoption) (*CPM, error) {
 	tmp := &CPM{
 		BDOSSyscalls: bdos,
 		BIOSSyscalls: bios,
+		context:      context.Background(),
 		ccp:          "ccp", // default
 		dma:          DefaultDMAAddress,
 		drives:       make(map[string]string),
