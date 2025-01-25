@@ -908,17 +908,6 @@ func (cpm *CPM) Execute(args []string) error {
 	}
 
 	for {
-		//
-		// Check on our timeout since we're here.
-		//
-		select {
-		case <-cpm.context.Done():
-			return ErrTimeout
-
-		default:
-			// nop
-		}
-
 		// Reset the state of any saved error and the halt-flag.
 		cpm.syscallErr = nil
 		cpm.CPU.HALT = false
@@ -927,15 +916,18 @@ func (cpm *CPM) Execute(args []string) error {
 		//
 		// This will basically run forever, or until the CPU is halted
 		// in one of our handlers.
-		err := cpm.CPU.Run(context.Background())
+		err := cpm.CPU.Run(cpm.context)
+
+		//
+		// Did we get a timeout from the Z80?
+		//
+		if errors.Is(err, context.DeadlineExceeded) {
+			return ErrTimeout
+		}
 
 		// If the errors are both empty, but the CPU is halted then we exit.
 		if err == nil && cpm.syscallErr == nil && cpm.CPU.HALT {
 			return ErrHalt
-		}
-
-		if err == ErrTimeout || cpm.syscallErr == ErrTimeout {
-			return ErrTimeout
 		}
 
 		// An unimplemented system-call was encountered.
@@ -1042,15 +1034,6 @@ func (cpm *CPM) In(addr uint8) uint8 {
 // the C register.  The functions here are invoked with their number in the
 // A register and there are far far fewer of them.
 func (cpm *CPM) Out(addr uint8, val uint8) {
-
-	select {
-	case <-cpm.context.Done():
-		cpm.CPU.HALT = true
-		cpm.syscallErr = ErrTimeout
-		return
-	default:
-		// nop
-	}
 
 	if cpm.CPU.HALT {
 		slog.Error("Out() called when CPU is halted",
