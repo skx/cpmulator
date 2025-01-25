@@ -1,4 +1,4 @@
 cpmulator
 cpmulator-*
 *.exe
-test.out
+test/*.out
