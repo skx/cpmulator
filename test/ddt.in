@@ -1,0 +1,26 @@
+A:
+ERA HELLO.COM
+ERA HELLO.HEX
+ERA HELLO.PRN
+hello
+ASM HELLO
+LOAD HELLO
+DDT HELLO.com
+t
+t
+t
+t
+t
+t
+t
+t
+t
+t
+t
+t
+t
+t
+t
+t
+
+EXIT
