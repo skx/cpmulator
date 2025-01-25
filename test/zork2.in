@@ -4,18 +4,12 @@ DIR ZORK1.*
 
 #
 ZORK1
-
 RESTORE
 
 
-
 OPEN SACK
-
 EAT SANDWICH
-
 QUIT
 Y
-
-
 
 EXIT
