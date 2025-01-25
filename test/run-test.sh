@@ -15,6 +15,15 @@ input=test/$1.in
 pattern=test/$1.pat
 output=test/$1.out
 
+
+#
+# We don't fake newlines by default
+#
+export INPUT_FAKE_NEWLINES=
+if [ -e test/"$1".newlines ]; then
+    export INPUT_FAKE_NEWLINES=1
+fi
+
 #
 # Ensure we have a test-input and a set of patterns
 #

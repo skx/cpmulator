@@ -1,0 +1,19 @@
+C:
+ERA ECHO.ASM
+ERA ECHO.O
+ERA ECHO.COM
+echo
+
+CC ECHO
+# # # # # # # # # # # # # # # # # # # #
+
+AS ECHO
+# # # # # # # # # # # # # # # # # # # #
+
+LN ECHO.O C.LIB
+# # # # # # # # # # # # # # # # # # # #
+
+ECHO foo bar cake
+
+
+EXIT
