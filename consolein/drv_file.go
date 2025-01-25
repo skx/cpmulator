@@ -101,15 +101,14 @@ func (fi *FileInput) PendingInput() bool {
 // use to fake our input.
 func (fi *FileInput) BlockForCharacterNoEcho() (byte, error) {
 
+	// If we have to deal with \r\n instead of just \n handle that first.
+	if fi.inNewline {
+		fi.inNewline = false
+		return '', nil
+	}
+
 	// If we have input available
 	if fi.offset < len(fi.content) {
-
-		// If we have to deal with \r\n instead
-		// of just \n then deal with that.
-		if fi.inNewline {
-			fi.inNewline = false
-			return '', nil
-		}
 
 		// Get the next character, and move past it.
 		x := fi.content[fi.offset]

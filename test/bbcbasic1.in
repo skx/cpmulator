@@ -1,9 +1,6 @@
 B:
-#
-BBCBASIC
-#
- PRINT 1 + 2 * 3
-#
- *BYE
-#
- EXIT
+#BBCBASIC
+#PRINT 1 + 2 * 3
+#*BYE
+
+EXIT
