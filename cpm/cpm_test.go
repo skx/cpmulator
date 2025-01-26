@@ -1,6 +1,7 @@
 package cpm
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -136,6 +137,12 @@ func TestBogusConstructor(t *testing.T) {
 			t.Fatalf("teardown failed %s", tErr.Error())
 		}
 	}()
+
+	ctx := context.Background()
+	_, err = New(WithContext(ctx))
+	if err != nil {
+		t.Fatalf("loading a context failed")
+	}
 
 }
 

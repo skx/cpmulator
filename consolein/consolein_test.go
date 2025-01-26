@@ -211,6 +211,15 @@ func TestDriverRegistration(t *testing.T) {
 		t.Fatalf("failed to find expected handler, term")
 	}
 
+	_, ok = handlers.m["file"]
+	if !ok {
+		t.Fatalf("failed to find expected handler, file")
+	}
+	_, err = New("file")
+	if err != nil {
+		t.Fatalf("failed to find expected handler, file")
+	}
+
 	_, ok = handlers.m["stty"]
 	if !ok {
 		t.Fatalf("failed to find expected handler, stty")
@@ -229,6 +238,9 @@ func TestDriverRegistration(t *testing.T) {
 		t.Fatalf("failed to find expected handler, term")
 	}
 
+	//
+	// stty
+	//
 	obj, err2 := New("stty")
 	if err2 != nil {
 		t.Fatalf("error looking up driver")
@@ -238,6 +250,36 @@ func TestDriverRegistration(t *testing.T) {
 		t.Fatalf("naming mismatch on driver!")
 	}
 	if obj.GetName() != "stty" {
+		t.Fatalf("naming mismatch on driver!")
+	}
+
+	//
+	// term
+	//
+	obj, err2 = New("term")
+	if err2 != nil {
+		t.Fatalf("error looking up driver")
+	}
+	drv = obj.GetDriver()
+	if drv.GetName() != "term" {
+		t.Fatalf("naming mismatch on driver!")
+	}
+	if obj.GetName() != "term" {
+		t.Fatalf("naming mismatch on driver!")
+	}
+
+	//
+	// file
+	//
+	obj, err2 = New("file")
+	if err2 != nil {
+		t.Fatalf("error looking up driver")
+	}
+	drv = obj.GetDriver()
+	if drv.GetName() != "file" {
+		t.Fatalf("naming mismatch on driver!")
+	}
+	if obj.GetName() != "file" {
 		t.Fatalf("naming mismatch on driver!")
 	}
 
@@ -310,4 +352,63 @@ func TestSimpleExec(t *testing.T) {
 	if after == before {
 		t.Fatalf("failed to change directory")
 	}
+}
+
+func TestFileSetu(t *testing.T) {
+
+	// Create a temporary file
+	file, err := os.CreateTemp("", "in.txt")
+	if err != nil {
+		t.Fatalf("failed to create temporary file")
+	}
+	defer os.Remove(file.Name())
+
+	_, err = file.Write([]byte{'#', 'h', 'i', '\n'})
+	if err != nil {
+		t.Fatalf("failed to write to temporary file")
+	}
+
+	t.Setenv("INPUT_FILE", file.Name())
+	t.Setenv("INPUT_FAKE_NEWLINES", "1")
+
+	// Create a helper
+	x := FileInput{}
+
+	ch := ConsoleIn{}
+	ch.driver = &x
+
+	sErr := ch.Setup()
+	if sErr != nil {
+		t.Fatalf("failed to setup driver %s", sErr.Error())
+	}
+
+	if !ch.PendingInput() {
+		t.Fatalf("expected pending input (a)")
+	}
+
+	c := 0
+	str := ""
+
+	for c < 4 {
+		out, err := ch.BlockForCharacterNoEcho()
+		if err != nil {
+			t.Fatalf("failed to get character")
+		}
+		str += string(out)
+
+		c++
+	}
+	if str != "hi\n" {
+		t.Fatalf("error in string, got %v %s", str, str)
+	}
+
+	if ch.PendingInput() {
+		t.Fatalf("expected no pending input (we read the text)")
+	}
+
+	sErr = ch.TearDown()
+	if sErr != nil {
+		t.Fatalf("failed to teardown")
+	}
+
 }
