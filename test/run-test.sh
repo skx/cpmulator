@@ -59,9 +59,13 @@ fi
 # Spawn run the emulator with the cooked input.
 #
 export INPUT_FILE="${input}"
+start=$(date +%s)
 echo " Starting $(date)"
 ./cpmulator -input file  -cd ../cpm-dist/ -directories -timeout 120 -ccp ccp | ansifilter &> "$output"
-echo " Completed $(date)"
+end=$(date +%s)
+runtime=$((end-start))
+echo " Completed in ${runtime} seconds"
+
 
 #
 #  Test that the patterns we expect are present in the output.
