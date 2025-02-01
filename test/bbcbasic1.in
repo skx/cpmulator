@@ -1,3 +1,10 @@
+#
+# The BBC BASIC interpreter needs the fake ^M
+# to be inserted with our newlines, otherwise
+# it won't react to keyboard input.
+#
+newline: both
+--
 B:
 #BBCBASIC
 #PRINT 1 + 2 * 3

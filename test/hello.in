@@ -1,3 +1,8 @@
+#
+# This test echos something done in the DDT.IN test
+# however it is distinct and simpler.
+#
+--
 A:
 ERA HELLO.COM
 ERA HELLO.HEX

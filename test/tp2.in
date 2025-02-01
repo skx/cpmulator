@@ -1,3 +1,11 @@
+#
+# Compile a program, with turbo pascal.
+#
+# The multiple "exits" at the foot of this
+# test-case are annoying.
+#
+newline: both
+--
 P:
 ERA HELLO.COM
 

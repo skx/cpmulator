@@ -1,3 +1,7 @@
+# A1.com is an Apple Emulator :)
+#
+# We test the Apple BASIC interpreter
+--
 A:A1
 E000R
 10 FOR I = 1 TO 10
