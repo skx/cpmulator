@@ -51,6 +51,6 @@ the only real config is "newline":
 * "n"
   * A newline is \n
 * "m"
-  * A newline is Ctr-M
+  * A newline is Ctrl-M
 * "both"
   * A newline is the pair "\n" "Ctrl-m", in that order.
