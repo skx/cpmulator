@@ -884,7 +884,7 @@ func (cpm *CPM) Execute(args []string) error {
 	cli = strings.TrimSpace(strings.ToUpper(cli))
 
 	// Setup FCB1 if we have a first argument
-	if len(args) > 0 {
+	if len(args) != 0 {
 		x := fcb.FromString(args[0])
 		cpm.Memory.SetRange(0x005C, x.AsBytes()...)
 	}

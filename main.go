@@ -187,7 +187,7 @@ func main() {
 	args := []string{}
 
 	// If we have a program
-	if len(flag.Args()) > 0 {
+	if len(flag.Args()) != 0 {
 		program = flag.Args()[0]
 		if len(flag.Args()) > 1 {
 			args = flag.Args()[1:]
