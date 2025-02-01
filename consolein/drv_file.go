@@ -222,10 +222,9 @@ func (fi *FileInput) BlockForCharacterNoEcho() (byte, error) {
 				// newline: m -> just return Ctrl-M
 				return '', nil
 			case "both":
-				// newline: both -> first return "\n", but later return Ctrl-M
-				fi.fakeInput = string('') + fi.fakeInput
-
-				return '\n', nil
+				// newline: both -> first return Ctrl-M then "\n"
+				fi.fakeInput = "\n" + fi.fakeInput
+				return '', nil
 			default:
 				// newline: XXX - Ignore it.
 				return x, nil
