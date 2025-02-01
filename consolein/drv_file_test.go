@@ -50,7 +50,7 @@ func TestFileSetup(t *testing.T) {
 
 		c++
 	}
-	if str != "hi\n"+string(byte(0x00)) {
+	if str != "hi\n"+string(byte(0x00)) {
 		t.Fatalf("error in string, got '%v' '%s'", str, str)
 	}
 
@@ -336,7 +336,7 @@ func TestNewlineBoth(t *testing.T) {
 
 		c++
 	}
-	if str != "hi\n"+string('') {
+	if str != "hi"+string('')+"\n" {
 		t.Fatalf("error in string, got '%v' '%s'", str, str)
 	}
 }
