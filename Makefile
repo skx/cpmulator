@@ -37,6 +37,7 @@ test:
 #
 .PHONY: tests
 tests:
+	rm test/*.out
 	go test ./...
 
 

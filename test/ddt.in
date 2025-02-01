@@ -1,3 +1,11 @@
+#
+# DDT is the debugging utility supplised with CP/M
+#
+# Here we erase the binary artifacts, then compile
+# HELLO.COM from HELLO.ASM, and use the (T)race
+# command to single-step through some execution.
+#
+--
 A:
 ERA HELLO.COM
 ERA HELLO.HEX

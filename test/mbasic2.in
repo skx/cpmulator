@@ -1,3 +1,9 @@
+#
+# The BBC BASIC interpreter needs the fake ^M
+# to be inserted with our newlines, otherwise
+# it won't react to keyboard input.
+newline: both
+--
 B:
 #MBASIC
 10 FOR I=1 TO 5

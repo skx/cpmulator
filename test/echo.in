@@ -1,4 +1,16 @@
-
+#
+# This test is annoying because it is logically simple, but
+# complex in execution.
+#
+# In theory we just run "CC ECHO", "AS ECHO", and "LN ECHO.O C.LIB"
+# however the compiler, assembler, and linker all seem to poll
+# for keyboard input - and if they see input they abort.
+#
+# So we have to use the "#" character in our runtime section, below,
+# to pause execution and attempt to time things such that we don't
+# block the execution and kill the test.
+#
+--
 C:
 
 ERA ECHO.ASM

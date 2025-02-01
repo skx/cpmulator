@@ -34,14 +34,6 @@ output=test/$1.out
 
 
 #
-# We don't fake newlines by default
-#
-export INPUT_FAKE_NEWLINES=
-if [ -e test/"$1".newlines ]; then
-    export INPUT_FAKE_NEWLINES=1
-fi
-
-#
 # Ensure we have a test-input and a set of patterns
 #
 if [ ! -e "$input" ] ; then
@@ -66,13 +58,14 @@ fi
 #
 # Spawn run the emulator with the cooked input.
 #
-#  TODO: Newline handling.
-#  TODO: Delay options
-#
 export INPUT_FILE="${input}"
+start=$(date +%s)
 echo " Starting $(date)"
 ./cpmulator -input file  -cd ../cpm-dist/ -directories -timeout 120 -ccp ccp | ansifilter &> "$output"
-echo " Completed $(date)"
+end=$(date +%s)
+runtime=$((end-start))
+echo " Completed in ${runtime} seconds"
+
 
 #
 #  Test that the patterns we expect are present in the output.

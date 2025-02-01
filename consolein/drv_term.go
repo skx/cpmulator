@@ -113,7 +113,7 @@ func (ti *TermboxInput) TearDown() error {
 // PendingInput returns true if there is pending input from STDIN.
 func (ti *TermboxInput) PendingInput() bool {
 
-	return len(ti.keyBuffer) > 0
+	return len(ti.keyBuffer) != 0
 }
 
 // BlockForCharacterNoEcho returns the next character from the console, blocking until
