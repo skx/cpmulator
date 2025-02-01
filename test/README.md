@@ -41,4 +41,16 @@ The idea is that to write a new test there will be two files created:
   * If the output of running the test DOES NOT MATCH each pattern that is a fatal error.
   * **NOTE**: Don't forget the trailing newline.
 
-Finally a file `foo.newlines` can be created, contents don't matter, if you need to convert "\n" to "\r\n".
+
+
+## Configuration
+
+We've had to had some configuration to the test-cases to work with assumptions, at the moment
+the only real config is "newline":
+
+* "n"
+  * A newline is \n
+* "m"
+  * A newline is Ctr-M
+* "both"
+  * A newline is the pair "\n" "Ctrl-m", in that order.
