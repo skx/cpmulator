@@ -1,50 +1,58 @@
 // drv_file creates a console input-driver which reads and
-// returns fake console input from a file named "input.txt"
-//
-// The intent is that this driver will be useful for scripted
-// automation.  We add a small delay to all operations just to
-// make things seem a little real, and we replace "#" characters
-// with a delay of a second too.
+// returns fake input from a file.  It is used for end-to-end
+// or functional-testing of our emulator.
 
 package consolein
 
 import (
 	"io"
 	"os"
+	"strings"
 	"time"
 )
 
-// FileInput is an input-driver that returns fake "console input"
-// by reading the content of the file "input.txt".
+// FileInput is an input-driver that returns fake console input
+// by reading and returning the contents of a file ("input.txt"
+// by default, but this may be changed).
 //
-// It is primarily designed for testing and automation.  We make
-// a tiny pause between our functions and for every input character
-// that is a "#" character we sleep a single second.
+// The input-driver is primarily designed for testing and automation.
+// We make a tiny pause between our functions and for every input
+// character that is "#" we sleep a single second.
 //
-// We do this because there are some commands that poll for console
-// input and cancel, or otherwise process it.  For example the C
+// (We must pause at times because there are some commands that poll
+// for console input and cancel, or otherwise process it.  For example the C
 // compiler will poll for input when linking and if we don't give it
 // some artificial delays we might find our pending input is swallowed
-// at random - depending on the speed of the host.
+// at random - depending on the speed of the host.)
 type FileInput struct {
 
-	// offset shows the offset into the buffer we're at
-	offset int
-
-	// content contains the content of the "input.txt" file
+	// content contains the content of the file we're returning
+	// input from.
 	content []byte
 
-	// fakeNewlines is used to control if we should use
-	// an extra character alongside newlines.
-	fakeNewlines bool
+	// offset shows the offset into the buffer we're at.
+	offset int
 
-	// inNewline returns true if we're in the middle of a newline
-	// and we need to inject a fake character.
-	inNewline bool
+	// a test-case can set an arbitrary number of options and here
+	// is where we record them.
+	options map[string]string
+
+	// fakeInput is input we should return in the future.
+	//
+	// This is used to return fake Ctrl-M characters when
+	// newlines are hit, if required.  It is general-purpose
+	// though so we could fake/modify other input options.
+	fakeInput string
 
 	// delayUntil is used to see if we're in the middle of a delay,
 	// where we pretend we have no input.
 	delayUntil time.Time
+
+	// delaySmall is the time we delay before polling input or characters
+	delaySmall time.Duration
+
+	// delayLarge is the time we delay when we see '#' in the input file
+	delayLarge time.Duration
 }
 
 // Setup reads the contents of the file specified by the
@@ -54,26 +62,103 @@ type FileInput struct {
 // If no filename is chosen "input.txt" will be used as a default.
 func (fi *FileInput) Setup() error {
 
+	// We allow the input file to be overridden from the
+	// default via the environmental-variable.
 	fileName := os.Getenv("INPUT_FILE")
 	if fileName == "" {
 		fileName = "input.txt"
 	}
 
+	// Read the content.
 	dat, err := os.ReadFile(fileName)
 	if err != nil {
 		return err
 	}
 
-	// Do we fake newline inputs?  If so set that up now
-	if os.Getenv("INPUT_FAKE_NEWLINES") == "1" {
-		fi.fakeNewlines = true
+	// Create a map for storing per-test options
+	fi.options = make(map[string]string)
+
+	// The data might be updated to strip off the header.
+	fi.offset = 0
+	fi.content = fi.parseOptions(dat)
+
+	// We're not delaying by default.
+	fi.delayUntil = time.Now()
+
+	// Setup the default delay times
+	fi.delaySmall = time.Millisecond * 15
+	fi.delayLarge = time.Second * 5
+
+	return nil
+}
+
+// parseOptions strips out any options from the given data, recording them
+// internally and returning the data after that.
+func (fi *FileInput) parseOptions(data []byte) []byte {
+
+	// Ensure that we have a map to store options.
+	if fi.options == nil {
+		fi.options = make(map[string]string)
 	}
 
-	// Save our offset and data.
-	fi.offset = 0
-	fi.content = dat
-	fi.delayUntil = time.Now()
-	return nil
+	// Length and current offset
+	l := len(data)
+	i := 0
+	position := -1
+
+	// Do we find "--\n" in the data?  If not then there are no options
+	for i < l {
+		if data[i] == '-' &&
+			(i+1) < l &&
+			data[i+1] == '-' &&
+			(i+2) < l &&
+			data[i+2] == '\n' &&
+			position < 0 {
+			position = i
+		}
+
+		i++
+	}
+
+	// We didn't find "--" so we can just return the data as-is
+	// because there are no options.
+	if position < 0 {
+		return data
+	}
+
+	// Header is 0 - position.
+	// Text is position + 3 (the length of "--\n").
+	header := data[0:position]
+	data = data[position+3:]
+
+	// Split the header by newlines and process
+	h := string(header)
+	for _, line := range strings.Split(h, "\n") {
+
+		// Trim any leading/trailing whitespace.
+		line = strings.TrimSpace(line)
+
+		// lines in the header prefixed by "#" are comments
+		if strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		// otherwise the header is key:val pairs
+		d := strings.Split(line, ":")
+		if len(d) == 2 {
+			key := d[0]
+			val := d[1]
+
+			// Trim leading/trailing space and down-case.
+			key = strings.ToLower(strings.TrimSpace(key))
+			val = strings.ToLower(strings.TrimSpace(val))
+
+			// save away
+			fi.options[key] = val
+		}
+	}
+
+	return data
 }
 
 // TearDown is a NOP.
@@ -86,7 +171,7 @@ func (fi *FileInput) TearDown() error {
 // of our input-file.
 func (fi *FileInput) PendingInput() bool {
 
-	time.Sleep(15 * time.Millisecond)
+	time.Sleep(fi.delaySmall)
 
 	// If we're not in a delay period return the real result
 	if time.Now().After(fi.delayUntil) {
@@ -101,10 +186,13 @@ func (fi *FileInput) PendingInput() bool {
 // use to fake our input.
 func (fi *FileInput) BlockForCharacterNoEcho() (byte, error) {
 
+	time.Sleep(fi.delaySmall)
+
 	// If we have to deal with \r\n instead of just \n handle that first.
-	if fi.inNewline {
-		fi.inNewline = false
-		return '', nil
+	if len(fi.fakeInput) > 0 {
+		c := fi.fakeInput[0]
+		fi.fakeInput = fi.fakeInput[1:]
+		return c, nil
 	}
 
 	// If we have input available
@@ -114,13 +202,43 @@ func (fi *FileInput) BlockForCharacterNoEcho() (byte, error) {
 		x := fi.content[fi.offset]
 		fi.offset++
 
-		if x == '\n' && fi.fakeNewlines {
-			fi.inNewline = true
+		// If we're supposed to inject a fake Ctrl-M then
+		// we'll record that for the next time we're called.
+		if x == '\n' {
+
+			// Does newline handling have special config?
+			opt, ok := fi.options["newline"]
+
+			// Nope.  Return the newline
+			if !ok {
+				return x, nil
+			}
+
+			switch opt {
+			case "n":
+				// newline: n -> just return \n
+				return x, nil
+			case "m":
+				// newline: m -> just return Ctrl-M
+				return '', nil
+			case "both":
+				// newline: both -> first return "\n", but later return Ctrl-M
+				fi.fakeInput = string('') + fi.fakeInput
+
+				return '\n', nil
+			default:
+				// newline: XXX - Ignore it.
+				return x, nil
+			}
 		}
 
 		// Also allow a sleep to happen.  Sigh.
 		if x == '#' {
-			fi.delayUntil = time.Now().Add(5 * time.Second)
+			fi.delayUntil = time.Now().Add(fi.delayLarge)
+
+			// We skip past the character and return the next
+			// one.  Unless this is the end of the buffer in
+			// which case we return null.
 			if fi.offset < len(fi.content) {
 				x = fi.content[fi.offset]
 				fi.offset++
