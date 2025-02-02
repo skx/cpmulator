@@ -4,10 +4,11 @@
 # it won't react to keyboard input.
 #
 newline: both
+pause-on-newline:true
 --
 B:
-#BBCBASIC
-#PRINT 1 + 2 * 3
-#*BYE
+BBCBASIC
+PRINT 1 + 2 * 3
+*BYE
 
 EXIT

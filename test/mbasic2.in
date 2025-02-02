@@ -2,14 +2,24 @@
 # The BBC BASIC interpreter needs the fake ^M
 # to be inserted with our newlines, otherwise
 # it won't react to keyboard input.
+#
+# We also have to pause on newlines, because otheriwse
+# the "LIST" will poll for keyboard input and swallow
+# some of the following characters.
+#
+# That will manifest itself as "LIST" working as expected
+# but the next command being "N" showing a syntax error
+# as the "RU" have been swallowed.
+#
 newline: both
+pause-on-newline:true
 --
 B:
-#MBASIC
+MBASIC
 10 FOR I=1 TO 5
 20  PRINT I,I*I
 30 NEXT I
-#LIST
+LIST
 RUN
 SYSTEM
 

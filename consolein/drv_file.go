@@ -188,6 +188,11 @@ func (fi *FileInput) BlockForCharacterNoEcho() (byte, error) {
 
 	time.Sleep(fi.delaySmall)
 
+	// Ensure we block, of we're supposed to.
+	for !time.Now().After(fi.delayUntil) {
+		time.Sleep(fi.delaySmall)
+	}
+
 	// If we have to deal with \r\n instead of just \n handle that first.
 	if len(fi.fakeInput) > 0 {
 		c := fi.fakeInput[0]
@@ -205,6 +210,12 @@ func (fi *FileInput) BlockForCharacterNoEcho() (byte, error) {
 		// If we're supposed to inject a fake Ctrl-M then
 		// we'll record that for the next time we're called.
 		if x == '\n' {
+
+			// Does we pause on newlines?
+			pause, pausePresent := fi.options["pause-on-newline"]
+			if pausePresent && pause == "true" {
+				fi.delayUntil = time.Now().Add(fi.delayLarge)
+			}
 
 			// Does newline handling have special config?
 			opt, ok := fi.options["newline"]

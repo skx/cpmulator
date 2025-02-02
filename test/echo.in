@@ -6,36 +6,19 @@
 # however the compiler, assembler, and linker all seem to poll
 # for keyboard input - and if they see input they abort.
 #
-# So we have to use the "#" character in our runtime section, below,
-# to pause execution and attempt to time things such that we don't
-# block the execution and kill the test.
+# So we have to either use "#" to block execution for a few seconds
+# here or there, or do the same for each newline.
 #
+pause-on-newline:true
 --
 C:
-
 ERA ECHO.ASM
-
 ERA ECHO.O
-
 ERA ECHO.COM
-
 DIR ECHO.*
-
-
-#echo
-
-
-#CC ECHO
-
-
-#AS ECHO
-
-
-#LN ECHO.O C.LIB
-
-
-#ECHO foo bar cake
-
-
-
-# EXIT
+echo
+CC ECHO
+AS ECHO
+LN ECHO.O C.LIB
+ECHO foo bar cake
+EXIT
