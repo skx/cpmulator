@@ -5,6 +5,7 @@
 # test-case are annoying.
 #
 newline: both
+pause-on-newline: true
 --
 P:
 ERA HELLO.COM
@@ -16,6 +17,3 @@ DIR HELLO.COM
 HELLO
 
 EXIT
- EXIT
- EXIT
- EXIT

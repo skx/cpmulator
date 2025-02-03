@@ -46,11 +46,14 @@ The idea is that to write a new test there will be two files created:
 ## Configuration
 
 We've had to had some configuration to the test-cases to work with assumptions, at the moment
-the only real config is "newline":
+the only real config options relate to newline handling.
 
-* "n"
-  * A newline is \n
-* "m"
-  * A newline is Ctrl-M
-* "both"
-  * A newline is the pair "\n" "Ctrl-m", in that order.
+* `newline` specifies which kind of line-endings to send:
+  * "n"
+    * A newline is \n
+  * "m"
+    * A newline is Ctrl-M
+  * "both"
+    * A newline is the pair "Ctrl-m" & "\n", in that order.
+* `pause-on-newline:true`
+  * Will sleep for five seconds after sending a newline.

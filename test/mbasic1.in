@@ -3,7 +3,10 @@
 # to be inserted with our newlines, otherwise
 # it won't react to keyboard input.
 #
+# The pause here isn't as necessary as in mbasic2.
+#
 newline: both
+pause-on-newline:true
 --
 B:
 MBASIC

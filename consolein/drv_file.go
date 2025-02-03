@@ -5,6 +5,7 @@
 package consolein
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -17,13 +18,8 @@ import (
 //
 // The input-driver is primarily designed for testing and automation.
 // We make a tiny pause between our functions and for every input
-// character that is "#" we sleep a single second.
-//
-// (We must pause at times because there are some commands that poll
-// for console input and cancel, or otherwise process it.  For example the C
-// compiler will poll for input when linking and if we don't give it
-// some artificial delays we might find our pending input is swallowed
-// at random - depending on the speed of the host.)
+// we allow some conditional support for changing the line-endings
+// which are used when replaying the various test-cases.
 type FileInput struct {
 
 	// content contains the content of the file we're returning
@@ -188,6 +184,11 @@ func (fi *FileInput) BlockForCharacterNoEcho() (byte, error) {
 
 	time.Sleep(fi.delaySmall)
 
+	// Ensure we block, of we're supposed to.
+	for !time.Now().After(fi.delayUntil) {
+		time.Sleep(fi.delaySmall)
+	}
+
 	// If we have to deal with \r\n instead of just \n handle that first.
 	if len(fi.fakeInput) > 0 {
 		c := fi.fakeInput[0]
@@ -202,9 +203,19 @@ func (fi *FileInput) BlockForCharacterNoEcho() (byte, error) {
 		x := fi.content[fi.offset]
 		fi.offset++
 
-		// If we're supposed to inject a fake Ctrl-M then
-		// we'll record that for the next time we're called.
+		// We've found a newline in our input.
+		//
+		// We allow newlines to be handled a couple of different
+		// ways, and optionally trigger a delay, so we'll have to
+		// handle that here.
+		//
 		if x == '\n' {
+
+			// Does we pause on newlines?
+			pause, pausePresent := fi.options["pause-on-newline"]
+			if pausePresent && pause == "true" {
+				fi.delayUntil = time.Now().Add(fi.delayLarge)
+			}
 
 			// Does newline handling have special config?
 			opt, ok := fi.options["newline"]
@@ -214,35 +225,20 @@ func (fi *FileInput) BlockForCharacterNoEcho() (byte, error) {
 				return x, nil
 			}
 
+			// Look at way we have been configured to return newlines.
 			switch opt {
 			case "n":
-				// newline: n -> just return \n
+				// newline: n -> just return "\n"
 				return x, nil
 			case "m":
-				// newline: m -> just return Ctrl-M
-				return '', nil
+				// newline: m -> just return "\r"
+				return '\r', nil
 			case "both":
-				// newline: both -> first return Ctrl-M then "\n"
+				// newline: both -> first return "\r" then "\n"
 				fi.fakeInput = "\n" + fi.fakeInput
-				return '', nil
+				return '\r', nil
 			default:
-				// newline: XXX - Ignore it.
-				return x, nil
-			}
-		}
-
-		// Also allow a sleep to happen.  Sigh.
-		if x == '#' {
-			fi.delayUntil = time.Now().Add(fi.delayLarge)
-
-			// We skip past the character and return the next
-			// one.  Unless this is the end of the buffer in
-			// which case we return null.
-			if fi.offset < len(fi.content) {
-				x = fi.content[fi.offset]
-				fi.offset++
-			} else {
-				x = 0x00
+				return x, fmt.Errorf("unknown setting 'newline:%s' in test-case", opt)
 			}
 		}
 
