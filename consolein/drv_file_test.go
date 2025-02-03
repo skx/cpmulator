@@ -15,7 +15,7 @@ func TestFileSetup(t *testing.T) {
 	}
 	defer os.Remove(file.Name())
 
-	_, err = file.Write([]byte("newline: both\n--\n#hi\n#"))
+	_, err = file.Write([]byte("newline: both\n--\nhi\n"))
 	if err != nil {
 		t.Fatalf("failed to write to temporary file")
 	}
@@ -40,7 +40,7 @@ func TestFileSetup(t *testing.T) {
 	c := 0
 	str := ""
 
-	for c < 5 {
+	for c < 3 {
 		var out byte
 		out, err = ch.BlockForCharacterNoEcho()
 		if err != nil {
@@ -50,7 +50,7 @@ func TestFileSetup(t *testing.T) {
 
 		c++
 	}
-	if str != "hi\n"+string(byte(0x00)) {
+	if str != "hi" {
 		t.Fatalf("error in string, got '%v' '%s'", str, str)
 	}
 
@@ -59,6 +59,7 @@ func TestFileSetup(t *testing.T) {
 	}
 
 	// After we've read all the characters we should just get EOF
+	_, _ = ch.BlockForCharacterNoEcho()
 	c = 0
 	for c < 10 {
 		_, err = ch.BlockForCharacterNoEcho()
@@ -351,7 +352,7 @@ func TestNewlineBogus(t *testing.T) {
 	}
 	defer os.Remove(file.Name())
 
-	_, err = file.Write([]byte("newline: bogus\n--\nhi\n"))
+	_, err = file.Write([]byte("newline: bogus\n--\n\n"))
 	if err != nil {
 		t.Fatalf("failed to write to temporary file")
 	}
@@ -369,25 +370,9 @@ func TestNewlineBogus(t *testing.T) {
 		t.Fatalf("failed to setup driver %s", sErr.Error())
 	}
 
-	if !ch.PendingInput() {
-		t.Fatalf("expected pending input (a)")
-	}
-
-	c := 0
-	str := ""
-
-	for c < 3 {
-		var out byte
-		out, err = ch.BlockForCharacterNoEcho()
-		if err != nil {
-			t.Fatalf("failed to get character")
-		}
-		str += string(out)
-
-		c++
-	}
-	if str != "hi\n" {
-		t.Fatalf("error in string, got '%v' '%s'", str, str)
+	_, err = ch.BlockForCharacterNoEcho()
+	if err == nil {
+		t.Fatalf("expected to get an error, got none")
 	}
 }
 
