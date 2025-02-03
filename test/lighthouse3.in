@@ -1,0 +1,24 @@
+#
+# This test-case launches the lighthouse of doom game,
+# and then plays it to completion.
+#
+# It also tests that the game starts, which was a problem in the
+# past because our CP/M BIOS was located within a region of
+# RAM the game used.
+#
+--
+G:
+LIHOUSE
+f
+DOWN
+CALL ME
+CALL STEVE
+CALL POLICE
+CALL RUBBLE
+CALL SKYE
+CALL RYDER
+CALL GHOSTBUSTERS
+QUIT
+N
+
+EXIT
