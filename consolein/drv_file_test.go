@@ -200,7 +200,7 @@ func TestNewlineN(t *testing.T) {
 	}
 	defer os.Remove(file.Name())
 
-	_, err = file.Write([]byte("newline: n\n--\nhi\n"))
+	_, err = file.Write([]byte("newline: n\npause-on-newline:true\n--\nhi\n"))
 	if err != nil {
 		t.Fatalf("failed to write to temporary file")
 	}
@@ -251,7 +251,7 @@ func TestNewlineM(t *testing.T) {
 	}
 	defer os.Remove(file.Name())
 
-	_, err = file.Write([]byte("newline: m\n--\nhi\n"))
+	_, err = file.Write([]byte("newline: m\npause-on-newline:false\n--\nhi\n"))
 	if err != nil {
 		t.Fatalf("failed to write to temporary file")
 	}
