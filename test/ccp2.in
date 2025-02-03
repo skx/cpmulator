@@ -10,4 +10,6 @@ A:!output null
 A:
 !output adm-3a
 !hostcmd
+!ccp ccp
+!ccp ccpz
 Exit
