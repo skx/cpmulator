@@ -1,10 +1,7 @@
 newline: both
 --
 G:
-
 ERA ZORK1.SAV
-
-#
 ZORK1
 NORTH
 EAST
@@ -15,8 +12,6 @@ OPEN BOTTLE
 DRINK WATER
 SAVE
 
-
 QUIT
 Y
-
 EXIT
