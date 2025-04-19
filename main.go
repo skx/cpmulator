@@ -23,6 +23,9 @@ import (
 
 var (
 
+	// unclean is set if we terminate with an error
+	unclean bool
+
 	// log holds our logging handle
 	log *slog.Logger
 )
@@ -207,6 +210,7 @@ func main() {
 		var err error
 		logFile, err = os.OpenFile(*logPath, os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
+			unclean = true
 			fmt.Printf("failed to open logfile for writing %s:%s\r\n", *logPath, err)
 			return
 		}
@@ -243,6 +247,7 @@ func main() {
 		cpm.WithContext(ctx),
 		cpm.WithCCP(*ccp))
 	if err != nil {
+		unclean = true
 		fmt.Printf("error creating CPM object: %s\r\n", err)
 		return
 	}
@@ -255,6 +260,7 @@ func main() {
 	// I/O SETUP
 	err = obj.IOSetup()
 	if err != nil {
+		unclean = true
 		fmt.Printf("Error setting up the console input driver %s:%s\r\n", *input, err)
 		return
 	}
@@ -262,6 +268,20 @@ func main() {
 	// I/O TearDown
 	// When we're finishing we'll reset some (console) state.
 	defer func() {
+
+		// This is just a neatness thing.
+		//
+		// If we're running with the "term" / "gui" input-driver then the console
+		// won't show errors.  They'll be displayed then the screen clears when we
+		// exit.
+		//
+		// Add a little delay for this simple case.
+		if unclean {
+			n := 5
+			fmt.Printf("\r\n\r\nSleeping for %d seconds to let the error-message be read.\r\n", n)
+			time.Sleep(time.Duration(n) * time.Second)
+		}
+
 		err := obj.IOTearDown()
 		if err != nil {
 			fmt.Printf("Error cleaning up console input driver %s:%s\r\n", *input, err)
@@ -274,6 +294,7 @@ func main() {
 	if *cd != "" {
 		err := os.Chdir(*cd)
 		if err != nil {
+			unclean = true
 			fmt.Printf("failed to change to %s:%s\r\n", *cd, err)
 			return
 		}
@@ -344,6 +365,7 @@ func main() {
 
 		err := obj.LoadBinary(program)
 		if err != nil {
+			unclean = true
 			fmt.Printf("Error loading program %s:%s\r\n", program, err)
 			return
 		}
@@ -364,12 +386,16 @@ func main() {
 			}
 
 			if err == cpm.ErrTimeout {
+				unclean = true
+
 				fmt.Printf("\r\nThe timeout of %d seconds was exceeded.  Terminating!\r\n", *timeout)
 				return
 			}
 
 			fmt.Printf("Error running %s [%s]: %s\r\n",
 				program, strings.Join(args, ","), err)
+			unclean = true
+
 		}
 
 		fmt.Printf("\r\n")
