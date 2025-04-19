@@ -100,7 +100,7 @@ func main() {
 	if *listCcps {
 		x := cpmccp.GetAll()
 		for _, x := range x {
-			fmt.Printf("%5s %-10s %04X bytes, entry-point %04X\n", x.Name, x.Description, len(x.Bytes), x.Start)
+			fmt.Printf("%5s %-10s %04X bytes, entry-point %04X\r\n", x.Name, x.Description, len(x.Bytes), x.Start)
 		}
 		return
 	}
@@ -116,7 +116,7 @@ func main() {
 			if name == cpm.DefaultInputDriver {
 				suffix = "\t[default]"
 			}
-			fmt.Printf("%s%s\n", name, suffix)
+			fmt.Printf("%s%s\r\n", name, suffix)
 		}
 		return
 	}
@@ -133,7 +133,7 @@ func main() {
 			if name == cpm.DefaultOutputDriver {
 				suffix = "\t[default]"
 			}
-			fmt.Printf("%s%s\n", name, suffix)
+			fmt.Printf("%s%s\r\n", name, suffix)
 		}
 		return
 	}
@@ -153,21 +153,21 @@ func main() {
 			sort.Ints(ids)
 
 			// Now show them.
-			fmt.Printf("%s syscalls:\n", name)
+			fmt.Printf("%s syscalls:\r\n", name)
 			for _, id := range ids {
 				ent := arg[uint8(id)]
 				fake := ""
 				if ent.Fake {
 					fake = "FAKE"
 				}
-				fmt.Printf("\t%03d %-20s %s\n", int(id), ent.Desc, fake)
+				fmt.Printf("\t%03d %-20s %s\r\n", int(id), ent.Desc, fake)
 			}
 		}
 
 		// Create helper - with defaults.
 		c, err := cpm.New()
 		if err != nil {
-			fmt.Printf("error creating CPM object: %s\n", err)
+			fmt.Printf("error creating CPM object: %s\r\n", err)
 			return
 		}
 
@@ -178,7 +178,7 @@ func main() {
 
 	// show version
 	if *showVersion {
-		fmt.Printf("%s\n", cpmver.GetVersionBanner())
+		fmt.Printf("%s\r\n", cpmver.GetVersionBanner())
 		return
 	}
 
@@ -207,7 +207,7 @@ func main() {
 		var err error
 		logFile, err = os.OpenFile(*logPath, os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			fmt.Printf("failed to open logfile for writing %s:%s\n", *logPath, err)
+			fmt.Printf("failed to open logfile for writing %s:%s\r\n", *logPath, err)
 			return
 		}
 
@@ -243,7 +243,7 @@ func main() {
 		cpm.WithContext(ctx),
 		cpm.WithCCP(*ccp))
 	if err != nil {
-		fmt.Printf("error creating CPM object: %s\n", err)
+		fmt.Printf("error creating CPM object: %s\r\n", err)
 		return
 	}
 
@@ -255,7 +255,7 @@ func main() {
 	// I/O SETUP
 	err = obj.IOSetup()
 	if err != nil {
-		fmt.Printf("Error setting up the console input driver %s:%s", *input, err)
+		fmt.Printf("Error setting up the console input driver %s:%s\r\n", *input, err)
 		return
 	}
 
@@ -264,7 +264,7 @@ func main() {
 	defer func() {
 		err := obj.IOTearDown()
 		if err != nil {
-			fmt.Printf("Error cleaning up console input driver %s:%s", *input, err)
+			fmt.Printf("Error cleaning up console input driver %s:%s\r\n", *input, err)
 		}
 	}()
 
@@ -274,7 +274,7 @@ func main() {
 	if *cd != "" {
 		err := os.Chdir(*cd)
 		if err != nil {
-			fmt.Printf("failed to change to %s:%s\n", *cd, err)
+			fmt.Printf("failed to change to %s:%s\r\n", *cd, err)
 			return
 		}
 	}
@@ -344,7 +344,7 @@ func main() {
 
 		err := obj.LoadBinary(program)
 		if err != nil {
-			fmt.Printf("Error loading program %s:%s\n", program, err)
+			fmt.Printf("Error loading program %s:%s\r\n", program, err)
 			return
 		}
 
@@ -368,16 +368,16 @@ func main() {
 				return
 			}
 
-			fmt.Printf("Error running %s [%s]: %s\n",
+			fmt.Printf("Error running %s [%s]: %s\r\n",
 				program, strings.Join(args, ","), err)
 		}
 
-		fmt.Printf("\n")
+		fmt.Printf("\r\n")
 		return
 	}
 
 	// Show a startup-banner.
-	fmt.Printf("\ncpmulator %s\r\nConsole input:%s Console output:%s BIOS:0x%04X BDOS:0x%04X CCP:%s\n", cpmver.GetVersionString(), obj.GetInputDriver().GetName(), obj.GetOutputDriver().GetName(), obj.GetBIOSAddress(), obj.GetBDOSAddress(), obj.GetCCPName())
+	fmt.Printf("\ncpmulator %s\r\nConsole input:%s Console output:%s BIOS:0x%04X BDOS:0x%04X CCP:%s\r\n", cpmver.GetVersionString(), obj.GetInputDriver().GetName(), obj.GetOutputDriver().GetName(), obj.GetBIOSAddress(), obj.GetBDOSAddress(), obj.GetCCPName())
 
 	// We will load AUTOEXEC.SUB, once, if it exists (*)
 	//
@@ -396,7 +396,7 @@ func main() {
 		// Load the CCP binary - resetting RAM in the process.
 		err := obj.LoadCCP()
 		if err != nil {
-			fmt.Printf("error loading CCP: %s\n", err)
+			fmt.Printf("error loading CCP: %s\r\n", err)
 			return
 		}
 
@@ -414,7 +414,7 @@ func main() {
 
 			// Deliberate stop of execution.
 			if err == cpm.ErrHalt {
-				fmt.Printf("\n")
+				fmt.Printf("\r\n")
 				return
 			}
 
@@ -423,7 +423,7 @@ func main() {
 				return
 			}
 
-			fmt.Printf("\nError running CCP: %s\n", err)
+			fmt.Printf("\r\nError running CCP: %s\r\n", err)
 			return
 		}
 	}
