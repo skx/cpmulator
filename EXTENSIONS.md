@@ -75,9 +75,9 @@ Demonstrated in [static/ccp.z80](static/ccp.z80)
 
 
 
-## Function 0x04: Get/Set Quiet Flag
+## Function 0x04: NOP
 
-* Removed.  Obsolete.
+This is an obsolete function, which does nothing.
 
 
 
@@ -113,3 +113,17 @@ If DE is 0x0000 then the DMA area is filled with the name of the current driver,
 Demonstrated in [static/input.z80](static/input.z80)
 
 See also function 0x02.
+
+
+
+## Function 0x08: Get/Set Prefix for running commands on the host
+
+On entry DE points to a text-string, terminated by NULL, which represents the prefix which will
+be used to allow executing commands on the host-system.
+
+For example if you were to run `!hostcmd !!` then enter `!!uptime` within the CCP prompt you'd
+actually see the output of running the `uptime` command.
+
+If DE is 0x0000 then the DMA area is filled with the name of the current prefix, NULL-terminated.
+
+Demonstrated in [static/hostcmd.z80](static/hostcmd.z80)

@@ -420,7 +420,11 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		str := getStringFromMemory(de)
 
 		// set it
-		cpm.input.SetSystemCommandPrefix(str)
+		if str == "/clear" {
+			cpm.input.SetSystemCommandPrefix("")
+		} else {
+			cpm.input.SetSystemCommandPrefix(str)
+		}
 
 	default:
 		fmt.Printf("Ignoring unknown custom BIOS function HL:%04Xr\n", hl)
