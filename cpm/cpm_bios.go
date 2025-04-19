@@ -245,7 +245,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		// If it failed we're not going to terminate the syscall, or
 		// the emulator, just ignore the attempt.
 		if err != nil {
-			fmt.Printf("%s", err)
+			fmt.Printf("%s\r\n", err)
 			return nil
 		}
 
@@ -253,7 +253,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		cpm.output = driver
 
 		if old != str {
-			fmt.Printf("Input driver changed from %s to %s.\n", old, driver.GetName())
+			fmt.Printf("Input driver changed from %s to %s.\r\n", old, driver.GetName())
 		}
 
 	// Get/Set the CCP
@@ -283,7 +283,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		// See if the CCP exists
 		entry, err := ccp.Get(str)
 		if err != nil {
-			fmt.Printf("Invalid CCP name %s\n", str)
+			fmt.Printf("Invalid CCP name %s\r\n", str)
 			return nil
 		}
 
@@ -292,7 +292,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		cpm.ccp = str
 
 		if old != str {
-			fmt.Printf("CCP changed to %s [%s] Size:0x%04X Entry-Point:0x%04X\n", str, entry.Description, len(entry.Bytes), entry.Start)
+			fmt.Printf("CCP changed to %s [%s] Size:0x%04X Entry-Point:0x%04X\r\n", str, entry.Description, len(entry.Bytes), entry.Start)
 		}
 
 	// Get/Set the quiet flag
@@ -369,7 +369,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		// If it failed we're not going to terminate the syscall, or
 		// the emulator, just ignore the attempt.
 		if err != nil {
-			fmt.Printf("%s", err)
+			fmt.Printf("%s\r\n", err)
 			return nil
 		}
 
@@ -392,7 +392,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		cpm.input = driver
 
 		if oldName != str {
-			fmt.Printf("Input driver from %s to %s.\n", oldName, driver.GetName())
+			fmt.Printf("Input driver from %s to %s.\r\n", oldName, driver.GetName())
 		}
 
 	// Set the host prefix
@@ -423,7 +423,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		cpm.input.SetSystemCommandPrefix(str)
 
 	default:
-		fmt.Printf("Unknown custom BIOS function HL:%04X, ignoring", hl)
+		fmt.Printf("Ignoring unknown custom BIOS function HL:%04Xr\n", hl)
 	}
 
 	return nil
