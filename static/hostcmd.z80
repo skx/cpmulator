@@ -118,11 +118,13 @@ not_cpmulator:
 ;; Text output strings.
 ;;
 UNSET_STRING:
-        db "The prefix for executing commands on the host is unset.", 0x0a, 0x0d, "Running commands on the host is disabled.", 0x0a, 0x0d, "$"
+        db "The prefix for executing commands on the host is unset.", 0x0a, 0x0d
+        db "Running commands on the host is disabled.", 0x0a, 0x0d, "$"
 OUTPUT_PREFIX:
         db "The command-prefix for executing commands on the host is '$"
 OUTPUT_SUFFIX:
-        db "'.", 0x0a, 0x0d, "$"
+        db "'.", 0x0a, 0x0d
+        db "Run '!hostcmd /clear' to disable running commands on the host", 0x0a, 0x0d, "$"
 WRONG_EMULATOR:
         db "This binary is not running under cpmulator, aborting.", 0x0a, 0x0d, "$"
 END
