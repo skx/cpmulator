@@ -862,7 +862,9 @@ func BdosSysCallRead(cpm *CPM) error {
 		// open
 		file, err := fs.ReadFile(cpm.static, p)
 		if err != nil {
-			fmt.Printf("error on readfile for virtual path (%s):%s\n", p, err)
+			slog.Error("error on readfile for virtual path",
+				slog.String("path", p),
+				slog.String("error", err.Error()))
 		}
 		i := 0
 
@@ -1296,7 +1298,9 @@ func BdosSysCallReadRand(cpm *CPM) error {
 		// Get file size, in bytes
 		fi, err := f.Stat()
 		if err != nil {
-			fmt.Printf("ReadRand:failed to get file size of: %s", err)
+			slog.Error("ReadRand:failed to get file size",
+				slog.String("error", err.Error()))
+			return 0xFF
 		}
 		fileSize := fi.Size()
 
@@ -1308,7 +1312,9 @@ func BdosSysCallReadRand(cpm *CPM) error {
 
 		_, err = f.Seek(offset, io.SeekStart)
 		if err != nil {
-			fmt.Printf("cannot seek to position %d: %s", offset, err)
+			slog.Error("ReadRand: cannot seek to position",
+				slog.Int64("offset", offset),
+				slog.String("error", err.Error()))
 			return 0xFF
 		}
 
@@ -1319,7 +1325,9 @@ func BdosSysCallReadRand(cpm *CPM) error {
 		_, err = f.Read(data)
 		if err != nil {
 			if err != io.EOF {
-				fmt.Printf("failed to read offset %d: %s", offset, err)
+				slog.Error("ReadRand: failed to read offset",
+					slog.Int64("offset", offset),
+					slog.String("error", err.Error()))
 				return 0xFF
 			}
 		}
@@ -1357,7 +1365,9 @@ func BdosSysCallReadRand(cpm *CPM) error {
 		// open
 		file, err := fs.ReadFile(cpm.static, p)
 		if err != nil {
-			fmt.Printf("error on SysCallReadRand for virtual path (%s):%s\n", p, err)
+			slog.Error("SysCallReadRand error on virtual path",
+				slog.String("path", p),
+				slog.String("error", err.Error()))
 		}
 
 		// Get the record to read

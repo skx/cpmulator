@@ -1131,7 +1131,7 @@ func (cpm *CPM) Out(addr uint8, val uint8) {
 
 		// show the function being invoked.
 		if cpm.simpleDebug {
-			fmt.Printf("%03d %s %s\n", val, callType, handler.Desc)
+			fmt.Printf("%03d %s %s\r\n", val, callType, handler.Desc)
 		}
 
 		// Log the call we're going to make
