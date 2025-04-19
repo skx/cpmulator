@@ -1367,7 +1367,7 @@ func BdosSysCallReadRand(cpm *CPM) error {
 		if err != nil {
 			slog.Error("SysCallReadRand error on virtual path",
 				slog.String("path", p),
-				slog.Error("error", err.Error()))
+				slog.String("error", err.Error()))
 		}
 
 		// Get the record to read
