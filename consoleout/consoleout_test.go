@@ -172,6 +172,7 @@ func TestLogger(t *testing.T) {
 	}
 }
 
+// TestList ensures that we have the right number of drivers
 func TestList(t *testing.T) {
 	x, _ := New("foo")
 
@@ -179,5 +180,31 @@ func TestList(t *testing.T) {
 
 	if len(valid) != 2 {
 		t.Fatalf("unexpected number of console drivers")
+	}
+}
+
+// TestADM outputs every possible byte, at every possible status.
+// This is a fake-test for coverage only.
+func TestADM(t *testing.T) {
+
+	x := Adm3AOutputDriver{}
+
+	// ensure we redirect the output
+	tmp := new(bytes.Buffer)
+	x.SetWriter(tmp)
+
+	// status
+	s := 0
+	for s < 10 {
+
+		// Output each character
+		i := 0
+		for i <= 255 {
+			x.status = s
+			x.PutCharacter(byte(i))
+			i++
+		}
+
+		s++
 	}
 }
