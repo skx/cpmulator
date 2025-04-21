@@ -215,10 +215,13 @@ func BiosSysCallReserved1(cpm *CPM) error {
 			cpm.input.SetInterruptCount(int(c))
 		}
 
-	// Get/Set the input driver.
+	// Get/Set the output driver.
 	case 0x0002:
 
+		// If DE is null then we're just being asked to return
+		// the current value of the driver.
 		if de == 0x0000 {
+
 			// Fill the DMA area with NULL bytes
 			addr := cpm.dma
 
@@ -228,7 +231,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 				end--
 			}
 
-			// now populate with our console driver
+			// now populate with our console driver.
 			str := cpm.output.GetName()
 			for i, c := range str {
 				cpm.Memory.Set(addr+uint16(i), uint8(c))
@@ -236,25 +239,32 @@ func BiosSysCallReserved1(cpm *CPM) error {
 			return nil
 		}
 
-		// Get the string pointed to by DE
+		// DE is not-null so we're going to try to change to the given
+		// value.  Get the value
 		str := getStringFromMemory(de)
 
-		// Output driver needs to be created
+		// Get the old value
+		old := cpm.output.GetName()
+
+		// Is there a change?
+		if old == str {
+			cpm.output.WriteString("The output driver is already " + str + ", doing nothing.\r\n")
+			return nil
+		}
+
+		// Create the new output driver
 		driver, err := consoleout.New(str)
 
 		// If it failed we're not going to terminate the syscall, or
 		// the emulator, just ignore the attempt.
 		if err != nil {
-			fmt.Printf("%s\r\n", err)
+			cpm.output.WriteString("Changing output driver failed, " + err.Error() + ".\r\n")
 			return nil
 		}
 
-		old := cpm.output.GetName()
 		cpm.output = driver
-
-		if old != str {
-			fmt.Printf("Input driver changed from %s to %s.\r\n", old, driver.GetName())
-		}
+		cpm.output.WriteString("The output driver has been changed from " + old + " to " + str + ".\r\n")
+		return nil
 
 	// Get/Set the CCP
 	case 0x0003:
