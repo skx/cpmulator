@@ -77,9 +77,14 @@ func TestOutput(t *testing.T) {
 
 		d.driver.SetWriter(tmp)
 
-		for _, c := range "Steve Kemp" {
+		// Write character by character
+		for _, c := range "Steve " {
 			d.PutCharacter(byte(c))
 		}
+
+		// Now write via the helper which routes correctly to the driver
+		// and does it character by character.
+		d.WriteString("Kemp")
 
 		// Test we got the output we expected
 		if tmp.String() != "Steve Kemp" {
