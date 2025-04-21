@@ -5,5 +5,8 @@
 A:!ctrlc
 !hostcmd
 !ccp ccp
+!ccp ccp
 !ccp ccpz
+!ccp ccpz
+!ccp Monday
 Exit

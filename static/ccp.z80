@@ -93,9 +93,9 @@ not_cpmulator:
 ;; Text output strings.
 ;;
 CCP_PREFIX:
-        db "CCP is set to '$"
+        db "CCP is set to $"
 CCP_SUFFIX:
-        db "'", 0x0a, 0x0d, "$"
+        db ".", 0x0a, 0x0d, "$"
 
 WRONG_EMULATOR:
         db "This binary is not running under cpmulator, aborting.", 0x0a, 0x0d, "$"

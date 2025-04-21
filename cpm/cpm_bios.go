@@ -269,6 +269,8 @@ func BiosSysCallReserved1(cpm *CPM) error {
 	// Get/Set the CCP
 	case 0x0003:
 
+		// If DE is null then we're just being asked to return
+		// the current CCP name
 		if de == 0x0000 {
 			// Fill the DMA area with NULL bytes
 			addr := cpm.dma
@@ -290,10 +292,16 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		// Get the string pointed to by DE
 		str := getStringFromMemory(de)
 
+		// If there is no change do nothing
+		if str == cpm.ccp {
+			cpm.output.WriteString("CCP is already set to " + str + ", doing nothing.\r\n")
+			return nil
+		}
+
 		// See if the CCP exists
 		entry, err := ccp.Get(str)
 		if err != nil {
-			fmt.Printf("Invalid CCP name %s\r\n", str)
+			cpm.output.WriteString("Error changing CCP to " + str + ", " + err.Error() + "\r\n")
 			return nil
 		}
 
@@ -302,8 +310,9 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		cpm.ccp = str
 
 		if old != str {
-			fmt.Printf("CCP changed to %s [%s] Size:0x%04X Entry-Point:0x%04X\r\n", str, entry.Description, len(entry.Bytes), entry.Start)
+			cpm.output.WriteString(fmt.Sprintf("CCP changed to %s [%s] Size:0x%04X Entry-Point:0x%04X\r\n", str, entry.Description, len(entry.Bytes), entry.Start))
 		}
+		return nil
 
 	// Get/Set the quiet flag
 	case 0x0004:

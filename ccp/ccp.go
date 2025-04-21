@@ -86,5 +86,5 @@ func Get(name string) (Flavour, error) {
 		valid = append(valid, ent.Name)
 	}
 
-	return Flavour{}, fmt.Errorf("ccp %s not found - valid choices are: %s", name, strings.Join(valid, ","))
+	return Flavour{}, fmt.Errorf("CCP %s not found - valid choices are: %s", name, strings.Join(valid, ","))
 }
