@@ -97,6 +97,13 @@ func (co *ConsoleOut) GetDriver() ConsoleOutput {
 	return co.driver
 }
 
+// WriteString writes the given string, character by character, to the output driver.
+func (co *ConsoleOut) WriteString(str string) {
+	for _, c := range str {
+		co.driver.PutCharacter(uint8(c))
+	}
+}
+
 // ChangeDriver allows changing our driver at runtime.
 func (co *ConsoleOut) ChangeDriver(name string) error {
 
