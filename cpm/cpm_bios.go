@@ -258,7 +258,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		// If it failed we're not going to terminate the syscall, or
 		// the emulator, just ignore the attempt.
 		if err != nil {
-			cpm.output.WriteString(err.Error() + "\r\n")
+			cpm.output.WriteString("Changing output driver failed, " + err.Error() + ".\r\n")
 			return nil
 		}
 
