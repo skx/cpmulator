@@ -94,9 +94,9 @@ not_cpmulator:
 ;; Text output strings.
 ;;
 CONSOLE_PREFIX:
-        db "Input driver is set to '$"
+        db "The input driver is set to $"
 CONSOLE_SUFFIX:
-        db "'", 0x0a, 0x0d, "$"
+        db ".", 0x0a, 0x0d, "$"
 WRONG_EMULATOR:
         db "This binary is not running under cpmulator, aborting.", 0x0a, 0x0d, "$"
 END

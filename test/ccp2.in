@@ -2,7 +2,6 @@
 # This is a more substantial CCP-test
 #
 --
-A:!input
 A:!ctrlc
 !hostcmd
 !ccp ccp
