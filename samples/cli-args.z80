@@ -98,6 +98,10 @@ CHAR_SHOW:
         LD      E,0x0a
         LD      C,0x02
         CALL    0x0005
+        ; carriage-return
+        LD      E,0x0d
+        LD      C,0x02
+        CALL    0x0005
         RET
 
 COM1:
