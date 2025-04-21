@@ -73,6 +73,10 @@ get_show_user_number:
    LD E, 0x0a
    LD C, 0x02
    call 0x0005
+   ; carriage-return
+   LD      E,0x0d
+   LD      C,0x02
+   CALL    0x0005
    ret
 
 
