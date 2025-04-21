@@ -1,0 +1,11 @@
+#
+# This is a test of A:!OUTPUT.COM
+#
+--
+A:!output
+!output ansi
+!output ansi
+A:!output null
+A:!output null
+!output adm-3a
+Exit
