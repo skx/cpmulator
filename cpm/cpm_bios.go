@@ -349,9 +349,11 @@ func BiosSysCallReserved1(cpm *CPM) error {
 			}
 		}
 
-	// Get/Set the output driver.
+	// Get/Set the input driver.
 	case 0x0007:
 
+		// If DE is null then we're just being asked to return
+		// the current value of the driver.
 		if de == 0x0000 {
 			// Fill the DMA area with NULL bytes
 			addr := cpm.dma
@@ -370,40 +372,50 @@ func BiosSysCallReserved1(cpm *CPM) error {
 			return nil
 		}
 
-		// Get the string pointed to by DE
+		// DE is not-null so we're going to try to change to the given
+		// value.  Get the value.
 		str := getStringFromMemory(de)
 
-		// Output driver needs to be created
-		driver, err := consolein.New(str)
+		// Get the old value
+		oldName := cpm.input.GetName()
 
-		// If it failed we're not going to terminate the syscall, or
-		// the emulator, just ignore the attempt.
-		if err != nil {
-			fmt.Printf("%s\r\n", err)
+		// Is there a change?
+		if oldName == str {
+			cpm.output.WriteString("The input driver is already " + str + ", doing nothing.\r\n")
 			return nil
+		}
+
+		// Okay now we tear-down the old driver, and we explicitly do this
+		// before we create the new one.
+		//
+		// This might mean we have console output going to a weird place if
+		// we have failures..
+		err := cpm.input.TearDown()
+		if err != nil {
+			cpm.output.WriteString("Error cleaning up the old input-driver, " + err.Error() + ".\r\n")
+			return nil
+		}
+
+		// Create the new driver
+		driver, err2 := consolein.New(str)
+		if err2 != nil {
+			cpm.output.WriteString("Error creating the new driver, " + err2.Error() + ".\r\n")
+			return err2
 		}
 
 		// We need to setup the new driver.
 		//
 		// If this fails we also abort the change-attempt.
-		err = driver.Setup()
-		if err != nil {
-			fmt.Printf("Failed to create new driver %s:%s\r\n", str, err)
-			return nil
-		}
-
-		old := cpm.input
-		oldName := old.GetName()
-		err = old.TearDown()
-		if err != nil {
-			return err
+		err2 = driver.Setup()
+		if err2 != nil {
+			cpm.output.WriteString("Error setting up the new driver, " + err2.Error() + ".\r\n")
+			return err2
 		}
 
 		cpm.input = driver
 
-		if oldName != str {
-			fmt.Printf("Input driver from %s to %s.\r\n", oldName, driver.GetName())
-		}
+		cpm.output.WriteString("Input driver changed from " + oldName + " to " + str + ".\r\n")
+		return nil
 
 	// Set the host prefix
 	case 0x0008:

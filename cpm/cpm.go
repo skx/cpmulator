@@ -945,6 +945,14 @@ func (cpm *CPM) Execute(args []string) error {
 		if err == ErrHalt || cpm.syscallErr == ErrHalt {
 			return ErrHalt
 		}
+
+		// Other errors are handled here - these should be rare
+		if err != nil {
+			return err
+		}
+		if cpm.syscallErr != nil {
+			return cpm.syscallErr
+		}
 	}
 }
 
