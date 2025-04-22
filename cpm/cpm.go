@@ -196,18 +196,15 @@ type CPM struct {
 	// Valid values are 0-15.
 	userNumber uint8
 
-	// findFirstResults is a sneaky cache of files that match a glob.
+	// findFirstResults is used to hold a cache of files that match a glob.
 	//
 	// For finding files CP/M uses "find first" to find the first result
 	// then allows the programmer to call "find next", to continue the searching.
 	//
 	// This means we need to track state, the way we do this is to store the
-	// results here, and bump the findOffset each time find-next is called.
+	// results here, removing the head from the list each time "find next"
+	// is called.
 	findFirstResults []fcb.Find
-
-	// findOffset contains the index into findFirstResults which is
-	// to be read next.
-	findOffset int
 
 	// simpleDebug is used to just output the name of syscalls made.
 	//

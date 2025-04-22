@@ -619,7 +619,6 @@ func BdosSysCallFindFirst(cpm *CPM) error {
 
 	// Previous results are now invalidated
 	cpm.findFirstResults = []fcb.Find{}
-	cpm.findOffset = 0
 
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
@@ -675,7 +674,6 @@ func BdosSysCallFindFirst(cpm *CPM) error {
 	// Here we save the results in our cache,
 	// dropping the first
 	cpm.findFirstResults = res[1:]
-	cpm.findOffset = 0
 
 	// Create a new FCB and store it in the DMA entry
 	x := fcb.FromString(res[0].Name)
@@ -714,14 +712,17 @@ func BdosSysCallFindNext(cpm *CPM) error {
 	//
 	// Assume we've been called with findFirst before
 	//
-	if (len(cpm.findFirstResults) == 0) || cpm.findOffset >= len(cpm.findFirstResults) {
+	if len(cpm.findFirstResults) == 0 {
 		// Return 0xFF to signal an error
 		cpm.CPU.States.AF.Hi = 0xFF
 		return nil
 	}
 
-	res := cpm.findFirstResults[cpm.findOffset]
-	cpm.findOffset++
+	// Get the first item from the list of pending files
+	res := cpm.findFirstResults[0]
+
+	// And update our list to remove it.
+	cpm.findFirstResults = cpm.findFirstResults[1:]
 
 	// Create a new FCB and store it in the DMA entry
 	x := fcb.FromString(res.Name)
