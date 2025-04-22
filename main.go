@@ -146,7 +146,7 @@ func main() {
 
 		// dumper is a helper to dump the contents of
 		// the given map in a human readable fashion.
-		dumper := func(name string, arg map[uint8]cpm.CPMHandler) {
+		dumper := func(name string, arg map[uint8]cpm.Handler) {
 
 			// Get the syscalls in sorted order
 			ids := []int{}
