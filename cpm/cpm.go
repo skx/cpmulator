@@ -722,13 +722,10 @@ func (cpm *CPM) LoadBinary(filename string) error {
 // be changed by the user via the BIOS_ADDRESS and BDOS_ADDRESS environmental
 // variables.
 func (cpm *CPM) fixupRAM() {
-	i := 0
 
 	// The two addresses which are important
 	BIOS := int(cpm.biosAddress)
 	BDOS := int(cpm.bdosAddress)
-
-	NENTRY := 30
 
 	SETMEM := func(a int, v int) {
 		cpm.Memory.Set(uint16(a), uint8(v))
@@ -737,8 +734,6 @@ func (cpm *CPM) fixupRAM() {
 	SETMEM(0x0000, 0xC3)                /* JMP */
 	SETMEM(0x0001, ((BIOS + 3) & 0xFF)) /* Fake address of entry-point */
 	SETMEM(0x0002, ((BIOS + 3) >> 8))
-
-	SETMEM(BIOS, 0xC9) // RET
 
 	// Now we setup the initial values of the I/O byte
 	SETMEM(0x0003, 0x00)
@@ -760,7 +755,9 @@ func (cpm *CPM) fixupRAM() {
 	//
 	//     func (cpm *CPM) Out(addr uint8, val uint8)
 	//
-	for i < 30 {
+	i := 0
+	NENTRY := 30
+	for i < NENTRY {
 		/* JP <bios-entry> */
 		SETMEM(BIOS+3*i, 0xC3)
 		SETMEM(BIOS+3*i+1, (BIOS+NENTRY*3+i*5)&0xFF)
