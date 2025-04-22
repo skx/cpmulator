@@ -283,7 +283,7 @@ func (co *ConsoleIn) ReadLine(max uint8) (string, error) {
 			if offset >= len(history) {
 				continue
 			}
-			offset += 1
+			offset++
 
 			eraseInput()
 
@@ -300,7 +300,7 @@ func (co *ConsoleIn) ReadLine(max uint8) (string, error) {
 			// Ctrl-C should only take effect at the start of the line.
 			// i.e. When the text is empty.
 			if text == "" {
-				ctrlCount += 1
+				ctrlCount++
 
 				// If we've hit our limit of consecutive Ctrl-Cs
 				// then we return the interrupted error-code
