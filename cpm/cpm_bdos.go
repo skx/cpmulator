@@ -618,7 +618,7 @@ func BdosSysCallFindFirst(cpm *CPM) error {
 	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
 
 	// Previous results are now invalidated
-	cpm.findFirstResults = []fcb.FCBFind{}
+	cpm.findFirstResults = []fcb.Find{}
 	cpm.findOffset = 0
 
 	// Create a structure with the contents
@@ -652,7 +652,7 @@ func BdosSysCallFindFirst(cpm *CPM) error {
 			if fcbPtr.DoesMatch(filepath.Base(path)) {
 
 				// If so append
-				res = append(res, fcb.FCBFind{
+				res = append(res, fcb.Find{
 					Host: path,
 					Name: filepath.Base(path)})
 			}
