@@ -1599,7 +1599,7 @@ func BdosSysCallFileSize(cpm *CPM) error {
 
 	// Block size is used so round up, if we need to.
 	if (fileSize % blkSize) != 0 {
-		records += 1
+		records++
 	}
 
 	// Cap the size appropriately.
