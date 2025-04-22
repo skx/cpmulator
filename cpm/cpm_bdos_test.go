@@ -1436,3 +1436,94 @@ func TestTicks(t *testing.T) {
 		t.Fatalf("no time has passed %d %d", a, b)
 	}
 }
+
+// TestFileCache tests that opening a file, then executing something
+// else will clear the file handle cache
+func TestFileCache(t *testing.T) {
+
+	// Create a new helper
+	c, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	c.Memory = new(memory.Memory)
+	c.fixupRAM()
+	c.SetDrives(false)
+
+	defer func() {
+		tErr := c.IOTearDown()
+		if tErr != nil {
+			t.Fatalf("teardown failed %s", tErr.Error())
+		}
+	}()
+
+	// Create a binary
+
+	var file *os.File
+	name := "OPEN.ME"
+	file, err = os.OpenFile(name, os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		t.Fatalf("failed to create test-file")
+	}
+	file.Close()
+	defer os.Remove(name)
+
+	// Create an FCB pointing to the file
+	fcbPtr := fcb.FromString(name)
+	fcbPtr.Drive = 05
+	c.Memory.SetRange(0x0200, fcbPtr.AsBytes()...)
+
+	// Call Open
+	c.CPU.States.DE.SetU16(0x0200)
+	err = BdosSysCallFileOpen(c)
+	if err != nil {
+		t.Fatalf("failed to open file: err")
+	}
+	if c.CPU.States.AF.Hi != 0x00 {
+		t.Fatalf("failed to open file: A=%02X", c.CPU.States.AF.Hi)
+	}
+
+	//
+	// At this point we've opened a file.
+	// Leave it open.
+	//
+	// But execute something else.
+	//
+
+	// Create a binary
+	var ffile *os.File
+	ffile, err = os.CreateTemp("", "tst-*.com")
+	if err != nil {
+		t.Fatalf("failed to create temporary file")
+	}
+	defer os.Remove(ffile.Name())
+
+	// Make a call to BDOS function 99 - unimplemented
+	_, err = ffile.Write([]byte{0x0E, 0x63, 0xCD, 0x05, 0x00})
+
+	if err != nil {
+		t.Fatalf("failed to write program to temporary file")
+	}
+
+	// Close the file
+	err = ffile.Close()
+	if err != nil {
+		t.Fatalf("failed to close file")
+	}
+
+	// Attempt to load the binary
+	err = c.LoadBinary(ffile.Name())
+	if err != nil {
+		t.Fatalf("error loading a binary")
+	}
+
+	c.simpleDebug = true
+	err = c.Execute([]string{"foo", "bar", "baz"})
+	if err == nil {
+		t.Fatalf("expected an error, got none")
+	}
+	if err != ErrUnimplemented {
+		t.Fatalf("got an error, but the wrong one: %v\n", err)
+	}
+
+}
