@@ -61,26 +61,26 @@ var (
 	DefaultDMAAddress uint16 = 0x0080
 )
 
-// CPMHandlerType contains the signature of a function we use to
+// HandlerType contains the signature of a function we use to
 // emulate a CP/M BIOS or BDOS function.
 //
 // It is not expected that outside packages will want to add custom BIOS
 // functions, or syscalls, but this is public so that it could be done if
 // necessary.
-type CPMHandlerType func(cpm *CPM) error
+type HandlerType func(cpm *CPM) error
 
-// CPMHandler contains details of a specific call we implement.
+// Handler contains details of a specific call we implement.
 //
 // While we mostly need a "number to handler", having a name as well
 // is useful for the logs we produce, and we mark those functions that
 // don't do 100% of what they should as "Fake".
-type CPMHandler struct {
+type Handler struct {
 	// Desc contain the human-readable name of the given CP/M syscall.
 	Desc string
 
 	// Handler contains the function which should be invoked for
 	// this syscall.
-	Handler CPMHandlerType
+	Handler HandlerType
 
 	// Fake stores a quick comment on the completeness of the syscall
 	// implementation.  If Fake is set to true then the syscall is
@@ -167,11 +167,11 @@ type CPM struct {
 
 	// BDOSSyscalls contains details of the BDOS syscalls we
 	// know how to emulate, indexed by their ID.
-	BDOSSyscalls map[uint8]CPMHandler
+	BDOSSyscalls map[uint8]Handler
 
 	// BIOSSyscalls contains details of the BIOS syscalls we
 	// know how to emulate, indexed by their ID.
-	BIOSSyscalls map[uint8]CPMHandler
+	BIOSSyscalls map[uint8]Handler
 
 	// Memory contains the memory the system runs with.
 	Memory *memory.Memory
@@ -295,197 +295,197 @@ func New(options ...Option) (*CPM, error) {
 	//
 	// Create and populate our syscall table for the BDOS syscalls.
 	//
-	bdos := make(map[uint8]CPMHandler)
-	bdos[0] = CPMHandler{
+	bdos := make(map[uint8]Handler)
+	bdos[0] = Handler{
 		Desc:    "P_TERMCPM",
 		Handler: BdosSysCallExit,
 	}
-	bdos[1] = CPMHandler{
+	bdos[1] = Handler{
 		Desc:    "C_READ",
 		Handler: BdosSysCallReadChar,
 		Noisy:   true,
 	}
-	bdos[2] = CPMHandler{
+	bdos[2] = Handler{
 		Desc:    "C_WRITE",
 		Handler: BdosSysCallWriteChar,
 		Noisy:   true,
 	}
-	bdos[3] = CPMHandler{
+	bdos[3] = Handler{
 		Desc:    "A_READ",
 		Handler: BdosSysCallAuxRead,
 		Noisy:   true,
 	}
-	bdos[4] = CPMHandler{
+	bdos[4] = Handler{
 		Desc:    "A_WRITE",
 		Handler: BdosSysCallAuxWrite,
 		Noisy:   true,
 	}
-	bdos[5] = CPMHandler{
+	bdos[5] = Handler{
 		Desc:    "L_WRITE",
 		Handler: BdosSysCallPrinterWrite,
 		Fake:    true,
 		Noisy:   true,
 	}
-	bdos[6] = CPMHandler{
+	bdos[6] = Handler{
 		Desc:    "C_RAWIO",
 		Handler: BdosSysCallRawIO,
 		Noisy:   true,
 	}
-	bdos[7] = CPMHandler{
+	bdos[7] = Handler{
 		Desc:    "GET_IOBYTE",
 		Handler: BdosSysCallGetIOByte,
 	}
-	bdos[8] = CPMHandler{
+	bdos[8] = Handler{
 		Desc:    "SET_IOBYTE",
 		Handler: BdosSysCallSetIOByte,
 	}
-	bdos[9] = CPMHandler{
+	bdos[9] = Handler{
 		Desc:    "C_WRITESTRING",
 		Handler: BdosSysCallWriteString,
 	}
-	bdos[10] = CPMHandler{
+	bdos[10] = Handler{
 		Desc:    "C_READSTRING",
 		Handler: BdosSysCallReadString,
 	}
-	bdos[11] = CPMHandler{
+	bdos[11] = Handler{
 		Desc:    "C_STAT",
 		Handler: BdosSysCallConsoleStatus,
 		Noisy:   true,
 	}
-	bdos[12] = CPMHandler{
+	bdos[12] = Handler{
 		Desc:    "S_BDOSVER",
 		Handler: BdosSysCallBDOSVersion,
 	}
-	bdos[13] = CPMHandler{
+	bdos[13] = Handler{
 		Desc:    "DRV_ALLRESET",
 		Handler: BdosSysCallDriveAllReset,
 	}
-	bdos[14] = CPMHandler{
+	bdos[14] = Handler{
 		Desc:    "DRV_SET",
 		Handler: BdosSysCallDriveSet,
 	}
-	bdos[15] = CPMHandler{
+	bdos[15] = Handler{
 		Desc:    "F_OPEN",
 		Handler: BdosSysCallFileOpen,
 	}
-	bdos[16] = CPMHandler{
+	bdos[16] = Handler{
 		Desc:    "F_CLOSE",
 		Handler: BdosSysCallFileClose,
 	}
-	bdos[17] = CPMHandler{
+	bdos[17] = Handler{
 		Desc:    "F_SFIRST",
 		Handler: BdosSysCallFindFirst,
 	}
-	bdos[18] = CPMHandler{
+	bdos[18] = Handler{
 		Desc:    "F_SNEXT",
 		Handler: BdosSysCallFindNext,
 	}
-	bdos[19] = CPMHandler{
+	bdos[19] = Handler{
 		Desc:    "F_DELETE",
 		Handler: BdosSysCallDeleteFile,
 	}
-	bdos[20] = CPMHandler{
+	bdos[20] = Handler{
 		Desc:    "F_READ",
 		Handler: BdosSysCallRead,
 	}
-	bdos[21] = CPMHandler{
+	bdos[21] = Handler{
 		Desc:    "F_WRITE",
 		Handler: BdosSysCallWrite,
 	}
-	bdos[22] = CPMHandler{
+	bdos[22] = Handler{
 		Desc:    "F_MAKE",
 		Handler: BdosSysCallMakeFile,
 	}
-	bdos[23] = CPMHandler{
+	bdos[23] = Handler{
 		Desc:    "F_RENAME",
 		Handler: BdosSysCallRenameFile,
 	}
-	bdos[24] = CPMHandler{
+	bdos[24] = Handler{
 		Desc:    "DRV_LOGINVEC",
 		Handler: BdosSysCallLoginVec,
 		Fake:    true,
 	}
-	bdos[25] = CPMHandler{
+	bdos[25] = Handler{
 		Desc:    "DRV_GET",
 		Handler: BdosSysCallDriveGet,
 	}
-	bdos[26] = CPMHandler{
+	bdos[26] = Handler{
 		Desc:    "F_DMAOFF",
 		Handler: BdosSysCallSetDMA,
 	}
-	bdos[27] = CPMHandler{
+	bdos[27] = Handler{
 		Desc:    "DRV_ALLOCVEC",
 		Handler: BdosSysCallDriveAlloc,
 		Fake:    true,
 	}
-	bdos[28] = CPMHandler{
+	bdos[28] = Handler{
 		Desc:    "DRV_SETRO",
 		Handler: BdosSysCallDriveSetRO,
 		Fake:    true,
 	}
-	bdos[29] = CPMHandler{
+	bdos[29] = Handler{
 		Desc:    "DRV_ROVEC",
 		Handler: BdosSysCallDriveROVec,
 		Fake:    true,
 	}
-	bdos[30] = CPMHandler{
+	bdos[30] = Handler{
 		Desc:    "F_ATTRIB",
 		Handler: BdosSysCallSetFileAttributes,
 		Fake:    true,
 	}
-	bdos[31] = CPMHandler{
+	bdos[31] = Handler{
 		Desc:    "DRV_DPB",
 		Handler: BdosSysCallGetDriveDPB,
 		Fake:    true,
 	}
-	bdos[32] = CPMHandler{
+	bdos[32] = Handler{
 		Desc:    "F_USERNUM",
 		Handler: BdosSysCallUserNumber,
 	}
-	bdos[33] = CPMHandler{
+	bdos[33] = Handler{
 		Desc:    "F_READRAND",
 		Handler: BdosSysCallReadRand,
 	}
-	bdos[34] = CPMHandler{
+	bdos[34] = Handler{
 		Desc:    "F_WRITERAND",
 		Handler: BdosSysCallWriteRand,
 	}
-	bdos[35] = CPMHandler{
+	bdos[35] = Handler{
 		Desc:    "F_SIZE",
 		Handler: BdosSysCallFileSize,
 	}
-	bdos[36] = CPMHandler{
+	bdos[36] = Handler{
 		Desc:    "F_RANDREC",
 		Handler: BdosSysCallRandRecord,
 	}
-	bdos[37] = CPMHandler{
+	bdos[37] = Handler{
 		Desc:    "DRV_RESET",
 		Handler: BdosSysCallDriveReset,
 		Fake:    true,
 	}
-	bdos[40] = CPMHandler{
+	bdos[40] = Handler{
 		Desc:    "F_WRITEZF",
 		Handler: BdosSysCallWriteRand,
 
 		// We don't zero-pad
 		Fake: true,
 	}
-	bdos[45] = CPMHandler{
+	bdos[45] = Handler{
 		Desc:    "F_ERRMODE",
 		Handler: BdosSysCallErrorMode,
 		Fake:    true,
 	}
-	bdos[105] = CPMHandler{
+	bdos[105] = Handler{
 		Desc:    "T_GET",
 		Handler: BdosSysCallTime,
 		Fake:    true,
 	}
-	bdos[113] = CPMHandler{ // used by Turbo Pascal
+	bdos[113] = Handler{ // used by Turbo Pascal
 		Desc:    "DirectScreenFunctions",
 		Handler: BdosSysCallDirectScreenFunctions,
 		Fake:    true,
 	}
-	bdos[248] = CPMHandler{ // used by BBC BASIC v5
+	bdos[248] = Handler{ // used by BBC BASIC v5
 		Desc:    "F_UPTIME",
 		Handler: BdosSysCallUptime,
 		Fake:    true,
@@ -494,57 +494,57 @@ func New(options ...Option) (*CPM, error) {
 	//
 	// Create and populate our syscall table for the BIOS syscalls.
 	//
-	bios := make(map[uint8]CPMHandler)
-	bios[0] = CPMHandler{
+	bios := make(map[uint8]Handler)
+	bios[0] = Handler{
 		Desc:    "BOOT",
 		Handler: BiosSysCallColdBoot,
 	}
-	bios[1] = CPMHandler{
+	bios[1] = Handler{
 		Desc:    "WBOOT",
 		Handler: BiosSysCallWarmBoot,
 	}
-	bios[2] = CPMHandler{
+	bios[2] = Handler{
 		Desc:    "CONST",
 		Handler: BiosSysCallConsoleStatus,
 		Noisy:   true,
 	}
-	bios[3] = CPMHandler{
+	bios[3] = Handler{
 		Desc:    "CONIN",
 		Handler: BiosSysCallConsoleInput,
 		Noisy:   true,
 	}
-	bios[4] = CPMHandler{
+	bios[4] = Handler{
 		Desc:    "CONOUT",
 		Handler: BiosSysCallConsoleOutput,
 		Noisy:   true,
 	}
-	bios[5] = CPMHandler{
+	bios[5] = Handler{
 		Desc:    "LIST",
 		Handler: BiosSysCallPrintChar,
 		Fake:    true,
 	}
-	bios[15] = CPMHandler{
+	bios[15] = Handler{
 		Desc:    "LISTST",
 		Handler: BiosSysCallPrinterStatus,
 		Fake:    true,
 	}
-	bios[17] = CPMHandler{
+	bios[17] = Handler{
 		Desc:    "CONOST",
 		Handler: BiosSysCallScreenOutputStatus,
 		Fake:    true,
 		Noisy:   true,
 	}
-	bios[18] = CPMHandler{
+	bios[18] = Handler{
 		Desc:    "AUXIST",
 		Handler: BiosSysCallAuxInputStatus,
 		Fake:    true,
 	}
-	bios[19] = CPMHandler{
+	bios[19] = Handler{
 		Desc:    "AUXOST",
 		Handler: BiosSysCallAuxOutputStatus,
 		Fake:    true,
 	}
-	bios[31] = CPMHandler{
+	bios[31] = Handler{
 		Desc:    "RESERVE1",
 		Handler: BiosSysCallReserved1,
 		Fake:    true,
@@ -1069,7 +1069,7 @@ func (cpm *CPM) Out(addr uint8, val uint8) {
 	// We're going to lookup a handler, based on the
 	// register that makes sense.
 	//
-	var handler CPMHandler
+	var handler Handler
 
 	// Did we find it?  And if so what type was it?
 	var ok bool
