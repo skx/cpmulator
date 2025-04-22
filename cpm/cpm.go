@@ -1,10 +1,10 @@
-// Package cpm is the main package for our emulator, it contains
+// Package cpm is the main package for our emulator, it hosts
 // the Z80 emulator we're using, along with the memory the running
 // binaries inhabit, and the appropriate glue to wire things together.
 //
 // The package mostly contains the implementation of the syscalls that
-// CP/M programs would expect - along with a little machinery to wire up
-// the Z80 emulator we're using and deal with FCB structures.
+// CP/M programs would expect, with some indirection used for the various
+// input and output drivers.
 package cpm
 
 import (
@@ -78,8 +78,7 @@ type Handler struct {
 	// Desc contain the human-readable name of the given CP/M syscall.
 	Desc string
 
-	// Handler contains the function which should be invoked for
-	// this syscall.
+	// Handler points to the function which should be invoked for this syscall.
 	Handler HandlerType
 
 	// Fake stores a quick comment on the completeness of the syscall
@@ -206,10 +205,11 @@ type CPM struct {
 	// is called.
 	findFirstResults []fcb.Find
 
-	// simpleDebug is used to just output the name of syscalls made.
+	// simpleDebug is used to output the name of syscalls which are being
+	// invoked, directly to the console.
 	//
 	// For real debugging we expect the caller to use our Logger, via
-	// the logfile
+	// the logfile.
 	simpleDebug bool
 
 	// launchTime is the time at which the application was launched
@@ -652,10 +652,19 @@ func (cpm *CPM) GetBDOSAddress() uint16 {
 // would otherwise be disabled
 func (cpm *CPM) LogNoisy() {
 
+	// Walk over known BDOS syscalls, and set
+	// any "Noisy" attribute which might be present
+	// to be false.
+	//
+	// This will ensure that the logger will *not*
+	// consider them noisy and will thus log their
+	// invocations.
 	for k, e := range cpm.BDOSSyscalls {
 		e.Noisy = false
 		cpm.BDOSSyscalls[k] = e
 	}
+
+	// Same again, but BIOS this time.
 	for k, e := range cpm.BIOSSyscalls {
 		e.Noisy = false
 		cpm.BIOSSyscalls[k] = e
@@ -697,26 +706,32 @@ func (cpm *CPM) LoadBinary(filename string) error {
 	cpm.Memory.Set(0x006C, 0x00)
 	cpm.Memory.FillRange(0x006C+1, 11, ' ')
 
-	// patch low-memory so that RST instructions will
-	// ultimately invoke our CP/M syscalls, via our "Out"
-	// function.
+	// patch memory such that calls to the BIOS and BDOS end
+	// getting trapped by our emulator - and we can fake the
+	// results they would expect.
 	cpm.fixupRAM()
 
 	return nil
 }
 
 // fixupRAM is misnamed - but it patches the RAM with Z80 code to
-// handle "badly behaved" programs that invoke CP/M functions by working out
-// the address of the BIOS/BDOS and jumping there directly.
+// ensure that our emulator is invoked when a call to a BDOS or
+// BIOS function is encountered.
 //
-// We put some code to call the handlers via faked OUT 0xFF,N - where N
-// is the syscall to run.
+// We handled this by patching in some code to the jump tables,
+// and/or start-area of the appropriate memory region - this code
+// will execute OUT (xx),yy instructions which our embedded Z80
+// emulator allows us to catch.
 //
-// The precise region we patch is unimportant, but we want to make sure
-// we don't overlap with our CCP, or "large programs" loaded at 0x0100.
+// Any OUT (0xFF),X instruction will be treated as an attempt to
+// invoke the BIOS function with ID X.
 //
-// We store the addresses we can use in the cpm-structure, and they can
-// be changed by the user via the BIOS_ADDRESS and BDOS_ADDRESS environmental
+// Any other "OUT (C), C" will be treated as an attempt to execute
+// The BDOS function C.
+//
+// Note that the start address of the BIOS and BDOS are fixed here,
+// so we can patch RAM at their entry-points, however they may be
+// changed by the user via the BIOS_ADDRESS and BDOS_ADDRESS environmental
 // variables.
 func (cpm *CPM) fixupRAM() {
 
@@ -798,7 +813,6 @@ func (cpm *CPM) LoadCCP() error {
 	// Get our helper to find the CCP to load
 	//
 	helper, err := ccp.Get(cpm.ccp)
-
 	if err != nil {
 		return fmt.Errorf("error retrieving CCP by name: %s", err)
 	}
@@ -820,9 +834,8 @@ func (cpm *CPM) LoadCCP() error {
 	// Ensure our starting point is what we expect
 	cpm.start = helper.Start
 
-	// patch low-memory so that RST instructions will
-	// ultimately invoke our CP/M syscalls, via our "Out"
-	// function.
+	// patch low-memory so that BIOS/BDOS calls can be trapped
+	// and invoke our CP/M handlers, via our "Out" function.
 	cpm.fixupRAM()
 
 	return nil
@@ -1025,16 +1038,22 @@ func (cpm *CPM) In(addr uint8) uint8 {
 
 // Out is called to handle the I/O writing to a Z80 port.
 //
-// This is called by our embedded Z80 emulator, and this will be
-// used by any system which used RST instructions to invoke the
-// CP/M syscalls, rather than using "CALL 0x0005".  Notable offenders
-// include Microsoft's BASIC.
+// This is invoked by our embedded Z80 emulator, and we use this
+// to trap execution at the BIOS and BDOS entry-points.
 //
-// The functions called here BIOS functions, NOT BDOS functions.
+// If the OUT instruction wrote to port 0xFF then the value being
+// written is the number of the BIOS function to be invoked.
 //
-// BDOS functions are implemented in our Execute method, via a lookup of
-// the C register.  The functions here are invoked with their number in the
-// A register and there are far far fewer of them.
+// Otherwise the port being written to is the number of the BDOS
+// function to be invoked.
+//
+// For sanity-checking purposes we check that the appropriate
+// register content matches the port-number, and log that.  This
+// probably indicates a program legitimately trying to interface
+// with something via port-based I/O and _not_ a syscall.
+//
+// (Registers not matching the port-number will be logged with
+// "Out() mismatch ..".)
 func (cpm *CPM) Out(addr uint8, val uint8) {
 
 	if cpm.CPU.HALT {
