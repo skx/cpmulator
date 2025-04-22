@@ -219,14 +219,14 @@ type CPM struct {
 	launchTime time.Time
 }
 
-// ccpoption defines a config-setting option for our constructor.
+// Option defines a config-setting option for our constructor.
 //
 // We use the decorator-pattern to allow flexible updates for the
 // configuration values we allow.
-type cpmoption func(*CPM) error
+type Option func(*CPM) error
 
 // WithCCP lets the default CCP to be changed in our constructor.
-func WithCCP(name string) cpmoption {
+func WithCCP(name string) Option {
 	return func(c *CPM) error {
 		c.ccp = name
 		return nil
@@ -234,7 +234,7 @@ func WithCCP(name string) cpmoption {
 }
 
 // WithPrinterPath allows the printer output to changed in our constructor.
-func WithPrinterPath(path string) cpmoption {
+func WithPrinterPath(path string) Option {
 	return func(c *CPM) error {
 		c.prnPath = path
 		return nil
@@ -242,7 +242,7 @@ func WithPrinterPath(path string) cpmoption {
 }
 
 // WithOutputDriver allows the default console output driver to be changed in our constructor.
-func WithOutputDriver(name string) cpmoption {
+func WithOutputDriver(name string) Option {
 
 	return func(c *CPM) error {
 
@@ -257,7 +257,7 @@ func WithOutputDriver(name string) cpmoption {
 }
 
 // WithInputDriver allows the default console input driver to be changed in our constructor.
-func WithInputDriver(name string) cpmoption {
+func WithInputDriver(name string) Option {
 
 	return func(c *CPM) error {
 
@@ -273,7 +273,7 @@ func WithInputDriver(name string) cpmoption {
 
 // WithHostExec allows executing commands on the host, by prefixing them with a
 // custom prefix in the Readline primitive.
-func WithHostExec(prefix string) cpmoption {
+func WithHostExec(prefix string) Option {
 	return func(c *CPM) error {
 		c.input.SetSystemCommandPrefix(prefix)
 		return nil
@@ -281,7 +281,7 @@ func WithHostExec(prefix string) cpmoption {
 }
 
 // WithContext allows a context to be passed to the evaluator.
-func WithContext(ctx context.Context) cpmoption {
+func WithContext(ctx context.Context) Option {
 	return func(c *CPM) error {
 		c.context = ctx
 		return nil
@@ -290,7 +290,7 @@ func WithContext(ctx context.Context) cpmoption {
 
 // New returns a new emulation object.  We support default options,
 // and new defaults may be specified via WithOutputDriver, etc, etc.
-func New(options ...cpmoption) (*CPM, error) {
+func New(options ...Option) (*CPM, error) {
 
 	//
 	// Create and populate our syscall table for the BDOS syscalls.
