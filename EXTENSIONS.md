@@ -127,3 +127,17 @@ actually see the output of running the `uptime` command.
 If DE is 0x0000 then the DMA area is filled with the name of the current prefix, NULL-terminated.
 
 Demonstrated in [static/hostcmd.z80](static/hostcmd.z80)
+
+
+
+## Function 0x09: Disable the BIOS extensions documented in this page.
+
+This function is used to disable the embedded filesystem we use to host our utility functions, and
+the BIOS extensions documented upon this page.  On entry DE is used to determine what to disable:
+
+* 0x0001 - Disable the embedded filesystem.
+* 0x0002 - Disable the custom BIOS functions.
+* 0x0003 - Disable both the embedded filesystem, and the custom BIOS functions.
+* 0x0004 - Disable both the embedded filesystem, and the custom BIOS functions, but do so quietly.
+
+Demonstrated in [static/disable.z80](static/disable.z80)

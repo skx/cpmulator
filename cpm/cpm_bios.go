@@ -7,6 +7,7 @@
 package cpm
 
 import (
+	"embed"
 	"fmt"
 	"os"
 	"strings"
@@ -155,8 +156,8 @@ func BiosSysCallReserved1(cpm *CPM) error {
 	// ...
 	//
 	hl := cpm.CPU.States.HL.U16()
-	c := cpm.CPU.States.BC.Lo
 	de := cpm.CPU.States.DE.U16()
+	c := cpm.CPU.States.BC.Lo
 
 	//
 	// Helper to read a null/space terminated string from
@@ -457,9 +458,56 @@ func BiosSysCallReserved1(cpm *CPM) error {
 			cpm.input.SetSystemCommandPrefix(str)
 		}
 
+	// Disable extentions / filesystem
+	case 0x0009:
+
+		switch de {
+
+		case 0x0001:
+			// Just filesystem
+			cpm.static = embed.FS{}
+			cpm.output.WriteString("The embedded binaries have been disabled.\r\n")
+
+		case 0x0002:
+			// Just BIOS
+			cpm.BIOSSyscalls[31] = Handler{
+				Desc:    "RESERVE1_DISABLED",
+				Handler: BiosSysCallReserved1NOP,
+				Fake:    true,
+			}
+			cpm.output.WriteString("The BIOS extensions have been disabled.\r\n")
+
+		case 0x0003:
+			// Both
+			cpm.static = embed.FS{}
+			cpm.BIOSSyscalls[31] = Handler{
+				Desc:    "RESERVE1_DISABLED",
+				Handler: BiosSysCallReserved1NOP,
+				Fake:    true,
+			}
+			cpm.output.WriteString("The embedded binaries, and BIOS extensions, have been disabled\r\n")
+
+		case 0x0004:
+			// Both, but quietly.
+			cpm.static = embed.FS{}
+			cpm.BIOSSyscalls[31] = Handler{
+				Desc:    "RESERVE1_DISABLED",
+				Handler: BiosSysCallReserved1NOP,
+				Fake:    true,
+			}
+		default:
+			cpm.output.WriteString(fmt.Sprintf("Unknown action for the disable BIOS function: %04X\r\n", de))
+		}
+
 	default:
-		fmt.Printf("Ignoring unknown custom BIOS function HL:%04Xr\n", hl)
+		cpm.output.WriteString(fmt.Sprintf("Ignoring unknown custom BIOS function HL:%04Xr\n", hl))
 	}
 
+	return nil
+}
+
+// BiosSysCallReserved1NOP is used when one of our extended BIOS syscalls was used to
+// disable the use of additional future syscalls.
+func BiosSysCallReserved1NOP(cpm *CPM) error {
 	return nil
 }

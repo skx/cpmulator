@@ -183,7 +183,8 @@ This allows you to customize the emulator, or perform other "one-time" setup via
 
 There are a small number of [extensions](EXTENSIONS.md) added to the BIOS functionality we provide, and these extensions allow changing some aspects of the emulator at runtime.
 
-The behaviour changing is achieved by having a small number of .COM files invoke the extension functions, and these binaries are embedded within our emulator to improve ease of use, via the [static/](static/) directory in our source-tree.  This means no matter what you'll always find some binaries installed on A:, despite not being present in reality - you can disable the appearance of these binaries via the `-embed=false` command-line flag.
+The behaviour changing is achieved by having a small number of .COM files invoke the extension functions, and these binaries are embedded within our emulator to improve ease of use, via the [static/](static/) directory in our source-tree.  This means no matter what you'll always find some binaries installed on A:, despite not being present in reality - you can disable the appearance of these binaries via the `-embed=false` command-line flag, and of course you can disable this behaviour at runtime using the runtime mechanism!  Run `A:!DISABLE` with no arguments to see usage-information.
+
 
 > **NOTE** To avoid naming collisions all our embedded binaries are named with a `!` prefix, except for `#.COM` which is designed to be used as a comment-binary.
 

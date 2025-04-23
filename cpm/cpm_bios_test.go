@@ -216,6 +216,15 @@ func TestCustom(t *testing.T) {
 		t.Fatalf("error calling reserved function")
 	}
 
+	// set to "ccpz", again
+	c.CPU.States.HL.SetU16(0x0003)
+	c.CPU.States.DE.SetU16(0xFE00)
+	c.Memory.SetRange(0xFE00, []byte{'c', 'c', 'p', 'z', ' '}...)
+	err = BiosSysCallReserved1(c)
+	if err != nil {
+		t.Fatalf("error calling reserved function")
+	}
+
 	// set to "steve" - this will fail
 	c.CPU.States.HL.SetU16(0x0003)
 	c.CPU.States.DE.SetU16(0xFE00)
@@ -381,6 +390,33 @@ func TestCustom(t *testing.T) {
 	}
 	if c.input.GetSystemCommandPrefix() != "!!" {
 		t.Fatalf("unexpected mismatch in systemcommandprefix")
+	}
+
+	// set to "/clear"
+	c.CPU.States.HL.SetU16(0x0008)
+	c.CPU.States.DE.SetU16(0xFE00)
+	c.Memory.SetRange(0xFE00, []byte{'/', 'c', 'l', 'e', 'a', 'r', 0x00}...)
+	err = BiosSysCallReserved1(c)
+	if err != nil {
+		t.Fatalf("error calling reserved function")
+	}
+
+	// confirm it worked
+	if c.input.GetSystemCommandPrefix() != "" {
+		t.Fatalf("unexpected mismatch in systemcommandprefix")
+	}
+
+	// 0x0009
+	// Disable things
+	c.CPU.States.HL.SetU16(0x0009)
+	n := 1
+	for n < 6 {
+		c.CPU.States.DE.SetU16(uint16(n))
+		err = BiosSysCallReserved1(c)
+		if err != nil {
+			t.Fatalf("error calling reserved function")
+		}
+		n++
 	}
 
 }
