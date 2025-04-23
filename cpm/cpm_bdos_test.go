@@ -306,7 +306,7 @@ func TestFind(t *testing.T) {
 
 	}
 
-	if found != 7 {
+	if found != 8 {
 		t.Fatalf("found wrong number of embedded files, got %d", found)
 	}
 

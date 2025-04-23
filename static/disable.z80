@@ -1,0 +1,149 @@
+;; disable.z80 - Disable the embedded filesystem we present, and custom BIOS.
+;;
+;; This uses the custom BIOS function we've added to the BIOS, which was never
+;; present in real CP/M.  Consider it a hook into the emulator.
+;;
+
+FCB1:                 EQU 0x5C
+BDOS_ENTRY_POINT:     EQU 5
+BDOS_OUTPUT_STRING:   EQU 9
+
+        ;;
+        ;; CP/M programs start at 0x100.
+        ;;
+        ORG 100H
+
+        ;; Test that we're running under cpmulator by calling the
+        ;; "is cpmulator" function.
+        ld HL, 0x0000
+        ld a, 31
+        out (0xff), a
+
+        ;; We expect SKX to appear in registers HLA
+        CP 'X'
+        jr nz, not_cpmulator
+
+        LD A, H
+        CP 'S'
+        jr nz, not_cpmulator
+
+        LD A, L
+        CP 'K'
+        jr nz, not_cpmulator
+
+        ;; The FCB will be populated with the number/first argument,
+        ;; if the first character of that region is a space-character
+        ;; then we've got nothing specified
+        ld a, (FCB1 + 1)
+        cp 0x20             ; 0x20 = 32 == SPACE
+        jp nz, got_value    ; Got a value.
+
+        ;; Nothing specified, show error and terminate
+        LD DE, USAGE_INFORMATION
+        LD C, BDOS_OUTPUT_STRING
+        call BDOS_ENTRY_POINT
+        jr exit
+
+
+got_value:
+        ld hl, FCB1 + 1
+        ld de, ALL
+        call StrCmp
+        jr z, disable_all
+
+        ld hl, FCB1 + 1
+        ld de, BIOS
+        call StrCmp
+        jr z, disable_bios
+
+        ld hl, FCB1 + 1
+        ld de, BOTH
+        call StrCmp
+        jr z, disable_both
+
+        ld hl, FCB1 + 1
+        ld de, FS
+        call StrCmp
+        jr z, disable_fs
+
+
+        ;; Unknown argument
+        LD DE, WRONG_ARGUMENT
+        LD C, BDOS_OUTPUT_STRING
+        call BDOS_ENTRY_POINT
+        ;; fall-through
+exit:
+        LD      C,0x00
+        CALL    BDOS_ENTRY_POINT
+
+not_cpmulator:
+        LD DE, WRONG_EMULATOR
+        LD C, BDOS_OUTPUT_STRING
+        call BDOS_ENTRY_POINT
+        jr exit
+
+disable_all:
+        ld hl, 0x0009
+        ld de, 0x0004
+        ld a, 31
+        out (0xff), a
+        jr exit
+disable_bios:
+        ld hl, 0x0009
+        ld de, 0x0002
+        ld a, 31
+        out (0xff), a
+        jr exit
+disable_both:
+        ld hl, 0x0009
+        ld de, 0x0003
+        ld a, 31
+        out (0xff), a
+        jr exit
+disable_fs:
+        ld hl, 0x0009
+        ld de, 0x0001
+        ld a, 31
+        out (0xff), a
+        jr exit
+
+
+
+;; strcmp: Compares string at DE with string at HL.
+;; result in the Z-flag
+StrCmp:
+	ld a, (hl)
+	cp $0
+	ret z
+	ld b, a
+	ld a, (de)
+	cp $0
+	ret z
+	cp b
+	ret nz
+	inc hl
+	inc de
+	jr StrCmp
+
+;;
+;; Text output strings.
+;;
+WRONG_ARGUMENT:
+        db "Unknown argument, ignoring it.", 0x0a, 0x0d
+        ;; FALL-THROUGH
+USAGE_INFORMATION:
+        db "Usage: DISABLE [BIOS|FS|BOTH|ALL]", 0x0a, 0x0d, "$"
+
+;; arguments are upper-cased.
+ALL:
+        db "ALL", 0x00
+BIOS:
+        db "BIOS", 0x00
+BOTH:
+        db "BOTH", 0x00
+FS:
+        db "FS", 0x00
+
+WRONG_EMULATOR:
+        db "This binary is not running under cpmulator, aborting.", 0x0a, 0x0d, "$"
+END
