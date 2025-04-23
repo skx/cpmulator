@@ -1,10 +1,10 @@
-// Package cpm is the main package for our emulator, it contains
+// Package cpm is the main package for our emulator, it hosts
 // the Z80 emulator we're using, along with the memory the running
 // binaries inhabit, and the appropriate glue to wire things together.
 //
 // The package mostly contains the implementation of the syscalls that
-// CP/M programs would expect - along with a little machinery to wire up
-// the Z80 emulator we're using and deal with FCB structures.
+// CP/M programs would expect, with some indirection used for the various
+// input and output drivers.
 package cpm
 
 import (
@@ -61,26 +61,25 @@ var (
 	DefaultDMAAddress uint16 = 0x0080
 )
 
-// CPMHandlerType contains the signature of a function we use to
+// HandlerType contains the signature of a function we use to
 // emulate a CP/M BIOS or BDOS function.
 //
 // It is not expected that outside packages will want to add custom BIOS
 // functions, or syscalls, but this is public so that it could be done if
 // necessary.
-type CPMHandlerType func(cpm *CPM) error
+type HandlerType func(cpm *CPM) error
 
-// CPMHandler contains details of a specific call we implement.
+// Handler contains details of a specific call we implement.
 //
 // While we mostly need a "number to handler", having a name as well
 // is useful for the logs we produce, and we mark those functions that
 // don't do 100% of what they should as "Fake".
-type CPMHandler struct {
+type Handler struct {
 	// Desc contain the human-readable name of the given CP/M syscall.
 	Desc string
 
-	// Handler contains the function which should be invoked for
-	// this syscall.
-	Handler CPMHandlerType
+	// Handler points to the function which should be invoked for this syscall.
+	Handler HandlerType
 
 	// Fake stores a quick comment on the completeness of the syscall
 	// implementation.  If Fake is set to true then the syscall is
@@ -167,11 +166,11 @@ type CPM struct {
 
 	// BDOSSyscalls contains details of the BDOS syscalls we
 	// know how to emulate, indexed by their ID.
-	BDOSSyscalls map[uint8]CPMHandler
+	BDOSSyscalls map[uint8]Handler
 
 	// BIOSSyscalls contains details of the BIOS syscalls we
 	// know how to emulate, indexed by their ID.
-	BIOSSyscalls map[uint8]CPMHandler
+	BIOSSyscalls map[uint8]Handler
 
 	// Memory contains the memory the system runs with.
 	Memory *memory.Memory
@@ -196,37 +195,35 @@ type CPM struct {
 	// Valid values are 0-15.
 	userNumber uint8
 
-	// findFirstResults is a sneaky cache of files that match a glob.
+	// findFirstResults is used to hold a cache of files that match a glob.
 	//
 	// For finding files CP/M uses "find first" to find the first result
 	// then allows the programmer to call "find next", to continue the searching.
 	//
 	// This means we need to track state, the way we do this is to store the
-	// results here, and bump the findOffset each time find-next is called.
-	findFirstResults []fcb.FCBFind
+	// results here, removing the head from the list each time "find next"
+	// is called.
+	findFirstResults []fcb.Find
 
-	// findOffset contains the index into findFirstResults which is
-	// to be read next.
-	findOffset int
-
-	// simpleDebug is used to just output the name of syscalls made.
+	// simpleDebug is used to output the name of syscalls which are being
+	// invoked, directly to the console.
 	//
 	// For real debugging we expect the caller to use our Logger, via
-	// the logfile
+	// the logfile.
 	simpleDebug bool
 
 	// launchTime is the time at which the application was launched
 	launchTime time.Time
 }
 
-// ccpoption defines a config-setting option for our constructor.
+// Option defines a config-setting option for our constructor.
 //
 // We use the decorator-pattern to allow flexible updates for the
 // configuration values we allow.
-type cpmoption func(*CPM) error
+type Option func(*CPM) error
 
 // WithCCP lets the default CCP to be changed in our constructor.
-func WithCCP(name string) cpmoption {
+func WithCCP(name string) Option {
 	return func(c *CPM) error {
 		c.ccp = name
 		return nil
@@ -234,7 +231,7 @@ func WithCCP(name string) cpmoption {
 }
 
 // WithPrinterPath allows the printer output to changed in our constructor.
-func WithPrinterPath(path string) cpmoption {
+func WithPrinterPath(path string) Option {
 	return func(c *CPM) error {
 		c.prnPath = path
 		return nil
@@ -242,7 +239,7 @@ func WithPrinterPath(path string) cpmoption {
 }
 
 // WithOutputDriver allows the default console output driver to be changed in our constructor.
-func WithOutputDriver(name string) cpmoption {
+func WithOutputDriver(name string) Option {
 
 	return func(c *CPM) error {
 
@@ -257,7 +254,7 @@ func WithOutputDriver(name string) cpmoption {
 }
 
 // WithInputDriver allows the default console input driver to be changed in our constructor.
-func WithInputDriver(name string) cpmoption {
+func WithInputDriver(name string) Option {
 
 	return func(c *CPM) error {
 
@@ -273,7 +270,7 @@ func WithInputDriver(name string) cpmoption {
 
 // WithHostExec allows executing commands on the host, by prefixing them with a
 // custom prefix in the Readline primitive.
-func WithHostExec(prefix string) cpmoption {
+func WithHostExec(prefix string) Option {
 	return func(c *CPM) error {
 		c.input.SetSystemCommandPrefix(prefix)
 		return nil
@@ -281,7 +278,7 @@ func WithHostExec(prefix string) cpmoption {
 }
 
 // WithContext allows a context to be passed to the evaluator.
-func WithContext(ctx context.Context) cpmoption {
+func WithContext(ctx context.Context) Option {
 	return func(c *CPM) error {
 		c.context = ctx
 		return nil
@@ -290,202 +287,202 @@ func WithContext(ctx context.Context) cpmoption {
 
 // New returns a new emulation object.  We support default options,
 // and new defaults may be specified via WithOutputDriver, etc, etc.
-func New(options ...cpmoption) (*CPM, error) {
+func New(options ...Option) (*CPM, error) {
 
 	//
 	// Create and populate our syscall table for the BDOS syscalls.
 	//
-	bdos := make(map[uint8]CPMHandler)
-	bdos[0] = CPMHandler{
+	bdos := make(map[uint8]Handler)
+	bdos[0] = Handler{
 		Desc:    "P_TERMCPM",
 		Handler: BdosSysCallExit,
 	}
-	bdos[1] = CPMHandler{
+	bdos[1] = Handler{
 		Desc:    "C_READ",
 		Handler: BdosSysCallReadChar,
 		Noisy:   true,
 	}
-	bdos[2] = CPMHandler{
+	bdos[2] = Handler{
 		Desc:    "C_WRITE",
 		Handler: BdosSysCallWriteChar,
 		Noisy:   true,
 	}
-	bdos[3] = CPMHandler{
+	bdos[3] = Handler{
 		Desc:    "A_READ",
 		Handler: BdosSysCallAuxRead,
 		Noisy:   true,
 	}
-	bdos[4] = CPMHandler{
+	bdos[4] = Handler{
 		Desc:    "A_WRITE",
 		Handler: BdosSysCallAuxWrite,
 		Noisy:   true,
 	}
-	bdos[5] = CPMHandler{
+	bdos[5] = Handler{
 		Desc:    "L_WRITE",
 		Handler: BdosSysCallPrinterWrite,
 		Fake:    true,
 		Noisy:   true,
 	}
-	bdos[6] = CPMHandler{
+	bdos[6] = Handler{
 		Desc:    "C_RAWIO",
 		Handler: BdosSysCallRawIO,
 		Noisy:   true,
 	}
-	bdos[7] = CPMHandler{
+	bdos[7] = Handler{
 		Desc:    "GET_IOBYTE",
 		Handler: BdosSysCallGetIOByte,
 	}
-	bdos[8] = CPMHandler{
+	bdos[8] = Handler{
 		Desc:    "SET_IOBYTE",
 		Handler: BdosSysCallSetIOByte,
 	}
-	bdos[9] = CPMHandler{
+	bdos[9] = Handler{
 		Desc:    "C_WRITESTRING",
 		Handler: BdosSysCallWriteString,
 	}
-	bdos[10] = CPMHandler{
+	bdos[10] = Handler{
 		Desc:    "C_READSTRING",
 		Handler: BdosSysCallReadString,
 	}
-	bdos[11] = CPMHandler{
+	bdos[11] = Handler{
 		Desc:    "C_STAT",
 		Handler: BdosSysCallConsoleStatus,
 		Noisy:   true,
 	}
-	bdos[12] = CPMHandler{
+	bdos[12] = Handler{
 		Desc:    "S_BDOSVER",
 		Handler: BdosSysCallBDOSVersion,
 	}
-	bdos[13] = CPMHandler{
+	bdos[13] = Handler{
 		Desc:    "DRV_ALLRESET",
 		Handler: BdosSysCallDriveAllReset,
 	}
-	bdos[14] = CPMHandler{
+	bdos[14] = Handler{
 		Desc:    "DRV_SET",
 		Handler: BdosSysCallDriveSet,
 	}
-	bdos[15] = CPMHandler{
+	bdos[15] = Handler{
 		Desc:    "F_OPEN",
 		Handler: BdosSysCallFileOpen,
 	}
-	bdos[16] = CPMHandler{
+	bdos[16] = Handler{
 		Desc:    "F_CLOSE",
 		Handler: BdosSysCallFileClose,
 	}
-	bdos[17] = CPMHandler{
+	bdos[17] = Handler{
 		Desc:    "F_SFIRST",
 		Handler: BdosSysCallFindFirst,
 	}
-	bdos[18] = CPMHandler{
+	bdos[18] = Handler{
 		Desc:    "F_SNEXT",
 		Handler: BdosSysCallFindNext,
 	}
-	bdos[19] = CPMHandler{
+	bdos[19] = Handler{
 		Desc:    "F_DELETE",
 		Handler: BdosSysCallDeleteFile,
 	}
-	bdos[20] = CPMHandler{
+	bdos[20] = Handler{
 		Desc:    "F_READ",
 		Handler: BdosSysCallRead,
 	}
-	bdos[21] = CPMHandler{
+	bdos[21] = Handler{
 		Desc:    "F_WRITE",
 		Handler: BdosSysCallWrite,
 	}
-	bdos[22] = CPMHandler{
+	bdos[22] = Handler{
 		Desc:    "F_MAKE",
 		Handler: BdosSysCallMakeFile,
 	}
-	bdos[23] = CPMHandler{
+	bdos[23] = Handler{
 		Desc:    "F_RENAME",
 		Handler: BdosSysCallRenameFile,
 	}
-	bdos[24] = CPMHandler{
+	bdos[24] = Handler{
 		Desc:    "DRV_LOGINVEC",
 		Handler: BdosSysCallLoginVec,
 		Fake:    true,
 	}
-	bdos[25] = CPMHandler{
+	bdos[25] = Handler{
 		Desc:    "DRV_GET",
 		Handler: BdosSysCallDriveGet,
 	}
-	bdos[26] = CPMHandler{
+	bdos[26] = Handler{
 		Desc:    "F_DMAOFF",
 		Handler: BdosSysCallSetDMA,
 	}
-	bdos[27] = CPMHandler{
+	bdos[27] = Handler{
 		Desc:    "DRV_ALLOCVEC",
 		Handler: BdosSysCallDriveAlloc,
 		Fake:    true,
 	}
-	bdos[28] = CPMHandler{
+	bdos[28] = Handler{
 		Desc:    "DRV_SETRO",
 		Handler: BdosSysCallDriveSetRO,
 		Fake:    true,
 	}
-	bdos[29] = CPMHandler{
+	bdos[29] = Handler{
 		Desc:    "DRV_ROVEC",
 		Handler: BdosSysCallDriveROVec,
 		Fake:    true,
 	}
-	bdos[30] = CPMHandler{
+	bdos[30] = Handler{
 		Desc:    "F_ATTRIB",
 		Handler: BdosSysCallSetFileAttributes,
 		Fake:    true,
 	}
-	bdos[31] = CPMHandler{
+	bdos[31] = Handler{
 		Desc:    "DRV_DPB",
 		Handler: BdosSysCallGetDriveDPB,
 		Fake:    true,
 	}
-	bdos[32] = CPMHandler{
+	bdos[32] = Handler{
 		Desc:    "F_USERNUM",
 		Handler: BdosSysCallUserNumber,
 	}
-	bdos[33] = CPMHandler{
+	bdos[33] = Handler{
 		Desc:    "F_READRAND",
 		Handler: BdosSysCallReadRand,
 	}
-	bdos[34] = CPMHandler{
+	bdos[34] = Handler{
 		Desc:    "F_WRITERAND",
 		Handler: BdosSysCallWriteRand,
 	}
-	bdos[35] = CPMHandler{
+	bdos[35] = Handler{
 		Desc:    "F_SIZE",
 		Handler: BdosSysCallFileSize,
 	}
-	bdos[36] = CPMHandler{
+	bdos[36] = Handler{
 		Desc:    "F_RANDREC",
 		Handler: BdosSysCallRandRecord,
 	}
-	bdos[37] = CPMHandler{
+	bdos[37] = Handler{
 		Desc:    "DRV_RESET",
 		Handler: BdosSysCallDriveReset,
 		Fake:    true,
 	}
-	bdos[40] = CPMHandler{
+	bdos[40] = Handler{
 		Desc:    "F_WRITEZF",
 		Handler: BdosSysCallWriteRand,
 
 		// We don't zero-pad
 		Fake: true,
 	}
-	bdos[45] = CPMHandler{
+	bdos[45] = Handler{
 		Desc:    "F_ERRMODE",
 		Handler: BdosSysCallErrorMode,
 		Fake:    true,
 	}
-	bdos[105] = CPMHandler{
+	bdos[105] = Handler{
 		Desc:    "T_GET",
 		Handler: BdosSysCallTime,
 		Fake:    true,
 	}
-	bdos[113] = CPMHandler{ // used by Turbo Pascal
+	bdos[113] = Handler{ // used by Turbo Pascal
 		Desc:    "DirectScreenFunctions",
 		Handler: BdosSysCallDirectScreenFunctions,
 		Fake:    true,
 	}
-	bdos[248] = CPMHandler{ // used by BBC BASIC v5
+	bdos[248] = Handler{ // used by BBC BASIC v5
 		Desc:    "F_UPTIME",
 		Handler: BdosSysCallUptime,
 		Fake:    true,
@@ -494,57 +491,57 @@ func New(options ...cpmoption) (*CPM, error) {
 	//
 	// Create and populate our syscall table for the BIOS syscalls.
 	//
-	bios := make(map[uint8]CPMHandler)
-	bios[0] = CPMHandler{
+	bios := make(map[uint8]Handler)
+	bios[0] = Handler{
 		Desc:    "BOOT",
 		Handler: BiosSysCallColdBoot,
 	}
-	bios[1] = CPMHandler{
+	bios[1] = Handler{
 		Desc:    "WBOOT",
 		Handler: BiosSysCallWarmBoot,
 	}
-	bios[2] = CPMHandler{
+	bios[2] = Handler{
 		Desc:    "CONST",
 		Handler: BiosSysCallConsoleStatus,
 		Noisy:   true,
 	}
-	bios[3] = CPMHandler{
+	bios[3] = Handler{
 		Desc:    "CONIN",
 		Handler: BiosSysCallConsoleInput,
 		Noisy:   true,
 	}
-	bios[4] = CPMHandler{
+	bios[4] = Handler{
 		Desc:    "CONOUT",
 		Handler: BiosSysCallConsoleOutput,
 		Noisy:   true,
 	}
-	bios[5] = CPMHandler{
+	bios[5] = Handler{
 		Desc:    "LIST",
 		Handler: BiosSysCallPrintChar,
 		Fake:    true,
 	}
-	bios[15] = CPMHandler{
+	bios[15] = Handler{
 		Desc:    "LISTST",
 		Handler: BiosSysCallPrinterStatus,
 		Fake:    true,
 	}
-	bios[17] = CPMHandler{
+	bios[17] = Handler{
 		Desc:    "CONOST",
 		Handler: BiosSysCallScreenOutputStatus,
 		Fake:    true,
 		Noisy:   true,
 	}
-	bios[18] = CPMHandler{
+	bios[18] = Handler{
 		Desc:    "AUXIST",
 		Handler: BiosSysCallAuxInputStatus,
 		Fake:    true,
 	}
-	bios[19] = CPMHandler{
+	bios[19] = Handler{
 		Desc:    "AUXOST",
 		Handler: BiosSysCallAuxOutputStatus,
 		Fake:    true,
 	}
-	bios[31] = CPMHandler{
+	bios[31] = Handler{
 		Desc:    "RESERVE1",
 		Handler: BiosSysCallReserved1,
 		Fake:    true,
@@ -655,10 +652,19 @@ func (cpm *CPM) GetBDOSAddress() uint16 {
 // would otherwise be disabled
 func (cpm *CPM) LogNoisy() {
 
+	// Walk over known BDOS syscalls, and set
+	// any "Noisy" attribute which might be present
+	// to be false.
+	//
+	// This will ensure that the logger will *not*
+	// consider them noisy and will thus log their
+	// invocations.
 	for k, e := range cpm.BDOSSyscalls {
 		e.Noisy = false
 		cpm.BDOSSyscalls[k] = e
 	}
+
+	// Same again, but BIOS this time.
 	for k, e := range cpm.BIOSSyscalls {
 		e.Noisy = false
 		cpm.BIOSSyscalls[k] = e
@@ -700,35 +706,38 @@ func (cpm *CPM) LoadBinary(filename string) error {
 	cpm.Memory.Set(0x006C, 0x00)
 	cpm.Memory.FillRange(0x006C+1, 11, ' ')
 
-	// patch low-memory so that RST instructions will
-	// ultimately invoke our CP/M syscalls, via our "Out"
-	// function.
+	// patch memory such that calls to the BIOS and BDOS end
+	// getting trapped by our emulator - and we can fake the
+	// results they would expect.
 	cpm.fixupRAM()
 
 	return nil
 }
 
 // fixupRAM is misnamed - but it patches the RAM with Z80 code to
-// handle "badly behaved" programs that invoke CP/M functions by working out
-// the address of the BIOS/BDOS and jumping there directly.
+// ensure that our emulator is invoked when a call to a BDOS or
+// BIOS function is encountered.
 //
-// We put some code to call the handlers via faked OUT 0xFF,N - where N
-// is the syscall to run.
+// We handled this by patching in some code to the jump tables,
+// and/or start-area of the appropriate memory region - this code
+// will execute OUT (xx),yy instructions which our embedded Z80
+// emulator allows us to catch.
 //
-// The precise region we patch is unimportant, but we want to make sure
-// we don't overlap with our CCP, or "large programs" loaded at 0x0100.
+// Any OUT (0xFF),X instruction will be treated as an attempt to
+// invoke the BIOS function with ID X.
 //
-// We store the addresses we can use in the cpm-structure, and they can
-// be changed by the user via the BIOS_ADDRESS and BDOS_ADDRESS environmental
+// Any other "OUT (C), C" will be treated as an attempt to execute
+// The BDOS function C.
+//
+// Note that the start address of the BIOS and BDOS are fixed here,
+// so we can patch RAM at their entry-points, however they may be
+// changed by the user via the BIOS_ADDRESS and BDOS_ADDRESS environmental
 // variables.
 func (cpm *CPM) fixupRAM() {
-	i := 0
 
 	// The two addresses which are important
 	BIOS := int(cpm.biosAddress)
 	BDOS := int(cpm.bdosAddress)
-
-	NENTRY := 30
 
 	SETMEM := func(a int, v int) {
 		cpm.Memory.Set(uint16(a), uint8(v))
@@ -737,8 +746,6 @@ func (cpm *CPM) fixupRAM() {
 	SETMEM(0x0000, 0xC3)                /* JMP */
 	SETMEM(0x0001, ((BIOS + 3) & 0xFF)) /* Fake address of entry-point */
 	SETMEM(0x0002, ((BIOS + 3) >> 8))
-
-	SETMEM(BIOS, 0xC9) // RET
 
 	// Now we setup the initial values of the I/O byte
 	SETMEM(0x0003, 0x00)
@@ -760,7 +767,9 @@ func (cpm *CPM) fixupRAM() {
 	//
 	//     func (cpm *CPM) Out(addr uint8, val uint8)
 	//
-	for i < 30 {
+	i := 0
+	NENTRY := 30
+	for i < NENTRY {
 		/* JP <bios-entry> */
 		SETMEM(BIOS+3*i, 0xC3)
 		SETMEM(BIOS+3*i+1, (BIOS+NENTRY*3+i*5)&0xFF)
@@ -804,7 +813,6 @@ func (cpm *CPM) LoadCCP() error {
 	// Get our helper to find the CCP to load
 	//
 	helper, err := ccp.Get(cpm.ccp)
-
 	if err != nil {
 		return fmt.Errorf("error retrieving CCP by name: %s", err)
 	}
@@ -826,9 +834,8 @@ func (cpm *CPM) LoadCCP() error {
 	// Ensure our starting point is what we expect
 	cpm.start = helper.Start
 
-	// patch low-memory so that RST instructions will
-	// ultimately invoke our CP/M syscalls, via our "Out"
-	// function.
+	// patch low-memory so that BIOS/BDOS calls can be trapped
+	// and invoke our CP/M handlers, via our "Out" function.
 	cpm.fixupRAM()
 
 	return nil
@@ -1031,16 +1038,22 @@ func (cpm *CPM) In(addr uint8) uint8 {
 
 // Out is called to handle the I/O writing to a Z80 port.
 //
-// This is called by our embedded Z80 emulator, and this will be
-// used by any system which used RST instructions to invoke the
-// CP/M syscalls, rather than using "CALL 0x0005".  Notable offenders
-// include Microsoft's BASIC.
+// This is invoked by our embedded Z80 emulator, and we use this
+// to trap execution at the BIOS and BDOS entry-points.
 //
-// The functions called here BIOS functions, NOT BDOS functions.
+// If the OUT instruction wrote to port 0xFF then the value being
+// written is the number of the BIOS function to be invoked.
 //
-// BDOS functions are implemented in our Execute method, via a lookup of
-// the C register.  The functions here are invoked with their number in the
-// A register and there are far far fewer of them.
+// Otherwise the port being written to is the number of the BDOS
+// function to be invoked.
+//
+// For sanity-checking purposes we check that the appropriate
+// register content matches the port-number, and log that.  This
+// probably indicates a program legitimately trying to interface
+// with something via port-based I/O and _not_ a syscall.
+//
+// (Registers not matching the port-number will be logged with
+// "Out() mismatch ..".)
 func (cpm *CPM) Out(addr uint8, val uint8) {
 
 	if cpm.CPU.HALT {
@@ -1069,7 +1082,7 @@ func (cpm *CPM) Out(addr uint8, val uint8) {
 	// We're going to lookup a handler, based on the
 	// register that makes sense.
 	//
-	var handler CPMHandler
+	var handler Handler
 
 	// Did we find it?  And if so what type was it?
 	var ok bool
