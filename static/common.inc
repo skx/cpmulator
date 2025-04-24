@@ -26,18 +26,18 @@ exit_if_not_cpmulator:
 
         ld a, l
         cp 'K'
-        jr nz, not_cpmulator
-        ret
+        ret z
 
-WRONG_EMULATOR:
-        db "This binary is not running under cpmulator, aborting.", 0x0a, 0x0d, "$"
-
+        ;; Fall-through
 not_cpmulator:
         ld de, WRONG_EMULATOR
         ld  c, BDOS_OUTPUT_STRING
         call   BDOS_ENTRY_POINT
         ;; exit
         rst 0x00
+
+WRONG_EMULATOR:
+        db "This binary is not running under cpmulator, aborting.", 0x0a, 0x0d, "$"
 
 
 
