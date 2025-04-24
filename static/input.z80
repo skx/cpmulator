@@ -13,23 +13,7 @@ BDOS_OUTPUT_STRING:   EQU 9
         ;;
         ORG 100H
 
-        ;; Test that we're running under cpmulator by calling the
-        ;; "is cpmulator" function.
-        ld HL, 0x0000
-        ld a, 31
-        out (0xff), a
-
-        ;; We expect SKX to appear in registers HLA
-        CP 'X'
-        jr nz, not_cpmulator
-
-        LD A, H
-        CP 'S'
-        jr nz, not_cpmulator
-
-        LD A, L
-        CP 'K'
-        jr nz, not_cpmulator
+        call exit_if_not_cpmulator
 
         ;; The FCB will be populated with the first argument,
         ;; if the first character of that region is a space-character
@@ -79,16 +63,6 @@ finished_loop:
         CALL BDOS_ENTRY_POINT
         jr exit
 
-;;
-;; Error Routines
-;;
-
-not_cpmulator:
-        LD DE, WRONG_EMULATOR
-        LD C, BDOS_OUTPUT_STRING
-        call BDOS_ENTRY_POINT
-        jr exit
-
 
 ;;
 ;; Text output strings.
@@ -97,6 +71,6 @@ CONSOLE_PREFIX:
         db "The input driver is set to $"
 CONSOLE_SUFFIX:
         db ".", 0x0a, 0x0d, "$"
-WRONG_EMULATOR:
-        db "This binary is not running under cpmulator, aborting.", 0x0a, 0x0d, "$"
+
+include "common.inc"
 END
