@@ -31,8 +31,7 @@ BDOS_OUTPUT_STRING:   EQU 9
         out (0xff), a
 
 exit:
-        LD      C,0x00
-        CALL    BDOS_ENTRY_POINT
+        RST 0x00
 
 ;; Show the current console driver
 show_driver:

@@ -57,8 +57,7 @@ got_value:
         call BDOS_ENTRY_POINT
         ;; fall-through
 exit:
-        LD      C,0x00
-        CALL    BDOS_ENTRY_POINT
+        RST 0x00
 
 disable_all:
         ld hl, 0x0009

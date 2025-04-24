@@ -58,9 +58,7 @@ show_value:
         ld C, 0x09
         call 0x0005
 exit:
-        LD      C,0x00
-        CALL    BDOS_ENTRY_POINT
-
+        RST 0x00
 
 
 ;;

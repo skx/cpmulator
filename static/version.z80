@@ -24,9 +24,7 @@ BDOS_OUTPUT_STRING:   EQU 9
         call print_string
 
 exit:
-        ld    c,0x00
-        call  BDOS_ENTRY_POINT
-
+        RST 0x00
 
 include "common.inc"
 END
