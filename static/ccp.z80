@@ -20,35 +20,35 @@ BDOS_ENTRY_POINT:     EQU 5
         ;; if the first character of that region is a space-character
         ;; then we've got nothing specified
         ld a, (FCB1 + 1)
-        cp 0x20                  ; 0x20 = 32 == SPACE
+        cp 0x20                 ; 0x20 = 32 == SPACE
         jp z, show_ccp          ; Got a space, show the CCP
 
-        ld HL, 03
+        ld hl, 03
         ld de, FCB1 + 1
         ld a, 31
         out (0xff), a
 
 exit:
-        RST 0x00
+        rst 0x00
 
 
 ;; Show the current CCP
 show_ccp:
-        LD DE, CCP_PREFIX            ; show a prefix
-        LD C, BDOS_OUTPUT_STRING
-        CALL BDOS_ENTRY_POINT
+        ld de, CCP_PREFIX            ; show a prefix
+        ld c,  BDOS_OUTPUT_STRING
+        call   BDOS_ENTRY_POINT
 
         ld HL, 03                    ; get the value of the CCP into the DMA area
         ld de, 0x0000
         ld a, 31
         out (0xff), a
 
-        LD HL, 0x0080                ; print the contents as a string
+        ld hl, 0x0080                ; print the contents as a string
         call print_string
 
-        LD DE, CCP_SUFFIX            ; show a suffix
-        LD C, BDOS_OUTPUT_STRING
-        CALL BDOS_ENTRY_POINT
+        ld de, CCP_SUFFIX            ; show a suffix
+        ld c,  BDOS_OUTPUT_STRING
+        call   BDOS_ENTRY_POINT
         jr exit
 
 

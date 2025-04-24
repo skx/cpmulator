@@ -112,7 +112,13 @@ WRONG_ARGUMENT:
         db "Unknown argument, ignoring it.", 0x0a, 0x0d
         ;; FALL-THROUGH
 USAGE_INFORMATION:
-        db "Usage: DISABLE [BIOS|FS|BOTH|ALL]", 0x0a, 0x0d, "$"
+        db "Usage: DISABLE [ALL|BIOS|BOTH|FS", 0x0a, 0x0d
+        db " BIOS - Disable our BIOS extensions.", 0x0a, 0x0d
+        db " FS   - Disable the embedded filesystem which hosts our extension binaries.", 0x0a, 0x0d
+        db " ALL  - Disable both things, quietly.", 0x0a, 0x0d
+        db " BOTH - Disable both things.", 0x0a, 0x0d
+        db "$"
+
 
 ;; arguments are upper-cased.
 ALL:

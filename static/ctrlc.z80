@@ -22,21 +22,18 @@ BDOS_OUTPUT_STRING:   EQU 9
         cp 0x20             ; 0x20 = 32 == SPACE
         jp z, show_value    ; Got a space, just show the value.
 
-        ; convert from number to int
+        ;; convert from number to int
         sub '0'
         ld c, a
 
-        ; set the value
+        ;; set the value
         ld a, 31
         ld HL, 01
         out (0xff), a
 
-        ;; fall-through to showing the value.
+        ;; fall-through to showing the (updated) value.
 
 show_value:
-        ;;
-        ;; No argument, so show the value the error and exit
-        ;;
         ld de, SHOW_PREFIX
         ld c,  BDOS_OUTPUT_STRING
         call   BDOS_ENTRY_POINT
@@ -47,17 +44,18 @@ show_value:
         ld c, 0xff
         out (0xff), a
 
-        ; display it
+        ;; display it
         add a, '0'
         ld e, a
         ld c, 0x02
         call 0x0005
 
-        ; finish with a newline.
+        ;; finish with a newline.
         ld DE, NEWLINE
         ld C, 0x09
         call 0x0005
-exit:
+
+        ;; Exit
         RST 0x00
 
 

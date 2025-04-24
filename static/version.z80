@@ -4,7 +4,6 @@
 ;; present in real CP/M.  Consider it a hook into the emulator.
 ;;
 
-FCB1:                 EQU 0x5C
 BDOS_ENTRY_POINT:     EQU 5
 BDOS_OUTPUT_STRING:   EQU 9
 
@@ -23,7 +22,7 @@ BDOS_OUTPUT_STRING:   EQU 9
         ld hl, 0x0080
         call print_string
 
-exit:
+        ;; Exit
         RST 0x00
 
 include "common.inc"

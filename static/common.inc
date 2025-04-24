@@ -47,6 +47,7 @@ WRONG_EMULATOR:
 print_string:
         ld a, (hl)            ; Get the character
         cp 0                  ; Is it null?
+        or a
         ret z                 ; If so return
         inc hl
           push hl             ; Save our index
