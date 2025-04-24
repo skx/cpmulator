@@ -36,31 +36,21 @@ exit:
 
 ;; Show the current console driver
 show_driver:
-        LD DE, CONSOLE_PREFIX
-        LD C, BDOS_OUTPUT_STRING
-        CALL BDOS_ENTRY_POINT
+        ld de, CONSOLE_PREFIX       ; show a prefix
+        ld c,  BDOS_OUTPUT_STRING
+        call   BDOS_ENTRY_POINT
 
-        ld HL, 02
+        ld HL, 02                   ; Get the driver name into the DMA area
         ld de, 0x0000
         ld a, 31
         out (0xff), a
 
-        LD HL, 0x0080
-loopy:
-        LD A, (HL)
-        cp 0
-        JR Z, finished_loop
-        push HL
-             ld e,a
-             ld c, 0x02
-             call 0x0005
-        pop HL
-        inc hl
-        jr loopy
-finished_loop:
-        LD DE, CONSOLE_SUFFIX
-        LD C, BDOS_OUTPUT_STRING
-        CALL BDOS_ENTRY_POINT
+        ld hl, 0x0080               ; print the contents of the DMA area, as a string
+        call print_string
+
+        ld de, CONSOLE_SUFFIX       ; Show a suffix
+        ld c,  BDOS_OUTPUT_STRING
+        call   BDOS_ENTRY_POINT
         jr exit
 
 ;;

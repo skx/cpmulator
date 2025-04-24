@@ -19,24 +19,13 @@ BDOS_OUTPUT_STRING:   EQU 9
         call exit_if_not_cpmulator
 
         ;; Okay then the version will be stored in the DMA area.
-        ;; unknown value
-        LD HL, 0x0080
-print_loop:
-        LD A, (HL)
-        CP 0
-        JR Z, exit
-        LD E, A
-        INC HL
-        PUSH    HL
-        LD      C, 0x02
-        CALL    0x0005
-        POP     HL
-        JR print_loop
+        ;; print it.
+        ld hl, 0x0080
+        call print_string
 
-        ;; Exit
 exit:
-        LD      C,0x00
-        CALL    BDOS_ENTRY_POINT
+        ld    c,0x00
+        call  BDOS_ENTRY_POINT
 
 
 include "common.inc"

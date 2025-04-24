@@ -35,29 +35,19 @@ exit:
 
 ;; Show the current CCP
 show_ccp:
-        LD DE, CCP_PREFIX
+        LD DE, CCP_PREFIX            ; show a prefix
         LD C, BDOS_OUTPUT_STRING
         CALL BDOS_ENTRY_POINT
 
-        ld HL, 03
+        ld HL, 03                    ; get the value of the CCP into the DMA area
         ld de, 0x0000
         ld a, 31
         out (0xff), a
 
-        LD HL, 0x0080
-loopy:
-        LD A, (HL)
-        cp 0
-        JR Z, finished_loop
-        push HL
-             ld e,a
-             ld c, 0x02
-             call 0x0005
-        pop HL
-        inc hl
-        jr loopy
-finished_loop:
-        LD DE, CCP_SUFFIX
+        LD HL, 0x0080                ; print the contents as a string
+        call print_string
+
+        LD DE, CCP_SUFFIX            ; show a suffix
         LD C, BDOS_OUTPUT_STRING
         CALL BDOS_ENTRY_POINT
         jr exit
