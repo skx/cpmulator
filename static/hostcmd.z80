@@ -13,23 +13,7 @@ BDOS_OUTPUT_STRING:   EQU 9
         ;;
         ORG 100H
 
-        ;; Test that we're running under cpmulator by calling the
-        ;; "is cpmulator" function.
-        ld HL, 0x0000
-        ld a, 31
-        out (0xff), a
-
-        ;; We expect SKX to appear in registers HLA
-        CP 'X'
-        jr nz, not_cpmulator
-
-        LD A, H
-        CP 'S'
-        jr nz, not_cpmulator
-
-        LD A, L
-        CP 'K'
-        jr nz, not_cpmulator
+        call exit_if_not_cpmulator
 
         ;; The FCB will be populated with the first argument,
         ;; if the first character of that region is a space-character
@@ -45,9 +29,7 @@ BDOS_OUTPUT_STRING:   EQU 9
         out (0xff), a
 
 exit:
-        LD      C,0x00
-        CALL    BDOS_ENTRY_POINT
-
+        RST 0x00
 
 ;; Show the current value
 show_value:
@@ -69,27 +51,15 @@ show_value:
         CP 0
         jr z, unset
 
-
-        LD DE, OUTPUT_PREFIX
+        LD DE, OUTPUT_PREFIX         ;; Show a prefix
         LD C, BDOS_OUTPUT_STRING
         CALL BDOS_ENTRY_POINT
-        LD HL, 0x0080
 
 
-        ;; otherwise show the value, character by character.
-loopy:
-        LD A, (HL)
-        cp 0
-        JR Z, finished_loop
-        push HL
-             ld e,a
-             ld c, 0x02
-             call 0x0005
-        pop HL
-        inc hl
-        jr loopy
-finished_loop:
-        LD DE, OUTPUT_SUFFIX
+        LD HL, 0x0080                ;; Show the contents of the DMA area, as a string
+        call print_string
+
+        LD DE, OUTPUT_SUFFIX         ;; Show a suffix
         LD C, BDOS_OUTPUT_STRING
         CALL BDOS_ENTRY_POINT
         jr exit
@@ -104,17 +74,6 @@ unset:
 
 
 ;;
-;; Error Routines
-;;
-
-not_cpmulator:
-        LD DE, WRONG_EMULATOR
-        LD C, BDOS_OUTPUT_STRING
-        call BDOS_ENTRY_POINT
-        jr exit
-
-
-;;
 ;; Text output strings.
 ;;
 UNSET_STRING:
@@ -125,6 +84,6 @@ OUTPUT_PREFIX:
 OUTPUT_SUFFIX:
         db "'.", 0x0a, 0x0d
         db "Run '!hostcmd /clear' to disable running commands on the host", 0x0a, 0x0d, "$"
-WRONG_EMULATOR:
-        db "This binary is not running under cpmulator, aborting.", 0x0a, 0x0d, "$"
+
+include "common.inc"
 END

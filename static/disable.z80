@@ -13,23 +13,7 @@ BDOS_OUTPUT_STRING:   EQU 9
         ;;
         ORG 100H
 
-        ;; Test that we're running under cpmulator by calling the
-        ;; "is cpmulator" function.
-        ld HL, 0x0000
-        ld a, 31
-        out (0xff), a
-
-        ;; We expect SKX to appear in registers HLA
-        CP 'X'
-        jr nz, not_cpmulator
-
-        LD A, H
-        CP 'S'
-        jr nz, not_cpmulator
-
-        LD A, L
-        CP 'K'
-        jr nz, not_cpmulator
+        call exit_if_not_cpmulator
 
         ;; The FCB will be populated with the number/first argument,
         ;; if the first character of that region is a space-character
@@ -73,14 +57,7 @@ got_value:
         call BDOS_ENTRY_POINT
         ;; fall-through
 exit:
-        LD      C,0x00
-        CALL    BDOS_ENTRY_POINT
-
-not_cpmulator:
-        LD DE, WRONG_EMULATOR
-        LD C, BDOS_OUTPUT_STRING
-        call BDOS_ENTRY_POINT
-        jr exit
+        RST 0x00
 
 disable_all:
         ld hl, 0x0009
@@ -88,18 +65,21 @@ disable_all:
         ld a, 31
         out (0xff), a
         jr exit
+
 disable_bios:
         ld hl, 0x0009
         ld de, 0x0002
         ld a, 31
         out (0xff), a
         jr exit
+
 disable_both:
         ld hl, 0x0009
         ld de, 0x0003
         ld a, 31
         out (0xff), a
         jr exit
+
 disable_fs:
         ld hl, 0x0009
         ld de, 0x0001
@@ -132,7 +112,13 @@ WRONG_ARGUMENT:
         db "Unknown argument, ignoring it.", 0x0a, 0x0d
         ;; FALL-THROUGH
 USAGE_INFORMATION:
-        db "Usage: DISABLE [BIOS|FS|BOTH|ALL]", 0x0a, 0x0d, "$"
+        db "Usage: DISABLE [ALL|BIOS|BOTH|FS", 0x0a, 0x0d
+        db " BIOS - Disable our BIOS extensions.", 0x0a, 0x0d
+        db " FS   - Disable the embedded filesystem which hosts our extension binaries.", 0x0a, 0x0d
+        db " ALL  - Disable both things, quietly.", 0x0a, 0x0d
+        db " BOTH - Disable both things.", 0x0a, 0x0d
+        db "$"
+
 
 ;; arguments are upper-cased.
 ALL:
@@ -144,6 +130,6 @@ BOTH:
 FS:
         db "FS", 0x00
 
-WRONG_EMULATOR:
-        db "This binary is not running under cpmulator, aborting.", 0x0a, 0x0d, "$"
+include "common.inc"
+
 END

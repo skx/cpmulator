@@ -466,7 +466,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		case 0x0001:
 			// Just filesystem
 			cpm.static = embed.FS{}
-			cpm.output.WriteString("The embedded binaries have been disabled.\r\n")
+			cpm.output.WriteString("The embedded filesystem has been disabled.\r\n")
 
 		case 0x0002:
 			// Just BIOS
@@ -485,7 +485,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 				Handler: BiosSysCallReserved1NOP,
 				Fake:    true,
 			}
-			cpm.output.WriteString("The embedded binaries, and BIOS extensions, have been disabled\r\n")
+			cpm.output.WriteString("The embedded filesystem and our BIOS extensions have been disabled.\r\n")
 
 		case 0x0004:
 			// Both, but quietly.

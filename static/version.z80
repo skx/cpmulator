@@ -4,7 +4,6 @@
 ;; present in real CP/M.  Consider it a hook into the emulator.
 ;;
 
-FCB1:                 EQU 0x5C
 BDOS_ENTRY_POINT:     EQU 5
 BDOS_OUTPUT_STRING:   EQU 9
 
@@ -13,53 +12,18 @@ BDOS_OUTPUT_STRING:   EQU 9
         ;;
         ORG 100H
 
-        ;; Test that we're running under cpmulator by calling the
-        ;; "is cpmulator" function.
-        ld HL, 0x0000
-        ld a, 31
-        out (0xff), a
-
-        ;; We expect SKX to appear in registers HLA
-        CP 'X'
-        jr nz, not_cpmulator
-
-        LD A, H
-        CP 'S'
-        jr nz, not_cpmulator
-
-        LD A, L
-        CP 'K'
-        jr nz, not_cpmulator
+        ;; This call will a) test that we're running under
+        ;; our emulator, and b) setup a version string in the DMA
+        ;; area.
+        call exit_if_not_cpmulator
 
         ;; Okay then the version will be stored in the DMA area.
-        ;; unknown value
-        LD HL, 0x0080
-print_loop:
-        LD A, (HL)
-        CP 0
-        JR Z, exit
-        LD E, A
-        INC HL
-        PUSH    HL
-        LD      C, 0x02
-        CALL    0x0005
-        POP     HL
-        JR print_loop
+        ;; print it.
+        ld hl, 0x0080
+        call print_string
 
         ;; Exit
-exit:
-        LD      C,0x00
-        CALL    BDOS_ENTRY_POINT
+        RST 0x00
 
-not_cpmulator:
-        LD DE, WRONG_EMULATOR
-        LD C, BDOS_OUTPUT_STRING
-        call BDOS_ENTRY_POINT
-        jr exit
-
-;;
-;; Text output strings.
-;;
-WRONG_EMULATOR:
-        db "This binary is not running under cpmulator, aborting.", 0x0a, 0x0d, "$"
+include "common.inc"
 END

@@ -13,23 +13,7 @@ BDOS_OUTPUT_STRING:   EQU 9
         ;;
         ORG 100H
 
-        ;; Test that we're running under cpmulator by calling the
-        ;; "is cpmulator" function.
-        ld HL, 0x0000
-        ld a, 31
-        out (0xff), a
-
-        ;; We expect SKX to appear in registers HLA
-        CP 'X'
-        jr nz, not_cpmulator
-
-        LD A, H
-        CP 'S'
-        jr nz, not_cpmulator
-
-        LD A, L
-        CP 'K'
-        jr nz, not_cpmulator
+        call exit_if_not_cpmulator
 
         ;; The FCB will be populated with the first argument,
         ;; if the first character of that region is a space-character
@@ -47,48 +31,26 @@ BDOS_OUTPUT_STRING:   EQU 9
         out (0xff), a
 
 exit:
-        LD      C,0x00
-        CALL    BDOS_ENTRY_POINT
+        RST 0x00
 
 ;; Show the current console driver
 show_driver:
-        LD DE, CONSOLE_PREFIX
-        LD C, BDOS_OUTPUT_STRING
-        CALL BDOS_ENTRY_POINT
+        ld de, CONSOLE_PREFIX       ; show a prefix
+        ld c,  BDOS_OUTPUT_STRING
+        call   BDOS_ENTRY_POINT
 
-        ld HL, 02
+        ld HL, 02                   ; Get the driver name into the DMA area
         ld de, 0x0000
         ld a, 31
         out (0xff), a
 
-        LD HL, 0x0080
-loopy:
-        LD A, (HL)
-        cp 0
-        JR Z, finished_loop
-        push HL
-             ld e,a
-             ld c, 0x02
-             call 0x0005
-        pop HL
-        inc hl
-        jr loopy
-finished_loop:
-        LD DE, CONSOLE_SUFFIX
-        LD C, BDOS_OUTPUT_STRING
-        CALL BDOS_ENTRY_POINT
+        ld hl, 0x0080               ; print the contents of the DMA area, as a string
+        call print_string
+
+        ld de, CONSOLE_SUFFIX       ; Show a suffix
+        ld c,  BDOS_OUTPUT_STRING
+        call   BDOS_ENTRY_POINT
         jr exit
-
-;;
-;; Error Routines
-;;
-
-not_cpmulator:
-        LD DE, WRONG_EMULATOR
-        LD C, BDOS_OUTPUT_STRING
-        call BDOS_ENTRY_POINT
-        jr exit
-
 
 ;;
 ;; Text output strings.
@@ -97,6 +59,6 @@ CONSOLE_PREFIX:
         db "The output driver is set to $"
 CONSOLE_SUFFIX:
         db ".", 0x0a, 0x0d, "$"
-WRONG_EMULATOR:
-        db "This binary is not running under cpmulator, aborting.", 0x0a, 0x0d, "$"
+
+include "common.inc"
 END
