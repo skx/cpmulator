@@ -26,8 +26,9 @@
 ;	FURTHER MODIFIED BY RLC AS V3.1
 ;	FURTHER MODIFIED BY RLC AS V4.0
 ;	SBB V4.1 11/27/81
-;	SBB V4.1skx 18/05/24 - Rebased, added new built-ins QUIT/EXIT/HALT/CLS
-;                            - Added PEEK, POKE, and made "#" a comment.
+;	SBB V4.1skx0 18/05/24 - Rebased, added new built-ins QUIT/EXIT/HALT/CLS
+;                             - Later I added PEEK, POKE, and made "#" a comment.
+;	SBB V4.1skx1 25/04/25 - Changed linefeed/newline handling for TYPE command
 ;
 ;******** Refer to CCPZ-Vxx.NOT File for Revision History ********
 ;
@@ -357,7 +358,7 @@ CIBUFF:
 	DB	'               ';DEFAULT (COLD BOOT) COMMAND
 CIBUF:
 	DB	0		;COMMAND STRING TERMINATOR
-	DB	'  CCPZ-V4.1skx of 11/27/81  ';FOR DUMP IDENTIFICATION
+	DB	'  CCPZ-V4.1skx1 of 24/04/25  ';FOR DUMP IDENTIFICATION
 	DS	BUFLEN-($-CIBUFF)+1;TOTAL IS 'BUFLEN' BYTES
 ;
 CIBPTR:
@@ -1566,17 +1567,25 @@ TYPE2:
 ;
 ; OUTPUT CHAR TO CON: OR LST: DEVICE WITH TABULATION
 ;
-	CP	CR		;RESET TAB COUNT?
-	JR	Z,TABRST
+        ;;  skx made changes here.
+        ;;    LF -> print \r\n, and reset the tab-count.
+        ;;    CR -> print nothing, but still reset the tab count.
+        ;;
 	CP	LF		;RESET TAB COUNT?
 	JR	Z,TABRST
+	CP	CR		;RESET TAB COUNT?
+	JR	Z,TAB_RESET
 	CP	TAB		;TAB?
 	JR	Z,LTAB
 	CALL	LCOUT		;OUTPUT CHAR
 	INC	B		;INCREMENT CHAR COUNT
 	JR	TYPE2L
 TABRST:
-	CALL	LCOUT		;OUTPUT <CR> OR <LF>
+        LD      A, 0x0A         ; skx changed
+	CALL	LCOUT		;OUTPUT <CR> AND <LF>
+        LD      A, 0x0D
+        CALL    LCOUT
+TAB_RESET:
 	LD	B,0		;RESET TAB COUNTER
 	JR	TYPE2L
 LTAB:
