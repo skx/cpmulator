@@ -1,9 +1,18 @@
 package cpm
 
 import (
-	"errors"
+	"fmt"
 	"os"
+	"strings"
 	"testing"
+)
+
+var (
+	// ErrClose is the error we send when mocking a File Close operation.
+	ErrClose = fmt.Errorf("CLOSE")
+
+	// ErrWrite is the error we send when mocking a File Write operation.
+	ErrWrite = fmt.Errorf("WRITE")
 )
 
 // mockFile is a structure used for mocking file failures
@@ -18,7 +27,7 @@ type mockFile struct {
 // Write is the mocked Write method from the File interface, used for testing.
 func (m *mockFile) Write(p []byte) (int, error) {
 	if m.failWrite {
-		return 0, errors.New("mock write error")
+		return 0, ErrWrite
 	}
 	return len(p), nil
 }
@@ -26,7 +35,7 @@ func (m *mockFile) Write(p []byte) (int, error) {
 // Close is the mocked Write method from the File interface, used for testing.
 func (m *mockFile) Close() error {
 	if m.failClose {
-		return errors.New("mock close error")
+		return ErrClose
 	}
 	return nil
 }
@@ -83,6 +92,7 @@ func TestPrinterOutput(t *testing.T) {
 	}
 }
 
+// TestWriteFail tests what happens when a file Write method fails.
 func TestWriteFail(t *testing.T) {
 
 	opener = func(name string, flag int, perm os.FileMode) (File, error) {
@@ -112,9 +122,12 @@ func TestWriteFail(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error, got none %s", err)
 	}
-
+	if !strings.Contains(err.Error(), ErrWrite.Error()) {
+		t.Fatalf("got an error, but the wrong one")
+	}
 }
 
+// TestWriteClose tests what happens when a file Close method fails.
 func TestWriteClose(t *testing.T) {
 
 	opener = func(name string, flag int, perm os.FileMode) (File, error) {
@@ -143,5 +156,8 @@ func TestWriteClose(t *testing.T) {
 	err = obj.prnC('s')
 	if err == nil {
 		t.Fatalf("expected error, got none %s", err)
+	}
+	if !strings.Contains(err.Error(), ErrClose.Error()) {
+		t.Fatalf("got an error, but the wrong one %v", err)
 	}
 }
