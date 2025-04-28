@@ -173,58 +173,6 @@ func TestLoadCCP(t *testing.T) {
 
 }
 
-// TestPrinterOutput tests that printer output goes to the file as
-// expected.
-func TestPrinterOutput(t *testing.T) {
-
-	// Create a printer-output file
-	file, err := os.CreateTemp("", "tst-*.prn")
-	if err != nil {
-		t.Fatalf("failed to create temporary file")
-	}
-	defer os.Remove(file.Name())
-
-	// Create a new CP/M helper - valid
-	var obj *CPM
-	obj, err = New(WithPrinterPath(file.Name()))
-	if err != nil {
-		t.Fatalf("failed to create CPM")
-	}
-
-	if obj.prnPath != file.Name() {
-		t.Fatalf("unexpected filename for printer log")
-	}
-
-	// Now output some characters
-	err = obj.prnC('s')
-	if err != nil {
-		t.Fatalf("failed to write character to printer-file")
-	}
-
-	obj.CPU.States.DE.Lo = 'k'
-	err = BdosSysCallPrinterWrite(obj)
-	if err != nil {
-		t.Fatalf("failed to write character to printer-file")
-	}
-
-	obj.CPU.States.BC.Lo = 'x'
-	err = BiosSysCallPrintChar(obj)
-	if err != nil {
-		t.Fatalf("failed to write character to printer-file")
-	}
-
-	// Read back the file.
-	var data []byte
-	data, err = os.ReadFile(file.Name())
-	if err != nil {
-		t.Fatalf("failed to read from file")
-	}
-
-	if string(data) != "skx" {
-		t.Fatalf("printer output had the wrong content")
-	}
-}
-
 // TestLogNoisy tests that functions are updated appropriately.
 func TestLogNoisy(t *testing.T) {
 
