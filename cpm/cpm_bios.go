@@ -224,18 +224,12 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		if de == 0x0000 {
 
 			// Fill the DMA area with NULL bytes
-			addr := cpm.dma
-
-			end := addr + uint16(127)
-			for end > addr {
-				cpm.Memory.Set(end, 0x00)
-				end--
-			}
+			cpm.Memory.FillRange(cpm.dma, 127, 0x00)
 
 			// now populate with our console driver.
 			str := cpm.output.GetName()
 			for i, c := range str {
-				cpm.Memory.Set(addr+uint16(i), uint8(c))
+				cpm.Memory.Set(cpm.dma+uint16(i), uint8(c))
 			}
 			return nil
 		}
@@ -273,19 +267,14 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		// If DE is null then we're just being asked to return
 		// the current CCP name
 		if de == 0x0000 {
-			// Fill the DMA area with NULL bytes
-			addr := cpm.dma
 
-			end := addr + uint16(127)
-			for end > addr {
-				cpm.Memory.Set(end, 0x00)
-				end--
-			}
+			// Fill the DMA area with NULL bytes
+			cpm.Memory.FillRange(cpm.dma, 127, 0x00)
 
 			// now populate with our CCP
 			str := cpm.ccp
 			for i, c := range str {
-				cpm.Memory.Set(addr+uint16(i), uint8(c))
+				cpm.Memory.Set(cpm.dma+uint16(i), uint8(c))
 			}
 			return nil
 		}
@@ -365,19 +354,14 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		// If DE is null then we're just being asked to return
 		// the current value of the driver.
 		if de == 0x0000 {
-			// Fill the DMA area with NULL bytes
-			addr := cpm.dma
 
-			end := addr + uint16(127)
-			for end > addr {
-				cpm.Memory.Set(end, 0x00)
-				end--
-			}
+			// Fill the DMA area with NULL bytes
+			cpm.Memory.FillRange(cpm.dma, 127, 0x00)
 
 			// now populate with our console driver
 			str := cpm.input.GetName()
 			for i, c := range str {
-				cpm.Memory.Set(addr+uint16(i), uint8(c))
+				cpm.Memory.Set(cpm.dma+uint16(i), uint8(c))
 			}
 			return nil
 		}
@@ -431,19 +415,14 @@ func BiosSysCallReserved1(cpm *CPM) error {
 	case 0x0008:
 
 		if de == 0x0000 {
-			// Fill the DMA area with NULL bytes
-			addr := cpm.dma
 
-			end := addr + uint16(127)
-			for end > addr {
-				cpm.Memory.Set(end, 0x00)
-				end--
-			}
+			// Fill the DMA area with NULL bytes
+			cpm.Memory.FillRange(cpm.dma, 127, 0x00)
 
 			// now populate with our current value
 			str := cpm.input.GetSystemCommandPrefix()
 			for i, c := range str {
-				cpm.Memory.Set(addr+uint16(i), uint8(c))
+				cpm.Memory.Set(cpm.dma+uint16(i), uint8(c))
 			}
 			return nil
 		}
