@@ -512,6 +512,34 @@ func TestCustom(t *testing.T) {
 		n++
 	}
 
+	// 0x000A
+	// Change printer path.
+	// set to "prn.log"
+	c.CPU.States.HL.SetU16(0x000A)
+	c.CPU.States.DE.SetU16(0xFE00)
+	c.Memory.SetRange(0xFE00, []byte{'p', 'r', 'n', '.', 'l', 'o', 'g', 0x00}...)
+	err = BiosSysCallReserved1(c)
+	if err != nil {
+		t.Fatalf("error calling reserved function")
+	}
+	if c.prnPath != "prn.log" {
+		t.Fatalf("changing printer path failed")
+	}
+
+	// Reset the value, and retrieve it
+	c.prnPath = "the.sky.log"
+
+	c.CPU.States.HL.SetU16(0x000A)
+	c.CPU.States.DE.SetU16(0x0000)
+	err = BiosSysCallReserved1(c)
+	if err != nil {
+		t.Fatalf("error calling reserved function")
+	}
+	str = getStringFromMemory(c, c.dma)
+	if str != "the.sky.log" {
+		t.Fatalf("unexpected printer path '%s'", str)
+	}
+
 }
 
 func TestBIOSConsoleInput(t *testing.T) {
