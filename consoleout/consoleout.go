@@ -72,11 +72,26 @@ type ConsoleOut struct {
 
 	// driver is the thing that actually writes our output.
 	driver ConsoleOutput
+
+	// options store per-driver options which might be passed in the
+	// constructor.  Right now these are undocumented
+	options string
 }
 
 // New is our constructor, it creates an output device which uses
 // the specified driver.
 func New(name string) (*ConsoleOut, error) {
+
+	// Do we have trailing options?
+	options := ""
+
+	// If we do save them
+	val := strings.Split(name, ":")
+	if len(val) == 2 {
+		name = val[0]
+		options = val[1]
+	}
+
 	// Downcase for consistency.
 	name = strings.ToLower(name)
 
@@ -88,7 +103,8 @@ func New(name string) (*ConsoleOut, error) {
 
 	// OK we do, return ourselves with that driver.
 	return &ConsoleOut{
-		driver: ctor(),
+		driver:  ctor(),
+		options: options,
 	}, nil
 }
 
@@ -97,10 +113,11 @@ func (co *ConsoleOut) GetDriver() ConsoleOutput {
 	return co.driver
 }
 
-// WriteString writes the given string, character by character, to the output driver.
+// WriteString writes the given string, character by character, via our
+// selected output driver.
 func (co *ConsoleOut) WriteString(str string) {
 	for _, c := range str {
-		co.driver.PutCharacter(uint8(c))
+		co.PutCharacter(uint8(c))
 	}
 }
 
