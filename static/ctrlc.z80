@@ -4,25 +4,48 @@
 ;; present in real CP/M.  Consider it a hook into the emulator.
 ;;
 
-FCB1:                 EQU 0x5C
 BDOS_ENTRY_POINT:     EQU 5
 BDOS_OUTPUT_STRING:   EQU 9
+CMDLINE:              EQU 0x80   ; default DMA area too
 
         ;;
         ;; CP/M programs start at 0x100.
         ;;
         ORG 100H
 
+
+        ;; Copy the DMA area, which holds our command-line
+        ;; flags, to a safe area at the foot of our binary.
+        ;;
+        LD HL, CMDLINE
+        LD DE, DEST
+        LD BC, 128
+        LDIR
+
+        ;;
+        ;; Now we can test if we're running under cpmulator
+        ;; which will trash the DMA area
+        ;;
         call exit_if_not_cpmulator
 
-        ;; The FCB will be populated with the number/first argument,
-        ;; if the first character of that region is a space-character
-        ;; then we've got nothing specified
-        ld a, (FCB1 + 1)
-        cp 0x20             ; 0x20 = 32 == SPACE
-        jp z, show_value    ; Got a space, just show the value.
+        ;;
+        ;; If we didn't get an argument then show the current value
+        ;;
+        LD      HL,DEST
+        LD      A,(HL)
+        INC     HL
+        CP      0x00
+        jr z, show_value
 
-        ;; convert from number to int
+        ;; OK we're running under cpmulator, and we did get a parameter:
+        ;;
+        ;;  DEST+0 contains the length of the command-line.  i.e. pascal-string
+        ;;  DEST+1 contains " "
+        ;;  DEST+2 contains the argument, assuming no extra space.
+        ;;
+        ;; Read the first digit of the parameter, only, and use it.
+        ;;
+        ld A,(DEST+2)
         sub '0'
         ld c, a
 
@@ -68,4 +91,6 @@ NEWLINE:
         db 0xa, 0xd, "$"
 
 include "common.inc"
+
+DEST:
 END
