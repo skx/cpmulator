@@ -35,7 +35,7 @@ CMDLINE:              EQU 0x80   ; default DMA area too
         LD      A,(HL)
         INC     HL
         CP 0x00
-        jp nz, got_value    ; Got a value.
+        jr nz, got_value    ; Got a value.
 
         ;; Nothing specified, show error and terminate
         LD DE, USAGE_INFORMATION
