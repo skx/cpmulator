@@ -620,6 +620,11 @@ func TestFileSize(t *testing.T) {
 		if n*128 != sz {
 			t.Fatalf("size was wrong expected %d, got %d", sz, n)
 		}
+
+		err = BdosSysCallRandRecord(c)
+		if err != nil {
+			t.Fatalf("error in call %s", err.Error())
+		}
 		os.Remove(name)
 	}
 
@@ -1422,6 +1427,9 @@ func TestTicks(t *testing.T) {
 
 	// Get the before time.
 	a := c.CPU.States.HL.U16()
+
+	// This really shouldn't be necessary.
+	time.Sleep(10 * time.Millisecond)
 
 	// Call the function
 	err = BdosSysCallUptime(c)
