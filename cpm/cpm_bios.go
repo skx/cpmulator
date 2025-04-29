@@ -527,8 +527,30 @@ func BiosSysCallReserved1(cpm *CPM) error {
 			cpm.output.WriteString(fmt.Sprintf("Unknown action for the disable BIOS function: %04X\r\n", de))
 		}
 
+		// Set the printer-logfile
+	case 0x000a:
+
+		if de == 0x0000 {
+
+			// Fill the DMA area with NULL bytes
+			cpm.Memory.FillRange(cpm.dma, 127, 0x00)
+
+			// now populate with our current value
+			for i, c := range cpm.prnPath {
+				cpm.Memory.Set(cpm.dma+uint16(i), uint8(c))
+			}
+			return nil
+		}
+
+		// Get the string pointed to by DE
+		str := getStringFromMemory(de)
+
+		// set it
+		cpm.prnPath = str
+		return nil
+
 	default:
-		cpm.output.WriteString(fmt.Sprintf("Ignoring unknown custom BIOS function HL:%04Xr\n", hl))
+		cpm.output.WriteString(fmt.Sprintf("Ignoring unknown custom BIOS function HL:%04X\r\n", hl))
 	}
 
 	return nil

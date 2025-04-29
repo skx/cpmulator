@@ -1,0 +1,88 @@
+;; prnpath.z80 - Set the filename to log printer output to.
+;;
+;; This uses the custom BIOS function we've added to the BIOS, which was never
+;; present in real CP/M.  Consider it a hook into the emulator.
+;;
+
+BDOS_OUTPUT_STRING:   EQU 9
+BDOS_ENTRY_POINT:     EQU 5
+CMDLINE:              EQU 0x80   ; default DMA area too
+
+
+        ;;
+        ;; CP/M programs start at 0x100.
+        ;;
+        ORG 100H
+
+        ;; Copy the DMA area, which holds our command-line
+        ;; flags, to a safe area at the foot of our binary.
+        ;;
+        LD HL, CMDLINE
+        LD DE, DEST
+        LD BC, 128
+        LDIR
+
+        ;;
+        ;; Now we can test if we're running under cpmulator
+        ;; which will trash the DMA area
+        ;;
+        call exit_if_not_cpmulator
+
+        ;;
+        ;; If we didn't get an argument then show the value
+        ;;
+        LD      HL,DEST
+        LD      A,(HL)
+        INC     HL
+        CP 0x00
+        JR      Z,show_value
+
+
+        ;; OK we're running under cpmulator, and we did get a parameter
+        ;; Point DE to that and invoke the function.
+        ;;
+        ;;  DEST+0 contains the length of the command-line.  i.e. pascal-string
+        ;;  DEST+1 contains " "
+        ;;  DEST+2 contains the argument, assuming no extra space.
+        ;;
+        ld hl, 0x0a
+        ld de, DEST+2
+        ld a, 31
+        out (0xff), a
+
+exit:
+        rst 0x00
+
+
+;; Show the current value
+show_value:
+        ld de, OUTPUT_PREFIX            ; show a prefix
+        ld c,  BDOS_OUTPUT_STRING
+        call   BDOS_ENTRY_POINT
+
+        ld HL, 0x0a                    ; get the value
+        ld de, 0x0000
+        ld a, 31
+        out (0xff), a
+
+        ld hl, 0x0080                ; print the contents as a string
+        call print_string
+
+        ld de, OUTPUT_SUFFIX            ; show a suffix
+        ld c,  BDOS_OUTPUT_STRING
+        call   BDOS_ENTRY_POINT
+        jr exit
+
+
+;;
+;; Text output strings.
+;;
+OUTPUT_PREFIX:
+        db "The printer is logging output to the file '$"
+OUTPUT_SUFFIX:
+        db "'.", 0x0a, 0x0d, "$"
+
+include "common.inc"
+
+DEST:
+END

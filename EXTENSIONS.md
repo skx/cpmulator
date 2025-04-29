@@ -141,3 +141,15 @@ the BIOS extensions documented upon this page.  On entry DE is used to determine
 * 0x0004 - Disable both the embedded filesystem, and the custom BIOS functions, but do so quietly.
 
 Demonstrated in [static/disable.z80](static/disable.z80)
+
+
+## Function 0x0A: Get/Set Printer Log Path
+
+On entry DE points to a text-string, terminated by NULL, which represents the name of the
+file to write printer-output to.
+
+If DE is 0x0000 then the DMA area is filled with the name of the printer log-file, NULL-terminated.
+
+Demonstrated in [static/prnpath.z80](static/prnpath.z80)
+
+See also function 0x02.
