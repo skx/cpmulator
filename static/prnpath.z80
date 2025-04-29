@@ -1,4 +1,4 @@
-;; ccp.z80 - Set the name of the CCP to load.
+;; prnpath.z80 - Set the filename to log printer output to.
 ;;
 ;; This uses the custom BIOS function we've added to the BIOS, which was never
 ;; present in real CP/M.  Consider it a hook into the emulator.
@@ -29,7 +29,7 @@ CMDLINE:              EQU 0x80   ; default DMA area too
         call exit_if_not_cpmulator
 
         ;;
-        ;; If we didn't get an argument then show the CCP
+        ;; If we didn't get an argument then show the value
         ;;
         LD      HL,DEST
         LD      A,(HL)
@@ -45,7 +45,7 @@ CMDLINE:              EQU 0x80   ; default DMA area too
         ;;  DEST+1 contains " "
         ;;  DEST+2 contains the argument, assuming no extra space.
         ;;
-        ld hl, 03
+        ld hl, 0x0a
         ld de, DEST+2
         ld a, 31
         out (0xff), a
@@ -56,17 +56,17 @@ exit:
 
 ;; Show the current value
 show_value:
-        ld de, CCP_PREFIX            ; show a prefix
+        ld de, OUTPUT_PREFIX            ; show a prefix
         ld c,  BDOS_OUTPUT_STRING
         call   BDOS_ENTRY_POINT
 
         ;; Use the given function to call a custom BIOS
         ;; routine which will the result as ASCII text
         ;; in the DMA-buffer.
-        ld hl, 0x0003
+        ld hl, 0x000a
         call show_bios_value
 
-        ld de, CCP_SUFFIX            ; show a suffix
+        ld de, OUTPUT_SUFFIX            ; show a suffix
         ld c,  BDOS_OUTPUT_STRING
         call   BDOS_ENTRY_POINT
         jr exit
@@ -75,10 +75,10 @@ show_value:
 ;;
 ;; Text output strings.
 ;;
-CCP_PREFIX:
-        db "CCP is set to $"
-CCP_SUFFIX:
-        db ".", 0x0a, 0x0d, "$"
+OUTPUT_PREFIX:
+        db "The printer is logging output to the file '$"
+OUTPUT_SUFFIX:
+        db "'.", 0x0a, 0x0d, "$"
 
 include "common.inc"
 

@@ -56,3 +56,19 @@ print_string:
           call    0x0005      ; print the character
           pop hl
         jr print_string       ; repeat, forever.
+
+
+;; Call a custom BIOS function and print the value which
+;; was stored as NULL-terminated ASCII in the DMA area.
+;;
+;; This works because many of our embedded binaries set the
+;; same parameters "DE==NULL" to mean "get the value, and store
+;; in the DMA area".
+show_bios_value:
+        ld de, 0x0000
+        ld a, 31
+        out (0xff), a
+
+        ld hl, 0x0080                ; print the contents as a string
+        call print_string
+        ret
