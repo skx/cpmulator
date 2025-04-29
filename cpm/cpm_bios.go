@@ -182,6 +182,22 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		return strings.ToLower(str)
 	}
 
+	// Several of our routines are called with DE set to NULL,
+	// and that means "store the value in the DMA area".
+	//
+	// This routine resets the DMA area to NULL, and then sets
+	// the passed in value there.
+	setStringInDMA := func(str string) {
+
+		// Fill the DMA area with NULL bytes
+		cpm.Memory.FillRange(cpm.dma, 127, 0x00)
+
+		// now populate with our console driver.
+		for i, c := range str {
+			cpm.Memory.Set(cpm.dma+uint16(i), uint8(c))
+		}
+	}
+
 	switch hl {
 
 	// Is this a CPMUlator?
@@ -195,19 +211,9 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		vers := version.GetVersionBanner()
 		vers = strings.ReplaceAll(vers, "\n", "\n\r")
 
-		// Fill the DMA area with NULL bytes
-		addr := cpm.dma
+		// Set it in the DMA area
+		setStringInDMA(vers)
 
-		end := addr + uint16(127)
-		for end > addr {
-			cpm.Memory.Set(end, 0x00)
-			end--
-		}
-
-		// now populate with our name/version/information
-		for i, c := range vers {
-			cpm.Memory.Set(addr+uint16(i), uint8(c))
-		}
 		return nil
 
 	// Get/Set the ctrl-c flag
@@ -224,15 +230,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		// If DE is null then we're just being asked to return
 		// the current value of the driver.
 		if de == 0x0000 {
-
-			// Fill the DMA area with NULL bytes
-			cpm.Memory.FillRange(cpm.dma, 127, 0x00)
-
-			// now populate with our console driver.
-			str := cpm.output.GetName()
-			for i, c := range str {
-				cpm.Memory.Set(cpm.dma+uint16(i), uint8(c))
-			}
+			setStringInDMA(cpm.output.GetName())
 			return nil
 		}
 
@@ -293,15 +291,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		// If DE is null then we're just being asked to return
 		// the current CCP name
 		if de == 0x0000 {
-
-			// Fill the DMA area with NULL bytes
-			cpm.Memory.FillRange(cpm.dma, 127, 0x00)
-
-			// now populate with our CCP
-			str := cpm.ccp
-			for i, c := range str {
-				cpm.Memory.Set(cpm.dma+uint16(i), uint8(c))
-			}
+			setStringInDMA(cpm.ccp)
 			return nil
 		}
 
@@ -385,15 +375,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		// If DE is null then we're just being asked to return
 		// the current value of the driver.
 		if de == 0x0000 {
-
-			// Fill the DMA area with NULL bytes
-			cpm.Memory.FillRange(cpm.dma, 127, 0x00)
-
-			// now populate with our console driver
-			str := cpm.input.GetName()
-			for i, c := range str {
-				cpm.Memory.Set(cpm.dma+uint16(i), uint8(c))
-			}
+			setStringInDMA(cpm.input.GetName())
 			return nil
 		}
 
@@ -463,16 +445,10 @@ func BiosSysCallReserved1(cpm *CPM) error {
 	// Set the host prefix
 	case 0x0008:
 
+		// If DE is null then we're just being asked to return
+		// the current value of the prefix, if any.
 		if de == 0x0000 {
-
-			// Fill the DMA area with NULL bytes
-			cpm.Memory.FillRange(cpm.dma, 127, 0x00)
-
-			// now populate with our current value
-			str := cpm.input.GetSystemCommandPrefix()
-			for i, c := range str {
-				cpm.Memory.Set(cpm.dma+uint16(i), uint8(c))
-			}
+			setStringInDMA(cpm.input.GetSystemCommandPrefix())
 			return nil
 		}
 
@@ -530,15 +506,10 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		// Set the printer-logfile
 	case 0x000a:
 
+		// If DE is null then we're just being asked to return
+		// the current value of filename.
 		if de == 0x0000 {
-
-			// Fill the DMA area with NULL bytes
-			cpm.Memory.FillRange(cpm.dma, 127, 0x00)
-
-			// now populate with our current value
-			for i, c := range cpm.prnPath {
-				cpm.Memory.Set(cpm.dma+uint16(i), uint8(c))
-			}
+			setStringInDMA(cpm.prnPath)
 			return nil
 		}
 
