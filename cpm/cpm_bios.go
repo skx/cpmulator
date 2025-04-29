@@ -504,7 +504,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		}
 
 		// Set the printer-logfile
-	case 0x000a:
+	case 0x000A:
 
 		// If DE is null then we're just being asked to return
 		// the current value of filename.
