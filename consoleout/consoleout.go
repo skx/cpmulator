@@ -156,5 +156,70 @@ func (co *ConsoleOut) GetDrivers() []string {
 
 // PutCharacter outputs a character, using our selected driver.
 func (co *ConsoleOut) PutCharacter(c byte) {
+
+	// If we have no options then just output the
+	// character and have an early return.
+	if co.options == "" {
+		co.driver.PutCharacter(c)
+		return
+	}
+
+	// Options only change our newline handling at the moment.
+	// so anything that is a different character can also get
+	// printed and an early termination.
+	if c != '\r' && c != '\n' {
+		co.driver.PutCharacter(c)
+		return
+	}
+
+	// Right so we've got a CR or a LF, and we have non-empty options.
+	if c == '\r' {
+
+		// NO CR allowed?  Ignore the character
+		if strings.Contains(co.options, "CR=NONE") {
+			return
+		}
+
+		// CR should do "both"?  Do that
+		if strings.Contains(co.options, "CR=BOTH") {
+			co.driver.PutCharacter('\r')
+			co.driver.PutCharacter('\n')
+			return
+		}
+
+		// CR is just CR?  Okay
+		if strings.Contains(co.options, "CR=CR") {
+			co.driver.PutCharacter('\r')
+			return
+		}
+
+	}
+	if c == '\n' {
+
+		// No LF allowed?  Ignore the character
+		if strings.Contains(co.options, "LF=NONE") {
+			return
+		}
+
+		// LF should do "both"?   Do that.
+		if strings.Contains(co.options, "LF=BOTH") {
+			co.driver.PutCharacter('\r')
+			co.driver.PutCharacter('\n')
+			return
+		}
+
+		// LF is just LF?  Okay.
+		if strings.Contains(co.options, "LF=LF") {
+			co.driver.PutCharacter('\n')
+			return
+		}
+	}
+
+	//
+	// At this point we had CR or LF and yet none of our
+	// options made a change.
+	//
+	// Just print the character.
+	//
 	co.driver.PutCharacter(c)
 }

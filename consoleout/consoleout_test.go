@@ -225,3 +225,25 @@ func TestADM(t *testing.T) {
 		s++
 	}
 }
+
+// TestOptionsNewline tests that the various options are tested
+func TestOptionsNewline(t *testing.T) {
+
+	known := []string{"CR=NONE", "CR=BOTH", "CR=CR", "LF=LF", "LF=BOTH", "LF=NONE", "ok"}
+
+	for _, str := range known {
+
+		x, e := New("ansi")
+		if e != nil {
+			t.Fatalf("error creating driver")
+		}
+
+		// set the options
+		x.options = str
+
+		// test a range of characters
+		x.PutCharacter('\n')
+		x.PutCharacter('\r')
+		x.PutCharacter('s')
+	}
+}
