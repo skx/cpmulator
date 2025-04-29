@@ -31,6 +31,18 @@ func TestName(t *testing.T) {
 	}
 }
 
+// TestOptions ensures we have some options
+func TestOptions(t *testing.T) {
+
+	d, e := New("ansi:CAKE/IS/A/LIE")
+	if e != nil {
+		t.Fatalf("failed to lookup driver by name %s", e)
+	}
+	if d.GetName() != "ansi" {
+		t.Fatalf("setting options broke the name")
+	}
+}
+
 // TestChangeDriver ensures we can change a driver
 func TestChangeDriver(t *testing.T) {
 
