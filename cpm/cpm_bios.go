@@ -178,7 +178,8 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		// Trim leading and trailing whitespace
 		str = strings.TrimSpace(str)
 
-		return str
+		// Lower-case because the CCP will upper-case CLI arguments
+		return strings.ToLower(str)
 	}
 
 	switch hl {
@@ -266,14 +267,24 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		// Do we have options?  If so show them too
 		options := ""
 		val := strings.Split(str, ":")
+		nm := str
 		if len(val) == 2 {
 			if len(val[1]) > 0 {
 				options = " with options '" + val[1] + "'"
+				nm = val[0]
 			}
 		}
 
 		cpm.output = driver
-		cpm.output.WriteString("The output driver has been changed from " + old + " to " + driver.GetName() + options + ".\r\n")
+		if nm != old {
+
+			cpm.output.WriteString("The output driver has been changed from " + old + " to " + driver.GetName() + options + ".\r\n")
+			return nil
+		}
+
+		if len(val) == 2 {
+			cpm.output.WriteString("Options changed to " + val[1] + " for " + driver.GetName() + ".\r\n")
+		}
 		return nil
 
 	// Get/Set the CCP
@@ -430,14 +441,23 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		// Do we have options?  If so show them too
 		options := ""
 		val := strings.Split(str, ":")
+		nm := str
 		if len(val) == 2 {
 			if len(val[1]) > 0 {
 				options = " with options '" + val[1] + "'"
+				nm = val[0]
 			}
 		}
 
 		cpm.input = driver
-		cpm.output.WriteString("Input driver changed from " + oldName + " to " + driver.GetName() + options + ".\r\n")
+		if nm != oldName {
+			cpm.output.WriteString("Input driver changed from " + oldName + " to " + driver.GetName() + options + ".\r\n")
+			return nil
+		}
+
+		if len(val) == 2 {
+			cpm.output.WriteString("Options changed to " + val[1] + " for " + driver.GetName() + ".\r\n")
+		}
 		return nil
 
 	// Set the host prefix
