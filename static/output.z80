@@ -4,7 +4,7 @@
 ;; present in real CP/M.  Consider it a hook into the emulator.
 ;;
 
-FCB1:                 EQU 0x5C
+CMDLINE:              EQU 0x80
 BDOS_ENTRY_POINT:     EQU 5
 BDOS_OUTPUT_STRING:   EQU 9
 
@@ -13,25 +13,45 @@ BDOS_OUTPUT_STRING:   EQU 9
         ;;
         ORG 100H
 
+        ;; Copy the DMA area, which holds our command-line
+        ;; flags, to a safe area at the foot of our binary.
+        ;;
+        LD HL, CMDLINE
+        LD DE, DEST
+        LD BC, 128
+        LDIR
+
+        ;;
+        ;; Now we can test if we're running under cpmulator
+        ;; which will trash the DMA area
+        ;;
         call exit_if_not_cpmulator
 
-        ;; The FCB will be populated with the first argument,
-        ;; if the first character of that region is a space-character
-        ;; then we've got nothing specified
-        ld a, (FCB1 + 1)
-        cp 0x20                  ; 0x20 = 32 == SPACE
-        jp z, show_driver        ; Got a space, show the console driver name
+        ;;
+        ;; If we didn't get an argument then show the driver
+        ;;
+        LD      HL,DEST
+        LD      A,(HL)
+        INC     HL
+        CP 0x00
+        JR      Z,show_driver
 
 
-        ;; OK we're running under cpmulator
-        ;; Point DE to the console-string to set, and invoke the function.
+        ;; OK we're running under cpmulator, and we did get a parameter
+        ;; Point DE to that and invoke the function.
+        ;;
+        ;;  DEST+0 contains the length of the command-line.  i.e. pascal-string
+        ;;  DEST+1 contains " "
+        ;;  DEST+2 contains the argument, assuming no extra space.
+        ;;
+        ld de, DEST+2
         ld HL, 02
-        ld de, FCB1 + 1
         ld a, 31
         out (0xff), a
 
 exit:
         RST 0x00
+
 
 ;; Show the current console driver
 show_driver:
@@ -61,4 +81,8 @@ CONSOLE_SUFFIX:
         db ".", 0x0a, 0x0d, "$"
 
 include "common.inc"
+
+;; Copied area
+DEST:
+
 END

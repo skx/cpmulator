@@ -4,22 +4,37 @@
 ;; present in real CP/M.  Consider it a hook into the emulator.
 ;;
 
-FCB1:                 EQU 0x5C
 BDOS_ENTRY_POINT:     EQU 5
 BDOS_OUTPUT_STRING:   EQU 9
+CMDLINE:              EQU 0x80   ; default DMA area too
 
         ;;
         ;; CP/M programs start at 0x100.
         ;;
         ORG 100H
 
+        ;; Copy the DMA area, which holds our command-line
+        ;; flags, to a safe area at the foot of our binary.
+        ;;
+        LD HL, CMDLINE
+        LD DE, DEST
+        LD BC, 128
+        LDIR
+
+        ;;
+        ;; Now we can test if we're running under cpmulator
+        ;; which will trash the DMA area
+        ;;
         call exit_if_not_cpmulator
 
-        ;; The FCB will be populated with the number/first argument,
-        ;; if the first character of that region is a space-character
-        ;; then we've got nothing specified
-        ld a, (FCB1 + 1)
-        cp 0x20             ; 0x20 = 32 == SPACE
+
+        ;;
+        ;; If we didn't get an argument then show an error
+        ;;
+        LD      HL,DEST
+        LD      A,(HL)
+        INC     HL
+        CP 0x00
         jp nz, got_value    ; Got a value.
 
         ;; Nothing specified, show error and terminate
@@ -29,23 +44,28 @@ BDOS_OUTPUT_STRING:   EQU 9
         jr exit
 
 
+;;
+;;  DEST+0 contains the length of the command-line.  i.e. pascal-string
+;;  DEST+1 contains " "
+;;  DEST+2 contains the argument, assuming no extra space.
+;;
 got_value:
-        ld hl, FCB1 + 1
+        ld hl, DEST+2
         ld de, ALL
         call StrCmp
         jr z, disable_all
 
-        ld hl, FCB1 + 1
+        ld hl, DEST+2
         ld de, BIOS
         call StrCmp
         jr z, disable_bios
 
-        ld hl, FCB1 + 1
+        ld hl, DEST+2
         ld de, BOTH
         call StrCmp
         jr z, disable_both
 
-        ld hl, FCB1 + 1
+        ld hl, DEST+2
         ld de, FS
         call StrCmp
         jr z, disable_fs
@@ -112,7 +132,7 @@ WRONG_ARGUMENT:
         db "Unknown argument, ignoring it.", 0x0a, 0x0d
         ;; FALL-THROUGH
 USAGE_INFORMATION:
-        db "Usage: DISABLE [ALL|BIOS|BOTH|FS", 0x0a, 0x0d
+        db "Usage: DISABLE [ALL|BIOS|BOTH|FS]", 0x0a, 0x0d
         db " BIOS - Disable our BIOS extensions.", 0x0a, 0x0d
         db " FS   - Disable the embedded filesystem which hosts our extension binaries.", 0x0a, 0x0d
         db " ALL  - Disable both things, quietly.", 0x0a, 0x0d
@@ -131,5 +151,7 @@ FS:
         db "FS", 0x00
 
 include "common.inc"
+
+DEST:
 
 END

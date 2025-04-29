@@ -4,9 +4,9 @@
 ;; present in real CP/M.  Consider it a hook into the emulator.
 ;;
 
-FCB1:                 EQU 0x5C
 BDOS_OUTPUT_STRING:   EQU 9
 BDOS_ENTRY_POINT:     EQU 5
+CMDLINE:              EQU 0x80   ; default DMA area too
 
 
         ;;
@@ -14,17 +14,39 @@ BDOS_ENTRY_POINT:     EQU 5
         ;;
         ORG 100H
 
+        ;; Copy the DMA area, which holds our command-line
+        ;; flags, to a safe area at the foot of our binary.
+        ;;
+        LD HL, CMDLINE
+        LD DE, DEST
+        LD BC, 128
+        LDIR
+
+        ;;
+        ;; Now we can test if we're running under cpmulator
+        ;; which will trash the DMA area
+        ;;
         call exit_if_not_cpmulator
 
-        ;; The FCB will be populated with the first argument,
-        ;; if the first character of that region is a space-character
-        ;; then we've got nothing specified
-        ld a, (FCB1 + 1)
-        cp 0x20                 ; 0x20 = 32 == SPACE
-        jp z, show_ccp          ; Got a space, show the CCP
+        ;;
+        ;; If we didn't get an argument then show the CCP
+        ;;
+        LD      HL,DEST
+        LD      A,(HL)
+        INC     HL
+        CP 0x00
+        JR      Z,show_ccp
 
+
+        ;; OK we're running under cpmulator, and we did get a parameter
+        ;; Point DE to that and invoke the function.
+        ;;
+        ;;  DEST+0 contains the length of the command-line.  i.e. pascal-string
+        ;;  DEST+1 contains " "
+        ;;  DEST+2 contains the argument, assuming no extra space.
+        ;;
         ld hl, 03
-        ld de, FCB1 + 1
+        ld de, DEST+2
         ld a, 31
         out (0xff), a
 
@@ -60,6 +82,7 @@ CCP_PREFIX:
 CCP_SUFFIX:
         db ".", 0x0a, 0x0d, "$"
 
-
 include "common.inc"
+
+DEST:
 END
