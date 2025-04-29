@@ -72,11 +72,26 @@ type ConsoleOut struct {
 
 	// driver is the thing that actually writes our output.
 	driver ConsoleOutput
+
+	// options store per-driver options which might be passed in the
+	// constructor.  Right now these are undocumented
+	options string
 }
 
 // New is our constructor, it creates an output device which uses
 // the specified driver.
 func New(name string) (*ConsoleOut, error) {
+
+	// Do we have trailing options?
+	options := ""
+
+	// If we do save them
+	val := strings.Split(name, ":")
+	if len(val) == 2 {
+		name = val[0]
+		options = val[1]
+	}
+
 	// Downcase for consistency.
 	name = strings.ToLower(name)
 
@@ -88,7 +103,8 @@ func New(name string) (*ConsoleOut, error) {
 
 	// OK we do, return ourselves with that driver.
 	return &ConsoleOut{
-		driver: ctor(),
+		driver:  ctor(),
+		options: options,
 	}, nil
 }
 
@@ -97,10 +113,11 @@ func (co *ConsoleOut) GetDriver() ConsoleOutput {
 	return co.driver
 }
 
-// WriteString writes the given string, character by character, to the output driver.
+// WriteString writes the given string, character by character, via our
+// selected output driver.
 func (co *ConsoleOut) WriteString(str string) {
 	for _, c := range str {
-		co.driver.PutCharacter(uint8(c))
+		co.PutCharacter(uint8(c))
 	}
 }
 
@@ -139,5 +156,70 @@ func (co *ConsoleOut) GetDrivers() []string {
 
 // PutCharacter outputs a character, using our selected driver.
 func (co *ConsoleOut) PutCharacter(c byte) {
+
+	// If we have no options then just output the
+	// character and have an early return.
+	if co.options == "" {
+		co.driver.PutCharacter(c)
+		return
+	}
+
+	// Options only change our newline handling at the moment.
+	// so anything that is a different character can also get
+	// printed and an early termination.
+	if c != '\r' && c != '\n' {
+		co.driver.PutCharacter(c)
+		return
+	}
+
+	// Right so we've got a CR or a LF, and we have non-empty options.
+	if c == '\r' {
+
+		// NO CR allowed?  Ignore the character
+		if strings.Contains(co.options, "CR=NONE") {
+			return
+		}
+
+		// CR should do "both"?  Do that
+		if strings.Contains(co.options, "CR=BOTH") {
+			co.driver.PutCharacter('\r')
+			co.driver.PutCharacter('\n')
+			return
+		}
+
+		// CR is just CR?  Okay
+		if strings.Contains(co.options, "CR=CR") {
+			co.driver.PutCharacter('\r')
+			return
+		}
+
+	}
+	if c == '\n' {
+
+		// No LF allowed?  Ignore the character
+		if strings.Contains(co.options, "LF=NONE") {
+			return
+		}
+
+		// LF should do "both"?   Do that.
+		if strings.Contains(co.options, "LF=BOTH") {
+			co.driver.PutCharacter('\r')
+			co.driver.PutCharacter('\n')
+			return
+		}
+
+		// LF is just LF?  Okay.
+		if strings.Contains(co.options, "LF=LF") {
+			co.driver.PutCharacter('\n')
+			return
+		}
+	}
+
+	//
+	// At this point we had CR or LF and yet none of our
+	// options made a change.
+	//
+	// Just print the character.
+	//
 	co.driver.PutCharacter(c)
 }

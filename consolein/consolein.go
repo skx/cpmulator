@@ -81,6 +81,10 @@ type ConsoleIn struct {
 	// driver is the thing that actually reads our output.
 	driver ConsoleInput
 
+	// options store per-driver options which might be passed in the
+	// constructor.  Right now these are undocumented
+	options string
+
 	// systemPrefix is the prefix to use to trigger the execution
 	// of system commands, on the host,  in the ReadLine function
 	systemPrefix string
@@ -89,6 +93,16 @@ type ConsoleIn struct {
 // New is our constructor, it creates an input device which uses
 // the specified driver.
 func New(name string) (*ConsoleIn, error) {
+
+	// Do we have trailing options?
+	options := ""
+
+	// If we do save them
+	val := strings.Split(name, ":")
+	if len(val) == 2 {
+		name = val[0]
+		options = val[1]
+	}
 
 	// Downcase for consistency.
 	name = strings.ToLower(name)
@@ -101,7 +115,8 @@ func New(name string) (*ConsoleIn, error) {
 
 	// OK we do, return ourselves with that driver.
 	return &ConsoleIn{
-		driver: ctor(),
+		driver:  ctor(),
+		options: options,
 	}, nil
 }
 

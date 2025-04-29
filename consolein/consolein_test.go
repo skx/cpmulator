@@ -353,3 +353,15 @@ func TestSimpleExec(t *testing.T) {
 		t.Fatalf("failed to change directory")
 	}
 }
+
+// TestFactoryOptions ensures we have some options
+func TestFactoryOptions(t *testing.T) {
+
+	d, e := New("stty:CAKE/IS/A/LIE")
+	if e != nil {
+		t.Fatalf("failed to lookup driver by name %s", e)
+	}
+	if d.GetName() != "stty" {
+		t.Fatalf("setting options broke the name")
+	}
+}

@@ -169,14 +169,16 @@ func BiosSysCallReserved1(cpm *CPM) error {
 	getStringFromMemory := func(addr uint16) string {
 		str := ""
 		x := cpm.Memory.Get(addr)
-		for x != ' ' && x != 0x00 {
+		for x != 0x00 {
 			str += string(x)
 			addr++
 			x = cpm.Memory.Get(addr)
 		}
 
-		// Useful when the CCP has passed a string, because
-		// that uppercases all input
+		// Trim leading and trailing whitespace
+		str = strings.TrimSpace(str)
+
+		// Lower-case because the CCP will upper-case CLI arguments
 		return strings.ToLower(str)
 	}
 
@@ -238,6 +240,11 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		// value.  Get the value
 		str := getStringFromMemory(de)
 
+		if str == "" {
+			cpm.output.WriteString("Ignoring empty parameter.\r\n")
+			return nil
+		}
+
 		// Get the old value
 		old := cpm.output.GetName()
 
@@ -257,8 +264,27 @@ func BiosSysCallReserved1(cpm *CPM) error {
 			return nil
 		}
 
+		// Do we have options?  If so show them too
+		options := ""
+		val := strings.Split(str, ":")
+		nm := str
+		if len(val) == 2 {
+			if len(val[1]) > 0 {
+				options = " with options '" + val[1] + "'"
+				nm = val[0]
+			}
+		}
+
 		cpm.output = driver
-		cpm.output.WriteString("The output driver has been changed from " + old + " to " + str + ".\r\n")
+		if nm != old {
+
+			cpm.output.WriteString("The output driver has been changed from " + old + " to " + driver.GetName() + options + ".\r\n")
+			return nil
+		}
+
+		if len(val) == 2 {
+			cpm.output.WriteString("Options changed to " + val[1] + " for " + driver.GetName() + ".\r\n")
+		}
 		return nil
 
 	// Get/Set the CCP
@@ -281,6 +307,11 @@ func BiosSysCallReserved1(cpm *CPM) error {
 
 		// Get the string pointed to by DE
 		str := getStringFromMemory(de)
+
+		if str == "" {
+			cpm.output.WriteString("Ignoring empty parameter.\r\n")
+			return nil
+		}
 
 		// If there is no change do nothing
 		if str == cpm.ccp {
@@ -370,6 +401,11 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		// value.  Get the value.
 		str := getStringFromMemory(de)
 
+		if str == "" {
+			cpm.output.WriteString("Ignoring empty parameter.\r\n")
+			return nil
+		}
+
 		// Get the old value
 		oldName := cpm.input.GetName()
 
@@ -384,31 +420,44 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		//
 		// This might mean we have console output going to a weird place if
 		// we have failures..
-		err := cpm.input.TearDown()
-		if err != nil {
-			cpm.output.WriteString("Error cleaning up the old input-driver, " + err.Error() + ".\r\n")
-			return nil
-		}
+		_ = cpm.input.TearDown()
 
 		// Create the new driver
-		driver, err2 := consolein.New(str)
-		if err2 != nil {
-			cpm.output.WriteString("Error creating the new driver, " + err2.Error() + ".\r\n")
-			return err2
+		driver, err := consolein.New(str)
+		if err != nil {
+			cpm.output.WriteString("Error creating the new driver, " + err.Error() + ".\r\n")
+			return err
 		}
 
 		// We need to setup the new driver.
 		//
 		// If this fails we also abort the change-attempt.
-		err2 = driver.Setup()
-		if err2 != nil {
-			cpm.output.WriteString("Error setting up the new driver, " + err2.Error() + ".\r\n")
-			return err2
+		err = driver.Setup()
+		if err != nil {
+			cpm.output.WriteString("Error setting up the new driver, " + err.Error() + ".\r\n")
+			return err
+		}
+
+		// Do we have options?  If so show them too
+		options := ""
+		val := strings.Split(str, ":")
+		nm := str
+		if len(val) == 2 {
+			if len(val[1]) > 0 {
+				options = " with options '" + val[1] + "'"
+				nm = val[0]
+			}
 		}
 
 		cpm.input = driver
+		if nm != oldName {
+			cpm.output.WriteString("Input driver changed from " + oldName + " to " + driver.GetName() + options + ".\r\n")
+			return nil
+		}
 
-		cpm.output.WriteString("Input driver changed from " + oldName + " to " + str + ".\r\n")
+		if len(val) == 2 {
+			cpm.output.WriteString("Options changed to " + val[1] + " for " + driver.GetName() + ".\r\n")
+		}
 		return nil
 
 	// Set the host prefix
@@ -437,7 +486,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 			cpm.input.SetSystemCommandPrefix(str)
 		}
 
-	// Disable extentions / filesystem
+	// Disable extensions / filesystem
 	case 0x0009:
 
 		switch de {

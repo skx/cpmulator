@@ -31,6 +31,18 @@ func TestName(t *testing.T) {
 	}
 }
 
+// TestOptions ensures we have some options
+func TestOptions(t *testing.T) {
+
+	d, e := New("ansi:CAKE/IS/A/LIE")
+	if e != nil {
+		t.Fatalf("failed to lookup driver by name %s", e)
+	}
+	if d.GetName() != "ansi" {
+		t.Fatalf("setting options broke the name")
+	}
+}
+
 // TestChangeDriver ensures we can change a driver
 func TestChangeDriver(t *testing.T) {
 
@@ -211,5 +223,27 @@ func TestADM(t *testing.T) {
 		}
 
 		s++
+	}
+}
+
+// TestOptionsNewline tests that the various options are tested
+func TestOptionsNewline(t *testing.T) {
+
+	known := []string{"CR=NONE", "CR=BOTH", "CR=CR", "LF=LF", "LF=BOTH", "LF=NONE", "ok"}
+
+	for _, str := range known {
+
+		x, e := New("ansi")
+		if e != nil {
+			t.Fatalf("error creating driver")
+		}
+
+		// set the options
+		x.options = str
+
+		// test a range of characters
+		x.PutCharacter('\n')
+		x.PutCharacter('\r')
+		x.PutCharacter('s')
 	}
 }
