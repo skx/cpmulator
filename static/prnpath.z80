@@ -60,13 +60,11 @@ show_value:
         ld c,  BDOS_OUTPUT_STRING
         call   BDOS_ENTRY_POINT
 
-        ld HL, 0x0a                    ; get the value
-        ld de, 0x0000
-        ld a, 31
-        out (0xff), a
-
-        ld hl, 0x0080                ; print the contents as a string
-        call print_string
+        ;; Use the given function to call a custom BIOS
+        ;; routine which will the result as ASCII text
+        ;; in the DMA-buffer.
+        ld hl, 0x000a
+        call show_bios_value
 
         ld de, OUTPUT_SUFFIX            ; show a suffix
         ld c,  BDOS_OUTPUT_STRING

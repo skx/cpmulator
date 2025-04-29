@@ -35,7 +35,7 @@ CMDLINE:              EQU 0x80   ; default DMA area too
         LD      A,(HL)
         INC     HL
         CP 0x00
-        JR      Z,show_driver
+        JR      Z,show_value
 
 
         ;; OK we're running under cpmulator, and we did get a parameter
@@ -54,19 +54,17 @@ exit:
         RST 0x00
 
 
-;; Show the current console driver
-show_driver:
+;; Show the current value
+show_value:
         LD DE, CONSOLE_PREFIX         ; Print a prefix
         LD C, BDOS_OUTPUT_STRING
         CALL BDOS_ENTRY_POINT
 
-        ld HL, 07                     ; Get the driver, in the DMA area
-        ld de, 0x0000
-        ld a, 31
-        out (0xff), a
-
-        ld hl, 0x0080                 ; Show the contents of the DMA area, as a string
-        call print_string
+        ;; Use the given function to call a custom BIOS
+        ;; routine which will the result as ASCII text
+        ;; in the DMA-buffer.
+        ld hl, 0x0007
+        call show_bios_value
 
         LD DE, CONSOLE_SUFFIX         ; Print a suffix
         LD  C, BDOS_OUTPUT_STRING

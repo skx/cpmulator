@@ -34,7 +34,7 @@ BDOS_OUTPUT_STRING:   EQU 9
         LD      A,(HL)
         INC     HL
         CP 0x00
-        JR      Z,show_driver
+        JR      Z,show_value
 
 
         ;; OK we're running under cpmulator, and we did get a parameter
@@ -53,19 +53,17 @@ exit:
         RST 0x00
 
 
-;; Show the current console driver
-show_driver:
+;; Show the current value.
+show_value:
         ld de, CONSOLE_PREFIX       ; show a prefix
         ld c,  BDOS_OUTPUT_STRING
         call   BDOS_ENTRY_POINT
 
-        ld HL, 02                   ; Get the driver name into the DMA area
-        ld de, 0x0000
-        ld a, 31
-        out (0xff), a
-
-        ld hl, 0x0080               ; print the contents of the DMA area, as a string
-        call print_string
+        ;; Use the given function to call a custom BIOS
+        ;; routine which will the result as ASCII text
+        ;; in the DMA-buffer.
+        ld hl, 0x0002
+        call show_bios_value
 
         ld de, CONSOLE_SUFFIX       ; Show a suffix
         ld c,  BDOS_OUTPUT_STRING

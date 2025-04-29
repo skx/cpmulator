@@ -72,12 +72,13 @@ show_value:
         CP 0
         jr z, unset
 
+        push hl ; hl points to the DMA area.
+
         LD DE, OUTPUT_PREFIX         ;; Show a prefix
         LD C, BDOS_OUTPUT_STRING
         CALL BDOS_ENTRY_POINT
 
-
-        LD HL, 0x0080                ;; Show the contents of the DMA area, as a string
+        pop hl  ; HL points back to the DMA area; one byte shorter to save/restore than set.
         call print_string
 
         LD DE, OUTPUT_SUFFIX         ;; Show a suffix

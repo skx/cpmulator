@@ -35,7 +35,7 @@ CMDLINE:              EQU 0x80   ; default DMA area too
         LD      A,(HL)
         INC     HL
         CP 0x00
-        JR      Z,show_ccp
+        JR      Z,show_value
 
 
         ;; OK we're running under cpmulator, and we did get a parameter
@@ -54,19 +54,17 @@ exit:
         rst 0x00
 
 
-;; Show the current CCP
-show_ccp:
+;; Show the current value
+show_value:
         ld de, CCP_PREFIX            ; show a prefix
         ld c,  BDOS_OUTPUT_STRING
         call   BDOS_ENTRY_POINT
 
-        ld HL, 03                    ; get the value of the CCP into the DMA area
-        ld de, 0x0000
-        ld a, 31
-        out (0xff), a
-
-        ld hl, 0x0080                ; print the contents as a string
-        call print_string
+        ;; Use the given function to call a custom BIOS
+        ;; routine which will the result as ASCII text
+        ;; in the DMA-buffer.
+        ld hl, 0x0003
+        call show_bios_value
 
         ld de, CCP_SUFFIX            ; show a suffix
         ld c,  BDOS_OUTPUT_STRING
