@@ -242,6 +242,17 @@ func BdosSysCallReadString(cpm *CPM) error {
 			// Reboot the system
 			return ErrBoot
 		}
+		// We used the command-execution method
+		// and this resulted in output to send to
+		// the console/user.
+		if err == consolein.ErrShowOutput {
+
+			cpm.output.WriteString(text)
+
+			// Now we're going to re-run.
+			return BdosSysCallReadString(cpm)
+		}
+
 		return err
 	}
 
