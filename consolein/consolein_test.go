@@ -356,7 +356,7 @@ func TestSimpleExec(t *testing.T) {
 	// Setup input to run a CD that will fail
 	ch.SetSystemCommandPrefix("!!")
 	ch.StuffInput("!!cd /this(path)/is/missing\ninput\n")
-	out, err = ch.ReadLine(199)
+	_, err = ch.ReadLine(199)
 	if err != ErrShowOutput {
 		t.Fatalf("got error, but not the one we expected: %s", err)
 	}
