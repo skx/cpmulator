@@ -197,7 +197,7 @@ func TestCustom(t *testing.T) {
 	// set to "null" - again with options
 	c.CPU.States.HL.SetU16(0x0002)
 	c.CPU.States.DE.SetU16(0xFE00)
-	c.Memory.SetRange(0xFE00, []byte{'n', 'u', 'l', 'l', ':', 'f', 'o', 0x00}...)
+	c.Memory.SetRange(0xFE00, []byte{':', 'f', 'o', 0x00}...)
 	err = BiosSysCallReserved1(c)
 	if err != nil {
 		t.Fatalf("error calling reserved function")
@@ -399,6 +399,15 @@ func TestCustom(t *testing.T) {
 		t.Fatalf("error calling reserved function %s", err)
 	}
 
+	// set to "stty", again this time with options too
+	c.CPU.States.HL.SetU16(0x0007)
+	c.CPU.States.DE.SetU16(0xFE00)
+	c.Memory.SetRange(0xFE00, []byte{':', 'f', 'o', 0x00}...)
+	err = BiosSysCallReserved1(c)
+	if err != nil {
+		t.Fatalf("error calling reserved function %s", err)
+	}
+
 	// set to an empty string
 	c.CPU.States.HL.SetU16(0x0007)
 	c.CPU.States.DE.SetU16(0xFE00)
@@ -406,15 +415,6 @@ func TestCustom(t *testing.T) {
 	err = BiosSysCallReserved1(c)
 	if err != nil {
 		t.Fatalf("error calling reserved function %s", err)
-	}
-
-	// set to "stty", again this time with options too
-	c.CPU.States.HL.SetU16(0x0007)
-	c.CPU.States.DE.SetU16(0xFE00)
-	c.Memory.SetRange(0xFE00, []byte{'s', 't', 't', 'y', ':', 'f', 'o', 0x00}...)
-	err = BiosSysCallReserved1(c)
-	if err != nil {
-		t.Fatalf("error calling reserved function")
 	}
 
 	// set to "stty", again this time with empty options

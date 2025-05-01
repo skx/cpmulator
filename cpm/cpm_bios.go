@@ -178,7 +178,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		// Trim leading and trailing whitespace
 		str = strings.TrimSpace(str)
 
-		// Lower-case because the CCP will upper-case CLI arguments
+		// Lower-case so our driver name lookup works
 		return strings.ToLower(str)
 	}
 
@@ -243,6 +243,12 @@ func BiosSysCallReserved1(cpm *CPM) error {
 			return nil
 		}
 
+		// If the string starts with ":" we're just setting/changing the options
+		// and leaving the driver alone.
+		if str[0] == ':' {
+			str = cpm.output.GetName() + str
+		}
+
 		// Get the old value
 		old := cpm.output.GetName()
 
@@ -268,7 +274,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		nm := str
 		if len(val) == 2 {
 			if len(val[1]) > 0 {
-				options = " with options '" + val[1] + "'"
+				options = " with options '" + strings.ToUpper(val[1]) + "'"
 				nm = val[0]
 			}
 		}
@@ -281,7 +287,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		}
 
 		if len(val) == 2 {
-			cpm.output.WriteString("Options changed to " + val[1] + " for " + driver.GetName() + ".\r\n")
+			cpm.output.WriteString("Options changed to " + strings.ToUpper(val[1]) + " for " + driver.GetName() + ".\r\n")
 		}
 		return nil
 
@@ -388,6 +394,12 @@ func BiosSysCallReserved1(cpm *CPM) error {
 			return nil
 		}
 
+		// If the string starts with ":" we're just setting/changing the options
+		// and leaving the driver alone.
+		if str[0] == ':' {
+			str = cpm.input.GetName() + str
+		}
+
 		// Get the old value
 		oldName := cpm.input.GetName()
 
@@ -426,7 +438,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		nm := str
 		if len(val) == 2 {
 			if len(val[1]) > 0 {
-				options = " with options '" + val[1] + "'"
+				options = " with options '" + strings.ToUpper(val[1]) + "'"
 				nm = val[0]
 			}
 		}
@@ -438,7 +450,7 @@ func BiosSysCallReserved1(cpm *CPM) error {
 		}
 
 		if len(val) == 2 {
-			cpm.output.WriteString("Options changed to " + val[1] + " for " + driver.GetName() + ".\r\n")
+			cpm.output.WriteString("Options changed to " + strings.ToUpper(val[1]) + " for " + driver.GetName() + ".\r\n")
 		}
 		return nil
 
