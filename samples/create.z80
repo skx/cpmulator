@@ -1,12 +1,12 @@
 ;; create.asm - Create the named file
-;;
 
 FCB1:    EQU 0x5C
 
-BDOS_ENTRY_POINT:    EQU 5
-
-BDOS_OUTPUT_STRING:            EQU 9
-BDOS_MAKE_FILE:                EQU 22
+BDOS_ENTRY_POINT:    EQU  5
+BDOS_OUTPUT_STRING:  EQU  9
+BDOS_OPEN_FILE:      EQU 15
+BDOS_CLOSE_FILE:     EQU 16
+BDOS_MAKE_FILE:      EQU 22
 
         ;;
         ;; CP/M programs start at 0x100.
@@ -29,22 +29,59 @@ BDOS_MAKE_FILE:                EQU 22
         jr     exit_fn
 
 got_argument:
-        LD DE, FCB1
-        LD C, 22
-        CALL BDOS_ENTRY_POINT
+        ;; First of all try to open the file
+        ;; if this succeeds it means the file
+        ;; exists, so we cannot create it, and we
+        ;; must terminate.
+        call can_open
+        jr z,   already_present
+
+        ;; Now try to create the file.
+        ld de, FCB1
+        ld c,  BDOS_MAKE_FILE
+        call   BDOS_ENTRY_POINT
+
+        ;; If we can no open it then we created the
+        ;; file, and all is good.
+        call can_open
+        jr nz, failed_create
 
 exit_fn:
         ;; exit
-        LD      C,0x00
-        CALL    BDOS_ENTRY_POINT
+        ld      c,0x00
+        call    BDOS_ENTRY_POINT
 
 
-;;;
-;;; The message displayed if no command-line argument was present.
-;;;
+;;  Test if we can open the file in the first FCB
+can_open:
+        ;; Open the file
+        ld de,  FCB1
+        ld c,   BDOS_OPEN_FILE
+        call    BDOS_ENTRY_POINT
+
+        ;; Did that succeed?
+        cp 00
+        ret
+
+already_present:
+        ld de, present_message
+        ld c,  BDOS_OUTPUT_STRING
+        call   BDOS_ENTRY_POINT
+        jr     exit_fn
+
+failed_create:
+        ld de, failed_message
+        ld c,  BDOS_OUTPUT_STRING
+        call   BDOS_ENTRY_POINT
+        jr     exit_fn
+
+;;; Message area
+failed_message:
+        DB "Failed to create the file.", 0x0a, 0x0d, "$"
+present_message:
+        DB "The file is already present, we cannot create it.", 0x0a, 0x0d, "$"
 usage_message:
         db "Usage: CREATE FILENAME.EXT"
-
         ;; note fall-through here :)
 newline:
         db 0xa, 0xd, "$"
