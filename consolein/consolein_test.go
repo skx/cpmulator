@@ -13,6 +13,13 @@ func TestReadlineSTTY(t *testing.T) {
 	ch := ConsoleIn{}
 	ch.driver = &x
 
+	defer func() {
+		tErr := ch.TearDown()
+		if tErr != nil {
+			t.Fatalf("teardown failed %s", tErr.Error())
+		}
+	}()
+
 	// Simple readline
 	// Here \x10 is the Ctrl-P which would use the previous history
 	// as we're just created we have none so it is ignored.
@@ -104,6 +111,14 @@ func TestOverview(t *testing.T) {
 	ch := ConsoleIn{}
 	ch.driver = &x
 
+	// Get known drivers
+	known := ch.GetDrivers()
+	if len(known) != 2 {
+		t.Fatalf("unexpected number of public drivers")
+	}
+	if ch.GetDriver().GetName() != "stty" {
+		t.Fatalf("driver has wrong name")
+	}
 	sErr := ch.Setup()
 	if sErr != nil {
 		t.Fatalf("failed to setup driver %s", sErr.Error())
@@ -152,6 +167,7 @@ func TestOverview(t *testing.T) {
 	}
 }
 
+// TestCtrlC tests that we can get/set the ctrl-c counter
 func TestCtrlC(t *testing.T) {
 
 	ch := ConsoleIn{}
@@ -166,6 +182,7 @@ func TestCtrlC(t *testing.T) {
 	}
 }
 
+// TestPending tests that we can fake the pending input via stuffing
 func TestPending(t *testing.T) {
 
 	// Create a helper
@@ -286,8 +303,8 @@ func TestDriverRegistration(t *testing.T) {
 	//
 	// NOTE:
 	//
-	// We expect to find one less than the number of available
-	// drivers in this call, because we hide the "file"-driver.
+	// We expect to find two less than the number of available
+	// drivers in this call, because we hide the "file"-driver and the "error-driver".
 	//
 	found = len(obj.GetDrivers())
 	if found != expectedCount-2 {
@@ -295,6 +312,7 @@ func TestDriverRegistration(t *testing.T) {
 	}
 }
 
+// TestSimpleExec executes a simple command
 func TestSimpleExec(t *testing.T) {
 
 	cwd := func() string {
@@ -335,6 +353,14 @@ func TestSimpleExec(t *testing.T) {
 		t.Fatalf("unexpected input %s", out)
 	}
 
+	// Setup input to run a CD that will fail
+	ch.SetSystemCommandPrefix("!!")
+	ch.StuffInput("!!cd /this(path)/is/missing\ninput\n")
+	out, err = ch.ReadLine(199)
+	if err != ErrShowOutput {
+		t.Fatalf("got error, but not the one we expected: %s", err)
+	}
+
 	// Get the CWD before we change
 	before := cwd()
 	ch.StuffInput("!!cd ..\ninput2\n")
@@ -354,6 +380,49 @@ func TestSimpleExec(t *testing.T) {
 	}
 }
 
+// TestSimpleExecNoOutput executes a simple command which results in no output
+func TestSimpleExecNoOutput(t *testing.T) {
+
+	// Create a helper
+	x := STTYInput{}
+
+	ch := ConsoleIn{}
+	ch.driver = &x
+
+	sErr := ch.Setup()
+	if sErr != nil {
+		t.Fatalf("failed to setup driver %s", sErr.Error())
+	}
+
+	defer func() {
+		tErr := ch.TearDown()
+		if tErr != nil {
+			t.Fatalf("teardown failed %s", tErr.Error())
+		}
+	}()
+
+	// Create a temporary file
+	file, err := os.CreateTemp("", "me.txt")
+	if err != nil {
+		t.Fatalf("failed to create temporary file")
+	}
+	defer os.Remove(file.Name())
+
+	// Setup input to run "touch .." which will produce no ouptut
+	ch.SetSystemCommandPrefix("!!")
+	ch.StuffInput("")
+	ch.StuffInput("!!touch " + file.Name() + "\ntouched\n")
+
+	out, err := ch.ReadLine(199)
+	if err != nil {
+		t.Fatalf("error reading input %s: %s", err, out)
+	}
+	if out != "touched" {
+		t.Fatalf("unexpected input %s", out)
+	}
+
+}
+
 // TestFactoryOptions ensures we have some options
 func TestFactoryOptions(t *testing.T) {
 
@@ -364,4 +433,78 @@ func TestFactoryOptions(t *testing.T) {
 	if d.GetName() != "stty" {
 		t.Fatalf("setting options broke the name")
 	}
+}
+
+// TestErrorDriver just tests the error-driver returns errors.
+func TestErrorDriver(t *testing.T) {
+
+	d, e := New("error")
+	if e != nil {
+		t.Fatalf("failed to lookup driver by name %s", e)
+	}
+	if d.GetName() != "error" {
+		t.Fatalf("wrong name for driver")
+	}
+	if !d.PendingInput() {
+		t.Fatalf("expected pending input, got none")
+	}
+	if d.Setup() != nil {
+		t.Fatalf("unexpected error in method")
+	}
+	if d.TearDown() != nil {
+		t.Fatalf("unexpected error in method")
+	}
+
+	_, e2 := d.BlockForCharacterNoEcho()
+	if e2 == nil {
+		t.Fatal("expected error, got none")
+	}
+
+	ch := ConsoleIn{}
+	x := ErrorInput{}
+	ch.driver = &x
+	_, e2 = ch.BlockForCharacterWithEcho()
+	if e2 == nil {
+		t.Fatal("expected error, got none")
+	}
+
+	_, e2 = ch.ReadLine(3)
+	if e2 == nil {
+		t.Fatalf("expected error, got none")
+	}
+}
+
+// TestCommandExecution does a minimal host-command run
+func TestCommandExecution(t *testing.T) {
+
+	d, e := New("stty")
+	if e != nil {
+		t.Fatalf("failed to lookup driver by name %s", e)
+	}
+
+	sErr := d.Setup()
+	if sErr != nil {
+		t.Fatalf("failed to setup driver %s", sErr.Error())
+	}
+
+	defer func() {
+		tErr := d.TearDown()
+		if tErr != nil {
+			t.Fatalf("teardown failed %s", tErr.Error())
+		}
+	}()
+
+	// Run "env" which should be fine
+	d.StuffInput("")
+	d.StuffInput("!!env\n")
+	d.SetSystemCommandPrefix("!!")
+
+	_, _ = d.ReadLine(10)
+
+	// Run "/not/found" which should fail
+	d.StuffInput("")
+	d.StuffInput("!!/this/is/not/not/found\n")
+	d.SetSystemCommandPrefix("!!")
+
+	_, _ = d.ReadLine(30)
 }

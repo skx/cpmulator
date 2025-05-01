@@ -8,6 +8,7 @@ package consolein
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"strings"
@@ -121,7 +122,7 @@ func New(name string) (*ConsoleIn, error) {
 	// OK we do, return ourselves with that driver.
 	return &ConsoleIn{
 		driver:  ctor(),
-		options: options,
+		options: strings.ToUpper(options),
 	}, nil
 }
 
@@ -229,9 +230,7 @@ func (co *ConsoleIn) BlockForCharacterWithEcho() (byte, error) {
 	}
 
 	c, err := co.driver.BlockForCharacterNoEcho()
-	if err == nil {
-		fmt.Printf("%c", c)
-	}
+	fmt.Printf("%c", c)
 	return c, err
 }
 
@@ -406,6 +405,7 @@ func (co *ConsoleIn) ReadLine(max uint8) (string, error) {
 			if err != nil {
 				return fmt.Sprintf("\r\nError changing to directory '%s': %s\r\n", dir, err), ErrShowOutput
 			}
+
 			// No error, just recurse
 			return co.ReadLine(max)
 		}
@@ -426,6 +426,11 @@ func (co *ConsoleIn) ReadLine(max uint8) (string, error) {
 			return fmt.Sprintf("\r\nerror running command '%s' %s%s\r\n", text, err.Error(), execErr.Bytes()), ErrShowOutput
 		}
 
+		// Log the command
+		slog.Debug("ReadLine executed a command",
+			slog.String("cmd", text),
+		)
+
 		// No error.
 		out := execOut.String()
 		out += execErr.String()
@@ -435,8 +440,8 @@ func (co *ConsoleIn) ReadLine(max uint8) (string, error) {
 			return fmt.Sprintf("\r\n%s\r\n", out), ErrShowOutput
 		}
 
-		// No output, show a newline
-		return "\r\n", ErrShowOutput
+		// No output just recurse
+		return co.ReadLine(max)
 	}
 
 	// Return the text
