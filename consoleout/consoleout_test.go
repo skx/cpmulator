@@ -229,7 +229,7 @@ func TestADM(t *testing.T) {
 // TestOptionsNewline tests that the various options are tested
 func TestOptionsNewline(t *testing.T) {
 
-	known := []string{"CR=NONE", "CR=BOTH", "CR=CR", "LF=LF", "LF=BOTH", "LF=NONE", "ok"}
+	known := []string{"CR=NONE", "CR=BOTH", "CR=CR", "CR=LF", "LF=LF", "LF=BOTH", "LF=NONE", "LF=CR", "ok"}
 
 	for _, str := range known {
 

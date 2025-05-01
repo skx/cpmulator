@@ -193,6 +193,12 @@ func (co *ConsoleOut) PutCharacter(c byte) {
 			return
 		}
 
+		// CR is actually LF?  Okay
+		if strings.Contains(co.options, "CR=LF") {
+			co.driver.PutCharacter('\n')
+			return
+		}
+
 	}
 	if c == '\n' {
 
@@ -211,6 +217,12 @@ func (co *ConsoleOut) PutCharacter(c byte) {
 		// LF is just LF?  Okay.
 		if strings.Contains(co.options, "LF=LF") {
 			co.driver.PutCharacter('\n')
+			return
+		}
+
+		// LF is actually CR?  Okay
+		if strings.Contains(co.options, "LF=CR") {
+			co.driver.PutCharacter('\r')
 			return
 		}
 	}

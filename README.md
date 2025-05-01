@@ -1,19 +1,18 @@
 # cpmulator - A CP/M emulator written in golang
 
-This repository contains a CP/M emulator, with integrated CCP ("Console Command Processor", i.e. shell), which is designed to run CP/M binaries.  The project was initially created to run [a text-based adventure game](https://github.com/skx/lighthouse-of-doom/) which I wrote a few years ago.  (That game was written in Z80 assembly language targeting CP/M, later it was ported to the ZX Spectrum.)
-
-Over time this project has become more complete, and I've now implemented enough functionity to run many of the well-known CP/M programs:
+This repository contains a CP/M emulator, with integrated CCP ("Console Command Processor", i.e. shell), which is designed to run CP/M binaries.  The project can be used to run many of the well-known CP/M programs:
 
 * The Aztec C-Compiler.
+* BASIC, both the BBC and Microsoft flavours.
 * Borland's Turbo Pascal.
 * Many early Infocom games:
   * Zork 1, 2, & 3.
   * Planetfall.
   * etc.
-* BBC and Microsoft BASIC.
+* My own [lighthouse of doom](https://github.com/skx/lighthouse-of-doom/) text-based adventure game.
 * Wordstar.
 
-As things stand this project is "complete".  I'd like to increase the test-coverage for my own reassurance, but I've now reached a point where all the binaries I've tried to execute work as expected.  If you find a program that _doesn't_ work please [open an issue](https://github.com/skx/cpmulator/issues), otherwise I suspect ongoing development will be minimal, and sporadic.
+**This project is largely complete now**, as we've reached a point where all the binaries I expect to execute work as expected.  If you find a program that _doesn't_ work please [open an issue](https://github.com/skx/cpmulator/issues).
 
 > **NOTE** I've not implemented any notion of disk-support.  This means that opening, reading/writing, and closing files is absolutely fine, but any API call that refers to tracks, sectors, or disks will fail (with an "unimplemented syscall" error).
 
@@ -41,9 +40,7 @@ go install .
 
 If neither of these options are suitable you may download a binary from [our release page](https://github.com/skx/cpmulator/releases).
 
-Releases will be made as/when features seem to justify it, but it should be noted that I consider the CLI tool, and the emulator itself, the "product".  That means that the internal APIs will change around as/when necessary - so far changes have been minor, but I'm not averse to changing parameters to internal packages, or adding/renaming/removing methods as necessary without any regard for external users.
-
-
+Releases will be made as/when features seem to justify it, but it should be noted that I consider the CLI tool, and the emulator itself, the "product".  That means that the internal APIs can and will change around as necessary.
 
 
 # Quick Start
@@ -122,7 +119,7 @@ You can terminate the CCP by typing `EXIT`.  The following built-in commands are
 
 </details>
 
-There are a pair of CCP implementations included within the emulator, and they can be selected via the `-ccp` command-line flag:
+There are a pair of CCP implementations included within the emulator, and they can be selected via the `-ccp` command-line flag, or changed at runtime by executing `A:!CCP CCPZ`, or `A:!CCP CCP`:
 
 * "ccp"
   * The original CCP from Digital Research.
@@ -169,13 +166,12 @@ There are many available command-line options, which are shown in the output of 
 
 ## Startup Processing
 
-When the CCP is launched for interactive execution, we allow commands to be executed at startup:
+There is support for running commands when the emulator starts, automatically:
 
 * If `SUBMIT.COM` **and** `AUTOEXEC.SUB` exist on A:
 * Then the contents of `AUTOEXEC.SUB` will be executed.
-  * We secretly run "`SUBMIT AUTOEXEC`" to achieve this.
 
-This allows you to customize the emulator, or perform other "one-time" setup via the options described in the next section.
+We secretly run "`SUBMIT AUTOEXEC`" to achieve this, as you might expect.  This allows you to customize the emulator, or perform other "one-time" setup via the options described in the next section.
 
 
 
@@ -216,6 +212,7 @@ Run `A:!OUTPUT ansi` to disable the output emulation, or `A:!OUTPUT adm-3a` to r
 
 You'll see that the [cpm-dist](https://github.com/skx/cpm-dist) repository contains a version of Wordstar, and that behaves differently depending on the selected output handler.  Changing the handler at run-time is a neat bit of behaviour.
 
+There are some options which can change/improve newline handling, I prefer to run `A:!OUTPUT :CR=NONE;LF=BOTH` but you can experiment with "CR" and "LF" separately with the various options (ALL, BOTH, CR, & LF) as you prefer.
 
 ### Debug Handling
 
@@ -283,7 +280,7 @@ B: MBASIC  .COM | OBASIC  .COM | TBASIC  .COM
 You can also point specific drives to particular paths via the `-drive-X` command-line arguments.  For example the following would have A: and B: pointed to custom paths, and C:-P: using the current working directory:
 
 ```
-$ cpmulator -ccp=ccpz -drive-a /tmp -drive-b ~/Repos/github.com/skx/cpm-dist/G/
+$ cpmulator -drive-a /tmp -drive-b ~/Repos/github.com/skx/cpm-dist/G/
 ```
 
 
@@ -335,7 +332,7 @@ By default input will be read via `termbox` but you may you specify a different 
 * `cpmulator -list-input-drivers`
   * List all available input-drivers.
 
-
+(Remember you can change this at run-time too, by running "`A:!INPUT stty`", for example.)
 
 
 # Debugging Failures & Tweaking Behaviour
@@ -385,35 +382,6 @@ For reference the memory map of our CP/M looks like this:
   * [https://github.com/jhallen/cpm](https://github.com/jhallen/cpm)
     * Run CP/M commands in Linux/Cygwin with this Z80 / BDOS / ADM-3A emulator.
     * Written in C.
-
-
-
-
-# Release Checklist
-
-Before I make a release I carry out testing of the repository state, to avoid any obvious regressions.  The following checklist is the bare minimum I carry out prior to making a new tagged-release.
-
-Note that the entries "checked" here are those entries which are tested automatically via the contents of [test/](test/).  (This automated testing essentially launches the emulator and pipes in fake keyboard input, then looks to see that the expected output is generated.  Scripted automation, in other words.)
-
-* [X] Confirm DDT can be used to trace execution of a simple binary.
-* [X] Confirm the A1 Apple Emulator can be launched, and BASIC will run.
-* [X] Play lighthouse of doom to completion, either victory or death.
-* [X] Compile HELLO.ASM with ASM & LOAD.  Confirm
-  * [X] Confirm the generated binary executes successfully.
-* [X] Compile ECHO.C with the Aztec C Compiler.
-  * [X] Confirm the generated binary executes successfully.
-* [X] Run BBC Basic, and play a game.
-  * [ ] Test "SAVE" and "LOAD" commands.
-  * [ ] Test saving tokenized AND raw versions. (i.e `SAVE "FOO"`, and `SAVE "FOO", A`.)
-* [X] Compile HELLO.PAS with Turbo Pascal.
-  * [X] Confirm the generated binary executes successfully.
-* [X] Launch Zork1 and play for a few turns.
-  * [X] Test SAVE and RESTORE commands, and confirm they work.
-* [ ] Test BE.COM
-* [ ] Test STAT.COM
-* [X] Test some built-in shell-commands; ERA, TYPE, and EXIT.
-
-
 
 ## Bugs?
 
