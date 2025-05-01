@@ -18,6 +18,11 @@ import (
 	"golang.org/x/term"
 )
 
+var (
+	// TermboxInputName contains the name of this driver
+	TermboxInputName = "term"
+)
+
 // TermboxInput is our input-driver, using termbox
 type TermboxInput struct {
 
@@ -134,12 +139,12 @@ func (ti *TermboxInput) BlockForCharacterNoEcho() (byte, error) {
 
 // GetName is part of the module API, and returns the name of this driver.
 func (ti *TermboxInput) GetName() string {
-	return "term"
+	return TermboxInputName
 }
 
 // init registers our driver, by name.
 func init() {
-	Register("term", func() ConsoleInput {
+	Register(TermboxInputName, func() ConsoleInput {
 		return new(TermboxInput)
 	})
 }

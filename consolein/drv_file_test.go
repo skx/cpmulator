@@ -4,12 +4,13 @@ import (
 	"io"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestFileSetup(t *testing.T) {
 
 	// Create a temporary file
-	file, err := os.CreateTemp("", "in.txt")
+	file, err := os.CreateTemp("", "in0.txt")
 	if err != nil {
 		t.Fatalf("failed to create temporary file")
 	}
@@ -39,6 +40,8 @@ func TestFileSetup(t *testing.T) {
 
 	c := 0
 	str := ""
+
+	x.delayUntil = time.Now().Add(1 * time.Second)
 
 	for c < 3 {
 		var out byte
@@ -195,7 +198,7 @@ func TestOptions(t *testing.T) {
 func TestNewlineN(t *testing.T) {
 
 	// Create a temporary file
-	file, err := os.CreateTemp("", "in.txt")
+	file, err := os.CreateTemp("", "in2.txt")
 	if err != nil {
 		t.Fatalf("failed to create temporary file")
 	}
@@ -246,7 +249,7 @@ func TestNewlineN(t *testing.T) {
 func TestNewlineM(t *testing.T) {
 
 	// Create a temporary file
-	file, err := os.CreateTemp("", "in.txt")
+	file, err := os.CreateTemp("", "in3.txt")
 	if err != nil {
 		t.Fatalf("failed to create temporary file")
 	}
@@ -296,7 +299,7 @@ func TestNewlineM(t *testing.T) {
 func TestNewlineBoth(t *testing.T) {
 
 	// Create a temporary file
-	file, err := os.CreateTemp("", "in.txt")
+	file, err := os.CreateTemp("", "in1.txt")
 	if err != nil {
 		t.Fatalf("failed to create temporary file")
 	}
@@ -346,7 +349,7 @@ func TestNewlineBoth(t *testing.T) {
 func TestNewlineBogus(t *testing.T) {
 
 	// Create a temporary file
-	file, err := os.CreateTemp("", "in.txt")
+	file, err := os.CreateTemp("", "in4.txt")
 	if err != nil {
 		t.Fatalf("failed to create temporary file")
 	}
@@ -380,7 +383,7 @@ func TestNewlineBogus(t *testing.T) {
 func TestNewlineMissing(t *testing.T) {
 
 	// Create a temporary file
-	file, err := os.CreateTemp("", "in.txt")
+	file, err := os.CreateTemp("", "in5.txt")
 	if err != nil {
 		t.Fatalf("failed to create temporary file")
 	}
@@ -423,5 +426,39 @@ func TestNewlineMissing(t *testing.T) {
 	}
 	if str != "hi\n" {
 		t.Fatalf("error in string, got '%v' '%s'", str, str)
+	}
+}
+
+func TestTimer(t *testing.T) {
+
+	// Create a temporary file
+	file, err := os.CreateTemp("", "in5.txt")
+	if err != nil {
+		t.Fatalf("failed to create temporary file")
+	}
+	defer os.Remove(file.Name())
+
+	_, err = file.Write([]byte("nothing: bogus\n--\nhi\n"))
+	if err != nil {
+		t.Fatalf("failed to write to temporary file")
+	}
+
+	t.Setenv("INPUT_FILE", file.Name())
+
+	// Create a helper
+	x := FileInput{}
+
+	ch := ConsoleIn{}
+	ch.driver = &x
+
+	sErr := ch.Setup()
+	if sErr != nil {
+		t.Fatalf("failed to setup driver %s", sErr.Error())
+	}
+
+	x.delayUntil = time.Now().Add(48 * time.Hour)
+
+	if x.PendingInput() {
+		t.Fatalf("expected no input")
 	}
 }

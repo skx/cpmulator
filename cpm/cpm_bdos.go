@@ -242,6 +242,18 @@ func BdosSysCallReadString(cpm *CPM) error {
 			// Reboot the system
 			return ErrBoot
 		}
+
+		// We used the command-execution method
+		// and this resulted in output to send to
+		// the console/user.
+		if err == consolein.ErrShowOutput {
+
+			cpm.output.WriteString(text)
+
+			// Now we're going to re-run.
+			return BdosSysCallReadString(cpm)
+		}
+
 		return err
 	}
 
@@ -445,9 +457,8 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 		fLen := uint8(len(virt) / blkSize)
 
 		// Set record-count
-		if fLen > maxRC {
-			fcbPtr.RC = maxRC
-		} else {
+		fcbPtr.RC = maxRC
+		if fLen < maxRC {
 			fcbPtr.RC = fLen
 		}
 
@@ -502,9 +513,8 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 	fLen := uint8(fileSize / blkSize)
 
 	// Set record-count
-	if fLen > maxRC {
-		fcbPtr.RC = maxRC
-	} else {
+	fcbPtr.RC = maxRC
+	if fLen < maxRC {
 		fcbPtr.RC = fLen
 	}
 
@@ -1079,9 +1089,8 @@ func BdosSysCallMakeFile(cpm *CPM) error {
 	fLen := uint8(fileSize / blkSize)
 
 	// Set record-count
-	if fLen > maxRC {
-		fcbPtr.RC = maxRC
-	} else {
+	fcbPtr.RC = maxRC
+	if fLen < maxRC {
 		fcbPtr.RC = fLen
 	}
 

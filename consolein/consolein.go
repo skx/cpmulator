@@ -8,6 +8,7 @@ package consolein
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"strings"
@@ -16,6 +17,11 @@ import (
 
 // ErrInterrupted is returned if the user presses Ctrl-C when in our ReadLine function.
 var ErrInterrupted error = fmt.Errorf("INTERRUPTED")
+
+// ErrShowOutput is a special sentinel value that is used to signal that the ReadLine
+// function needs to write some output to the console.  As that would be a layering
+// violation it is handled indirectly.
+var ErrShowOutput error = fmt.Errorf("SHOW_OUTPUT")
 
 // ConsoleInput is the interface that must be implemented by anything
 // that wishes to be used as an input driver.
@@ -116,7 +122,7 @@ func New(name string) (*ConsoleIn, error) {
 	// OK we do, return ourselves with that driver.
 	return &ConsoleIn{
 		driver:  ctor(),
-		options: options,
+		options: strings.ToUpper(options),
 	}, nil
 }
 
@@ -148,7 +154,7 @@ func (co *ConsoleIn) GetDrivers() []string {
 	valid := []string{}
 
 	for x := range handlers.m {
-		if x != "file" {
+		if x != "file" && x != "error" {
 			valid = append(valid, x)
 		}
 	}
@@ -224,9 +230,7 @@ func (co *ConsoleIn) BlockForCharacterWithEcho() (byte, error) {
 	}
 
 	c, err := co.driver.BlockForCharacterNoEcho()
-	if err == nil {
-		fmt.Printf("%c", c)
-	}
+	fmt.Printf("%c", c)
 	return c, err
 }
 
@@ -392,31 +396,22 @@ func (co *ConsoleIn) ReadLine(max uint8) (string, error) {
 
 		// cd is a special command.
 		if strings.HasPrefix(text, "cd ") {
-			bits := strings.Split(text, " ")
-			if len(bits) >= 2 {
-				dir := bits[1]
-				err := os.Chdir(dir)
-				if err != nil {
-					fmt.Printf("\r\nError changing to directory %s: %s\r\n", dir, err)
-				}
+
+			// strip off the "cd " prefix
+			dir := strings.TrimSpace(text[3:])
+
+			// try to change directory
+			err := os.Chdir(dir)
+			if err != nil {
+				return fmt.Sprintf("\r\nError changing to directory '%s': %s\r\n", dir, err), ErrShowOutput
 			}
+
+			// No error, just recurse
 			return co.ReadLine(max)
 		}
 
-		// Split the command, naively.
-		var bits []string
-		bits = strings.Split(text, " ")
-
-		// Of course we might be using the shell.
-		useShell := false
-		if strings.Contains(text, ">") || strings.Contains(text, "&") || strings.Contains(text, "|") || strings.Contains(text, "<") {
-			useShell = true
-		}
-
-		// If we are we wrap the command.
-		if useShell {
-			bits = []string{"bash", "-c", text}
-		}
+		// Wrap the command so it is executed via a shell
+		bits := []string{"bash", "-c", text}
 
 		// Prepare to run the command, capturing STDOUT & STDERR
 		cmd := exec.Command(bits[0], bits[1:]...)
@@ -428,15 +423,24 @@ func (co *ConsoleIn) ReadLine(max uint8) (string, error) {
 		// Actually run the command
 		err := cmd.Run()
 		if err != nil {
-			fmt.Printf("\r\nerror running command '%s' %s%s\r\n", text, err.Error(), execErr.Bytes())
-		} else {
-			out := execOut.String()
-			out += execErr.String()
-			out = strings.ReplaceAll(out, "\n", "\n\r")
-			fmt.Printf("\r\n%s\r\n", out)
+			return fmt.Sprintf("\r\nerror running command '%s' %s%s\r\n", text, err.Error(), execErr.Bytes()), ErrShowOutput
 		}
 
-		// Read the input again, since we "stole" it via the exec handling.
+		// Log the command
+		slog.Debug("ReadLine executed a command",
+			slog.String("cmd", text),
+		)
+
+		// No error.
+		out := execOut.String()
+		out += execErr.String()
+		out = strings.ReplaceAll(out, "\n", "\n\r")
+
+		if len(out) > 0 {
+			return fmt.Sprintf("\r\n%s\r\n", out), ErrShowOutput
+		}
+
+		// No output just recurse
 		return co.ReadLine(max)
 	}
 

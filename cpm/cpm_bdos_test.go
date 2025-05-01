@@ -98,6 +98,52 @@ func TestConsoleInput(t *testing.T) {
 	}
 }
 
+func TestErrorReading(t *testing.T) {
+
+	// Create a new helper
+	c, err := New(WithPrinterPath("11.log"), WithInputDriver("error"))
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	c.Memory = new(memory.Memory)
+	c.fixupRAM()
+	c.StuffText("")
+	defer func() {
+		tErr := c.IOTearDown()
+		if tErr != nil {
+			t.Fatalf("teardown failed %s", tErr.Error())
+		}
+	}()
+
+	err = BdosSysCallAuxRead(c)
+	if err == nil {
+		t.Fatalf("expected error, got none")
+	}
+
+	// ReadChar
+	err = BdosSysCallReadChar(c)
+	if err == nil {
+		t.Fatalf("expected error, got none")
+	}
+
+	c.CPU.States.DE.Lo = 0xFF
+	err = BdosSysCallRawIO(c)
+	if err == nil {
+		t.Fatalf("expected error, got none")
+	}
+
+	c.CPU.States.DE.Lo = 0xFD
+	err = BdosSysCallRawIO(c)
+	if err == nil {
+		t.Fatalf("expected error, got none")
+	}
+
+	err = BdosSysCallReadString(c)
+	if err == nil {
+		t.Fatalf("expected error, got none")
+	}
+}
+
 func TestUnimplemented(t *testing.T) {
 	// Create a new helper
 	c, err := New(WithPrinterPath("12.log"))
