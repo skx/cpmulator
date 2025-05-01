@@ -153,7 +153,7 @@ func (co *ConsoleIn) GetDrivers() []string {
 	valid := []string{}
 
 	for x := range handlers.m {
-		if x != "file" {
+		if x != "file" && x != "error" {
 			valid = append(valid, x)
 		}
 	}
