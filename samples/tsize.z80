@@ -1,4 +1,4 @@
-;; terminal.z80 - Show the terminal size.
+;; tsize.z80 - Show the terminal size.
 
 
 
