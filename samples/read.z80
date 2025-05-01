@@ -3,10 +3,13 @@
 ;; Given a filename open it, and read 256 records to it - testing that the contents
 ;; match what we expect.
 ;;
-;;  A record of 0x00
-;;  A record of 0x01
+;;  A record of 128 bytes each of 0x00
+;;  A record of 128 bytes each of 0x01
+;;  A record of 128 bytes each of 0x02
+;;  A record of 128 bytes each of 0x03
 ;; ..
-;;  A record of 0xFF
+;;  A record of 128 bytes each of 0xFE
+;;  A record of 128 bytes each of 0xFE
 ;;
 ;;
 
@@ -81,22 +84,36 @@ open_ok:
         ;; Right here we loop from 0x00 - 0xFF starting at 0x00
         ld a, 0x00
 read_record:
+        ;; show the record we're reading
+        PUSH_ALL
+           call show_a_register
+           ld c, 0x02
+           ld e, "\n"
+           call 0x0005
+           ld c, 0x02
+           ld e, "\r"
+           call 0x0005
+        POP_ALL
+
+        ;; read the next record into the DMA area
         PUSH AF
-             ; read a record
              LD C, BDOS_READ_FILE
              LD DE, FCB1
              CALL BDOS_ENTRY_POINT
-
         POP AF
 
         ; Does this record contain the current record number?
         LD HL, DMA
-        LD b,(HL)
-        CP B
+        LD b, 128
+loopy:
+        CP (hl)
         JR NZ, RECORD_FAILED
+        inc hl
+        DEC b
+        JR NZ, loopy
 
         INC A
-        cp 0
+        cp 0x00
         jr nz, read_record
 
         ;; Close the file
@@ -108,54 +125,65 @@ read_record:
         jr exit_fn
 
 RECORD_FAILED:
+        ;; show the failure message
         push af
         ld de, FAILURE
         ld c,  BDOS_OUTPUT_STRING
         call   BDOS_ENTRY_POINT
 
         pop af
+
+        ;; show the record number
         call show_a_register
 
-           ld c, 0x02
-           ld e, 0x0a
-           call 0x0005
-           ld c, 0x02
-           ld e, 0x0d
-           call 0x0005
+        ;; newline
+        ld c, 0x02
+        ld e, "\r"
+        call 0x0005
+        ld c, 0x02
+        ld e, "\n"
+        call 0x0005
 
-        ; now dump the memory
+        ;; now dump the DMA-areas memory
         ld b, 128
         ld hl, DMA
 show_mem:
         push bc
+        push hl
         ld a,(hl)
            call show_a_register
            ld c, 0x02
            ld e, " "
            call 0x0005
+        pop hl
+        inc hl
         pop bc
         djnz show_mem
-        jr exit_fn
+        jp exit_fn
 
 
+;; Display a number from HL
 DispHL:
-        ld      c,-10
-        call    Num1
-        ld      c,-1
-Num1:   ld      a,'0'-1
-Num2:   inc     a
-        add     hl,bc
-        jr      c,Num2
-        sbc     hl,bc
+	ld	bc,-100
+	call	Num1
+	ld	c,-10
+	call	Num1
+	ld	c,-1
+Num1:	ld	a,'0'-1
+Num2:	inc	a
+	add	hl,bc
+	jr	c,Num2
+	sbc	hl,bc
         PUSH_ALL
         ld e, a
         ld c, 0x02
         call 0x0005
         POP_ALL
-        ret
+	ret
 
+;; Show the A register contents as a number
 show_a_register:
-        ld h,0
+        ld h,0x00
         ld l,a
         call DispHL
         ret
