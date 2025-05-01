@@ -2,8 +2,10 @@ package cpm
 
 import (
 	"context"
+	"errors"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/skx/cpmulator/memory"
 )
@@ -113,6 +115,7 @@ func TestSimple(t *testing.T) {
 
 }
 
+// TestBogusConstructor checks some of the constructor options fail as expected
 func TestBogusConstructor(t *testing.T) {
 
 	_, err := New(WithOutputDriver("bogus"))
@@ -214,6 +217,7 @@ func TestLogNoisy(t *testing.T) {
 	}
 }
 
+// TestDrives just ensures that our default drive-mapping, to the CWD on the host, is as expected.
 func TestDrives(t *testing.T) {
 
 	obj, err := New()
@@ -294,6 +298,7 @@ func TestCPMCoverage(t *testing.T) {
 	}
 }
 
+// TestAutoExec tests that we have our autoexec.sub handling working.
 func TestAutoExec(t *testing.T) {
 
 	obj, err := New()
@@ -352,6 +357,7 @@ func TestAutoExec(t *testing.T) {
 	}
 }
 
+// TestHostExect just tests that we can set the host-execution prefix by default.
 func TestHostExec(t *testing.T) {
 
 	// Create a new CP/M helper
@@ -365,6 +371,7 @@ func TestHostExec(t *testing.T) {
 	}
 }
 
+// TestAddressOveride ensures we can move the BDOS load-address if we want to.
 func TestAddressOveride(t *testing.T) {
 
 	// Create a new CP/M helper - default
@@ -398,4 +405,161 @@ func TestAddressOveride(t *testing.T) {
 		t.Fatalf("updated BDOS address is wrong")
 	}
 
+}
+
+// TestOut just exercises a couple of error conditions, nothing significant.
+func TestOut(t *testing.T) {
+
+	// Create a new CP/M helper - default
+	obj, err := New(WithOutputDriver("null"))
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+
+	// Early return due to error
+	obj.syscallErr = errors.New("fake")
+	obj.Out(3, 3)
+
+	// Mismatched register
+	obj.syscallErr = nil
+	obj.Out(0xFF, 0xFF)
+}
+
+// TestHalt is testing that a CPU "HALT" instruction is reported correctly.
+func TestHalt(t *testing.T) {
+
+	// Create a new CP/M helper
+	obj, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+
+	// Ensure we have memory
+	obj.Memory = new(memory.Memory)
+
+	// Create a temporary file with our "HALT" program in it.
+	var file *os.File
+	file, err = os.CreateTemp("", "tst-*.com")
+	if err != nil {
+		t.Fatalf("failed to create temporary file")
+	}
+	defer os.Remove(file.Name())
+
+	// Write "HALT" to the file
+	_, err = file.Write([]byte{0x76})
+	if err != nil {
+		t.Fatalf("failed to write program to temporary file")
+	}
+
+	// Close the file
+	err = file.Close()
+	if err != nil {
+		t.Fatalf("failed to close file")
+	}
+
+	// Load the binary
+	err = obj.LoadBinary(file.Name())
+	if err != nil {
+		t.Fatalf("failed to load binary")
+	}
+
+	// Finally launch it
+	err = obj.Execute([]string{})
+	if err != ErrHalt {
+		t.Fatalf("failed to run binary %v!", err)
+	}
+
+	defer func() {
+		tErr := obj.IOTearDown()
+		if tErr != nil {
+			t.Fatalf("teardown failed %s", tErr.Error())
+		}
+	}()
+}
+
+// TestDefaultDrivers ensures we can catch errors with the default input & out
+// drivers, if they're changed to something bogus
+func TestDefaultDrivers(t *testing.T) {
+
+	// Reset the default values of our drivers
+	old := DefaultInputDriver
+	DefaultInputDriver = "fake"
+
+	// Create a new CP/M helper
+	_, err := New()
+	if err == nil {
+		t.Fatalf("Expected error, but got none")
+	}
+
+	DefaultInputDriver = old
+	old = DefaultOutputDriver
+	DefaultOutputDriver = "fake"
+
+	// Create a new CP/M helper
+	_, err = New()
+	if err == nil {
+		t.Fatalf("Expected error, but got none")
+	}
+	DefaultOutputDriver = old
+
+}
+
+// TestTimeout tries to test if a timeout is happening
+func TestTimeout(t *testing.T) {
+
+	// Timeout after 10milliseconds
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(10)*time.Millisecond)
+	defer cancel()
+
+	// But make sure we wait 100 before we start
+	// We want to make sure that we've already exceeded our limit before we run the test.
+	time.Sleep(100 * time.Millisecond)
+
+	// Create a new CP/M helper
+	obj, err := New(WithContext(ctx))
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+
+	// Ensure we have memory
+	obj.Memory = new(memory.Memory)
+
+	// Create a temporary file with a program in it.
+	var file *os.File
+	file, err = os.CreateTemp("", "tst-*.com")
+	if err != nil {
+		t.Fatalf("failed to create temporary file")
+	}
+	defer os.Remove(file.Name())
+
+	// Write "RET" to the file
+	_, err = file.Write([]byte{0xC9})
+	if err != nil {
+		t.Fatalf("failed to write program to temporary file")
+	}
+
+	// Close the file
+	err = file.Close()
+	if err != nil {
+		t.Fatalf("failed to close file")
+	}
+
+	// Load the binary
+	err = obj.LoadBinary(file.Name())
+	if err != nil {
+		t.Fatalf("failed to load binary")
+	}
+
+	// Finally launch it
+	err = obj.Execute([]string{})
+	if err != ErrTimeout {
+		t.Fatalf("expected timeout error, got %v instead", err)
+	}
+
+	defer func() {
+		tErr := obj.IOTearDown()
+		if tErr != nil {
+			t.Fatalf("teardown failed %s", tErr.Error())
+		}
+	}()
 }
