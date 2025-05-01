@@ -98,6 +98,7 @@ func TestConsoleInput(t *testing.T) {
 	}
 }
 
+// TestErrorReading tests that we can cope with reading errors
 func TestErrorReading(t *testing.T) {
 
 	// Create a new helper
@@ -144,6 +145,7 @@ func TestErrorReading(t *testing.T) {
 	}
 }
 
+// TestUnimplemented tests that we can detect unimplemented calls
 func TestUnimplemented(t *testing.T) {
 	// Create a new helper
 	c, err := New(WithPrinterPath("12.log"))
@@ -1580,4 +1582,52 @@ func TestFileCache(t *testing.T) {
 		t.Fatalf("got an error, but the wrong one: %v\n", err)
 	}
 
+}
+
+// TestExecOutput tests we can execute commands and get output
+func TestExecOutput(t *testing.T) {
+
+	// Create a new helper
+	c, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	c.Memory = new(memory.Memory)
+
+	c.input, _ = consolein.New("stty")
+
+	// Ensure commands are executed
+	c.input.SetSystemCommandPrefix("!!")
+
+	// Stuff some fake input
+	c.StuffText("!!ls\nsteve\n")
+
+	// Setup a buffer, so we can read 50 characters
+	c.Memory.Set(0x0100, 50)
+	c.CPU.States.DE.SetU16(0x0100)
+
+	// Read it
+	err = BdosSysCallReadString(c)
+	if err != nil {
+		t.Fatalf("error reading CPM")
+	}
+
+	// How much did we get
+	got := c.Memory.Get(0x0101)
+
+	// What did we get?
+	text := ""
+	i := 0
+	for i < int(got) {
+		text += string(c.Memory.Get(uint16(0x0102 + i)))
+		i++
+	}
+
+	if got != 05 {
+		t.Fatalf("returned wrong amount, got %s - %d", text, got)
+	}
+
+	if text != "steve" {
+		t.Fatalf("wrong text received")
+	}
 }

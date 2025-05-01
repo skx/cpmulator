@@ -937,27 +937,12 @@ func (cpm *CPM) Execute(args []string) error {
 			return ErrHalt
 		}
 
-		// An unimplemented system-call was encountered.
-		// That's a fatal-error
-		if err == ErrUnimplemented || cpm.syscallErr == ErrUnimplemented {
-			return ErrUnimplemented
-		}
-
-		// The virtual machine was rebooted.
-		if err == ErrBoot || cpm.syscallErr == ErrBoot {
-			return ErrBoot
-		}
-
-		// Emulation was terminated.
-		if err == ErrHalt || cpm.syscallErr == ErrHalt {
-			return ErrHalt
-		}
-
-		// Other errors are handled here - these should be rare
-		if err != nil {
-			return err
-		}
-		if cpm.syscallErr != nil {
+		// One of our sentinels was returned, or any other error,
+		// we'll pass that back to the caller.
+		if cpm.syscallErr == ErrUnimplemented ||
+			cpm.syscallErr == ErrBoot ||
+			cpm.syscallErr == ErrHalt ||
+			cpm.syscallErr != nil {
 			return cpm.syscallErr
 		}
 	}
