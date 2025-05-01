@@ -16,6 +16,11 @@ import (
 	"golang.org/x/term"
 )
 
+var (
+	// STTYInputName contains the name of this driver.
+	STTYInputName = "stty"
+)
+
 // EchoStatus is used to record our current state.
 type EchoStatus int
 
@@ -149,12 +154,12 @@ func (si *STTYInput) enableEcho() {
 
 // GetName is part of the module API, and returns the name of this driver.
 func (si *STTYInput) GetName() string {
-	return "stty"
+	return STTYInputName
 }
 
 // init registers our driver, by name.
 func init() {
-	Register("stty", func() ConsoleInput {
+	Register(STTYInputName, func() ConsoleInput {
 		return new(STTYInput)
 	})
 }
