@@ -12,6 +12,11 @@ import (
 	"time"
 )
 
+var (
+	// FileInputName contains the name of this driver
+	FileInputName = "file"
+)
+
 // FileInput is an input-driver that returns fake console input
 // by reading and returning the contents of a file ("input.txt"
 // by default, but this may be changed).
@@ -251,12 +256,12 @@ func (fi *FileInput) BlockForCharacterNoEcho() (byte, error) {
 
 // GetName is part of the module API, and returns the name of this driver.
 func (fi *FileInput) GetName() string {
-	return "file"
+	return FileInputName
 }
 
 // init registers our driver, by name.
 func init() {
-	Register("file", func() ConsoleInput {
+	Register(FileInputName, func() ConsoleInput {
 		return new(FileInput)
 	})
 }
