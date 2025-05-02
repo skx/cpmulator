@@ -3,9 +3,9 @@
 # The files we wish to generate.
 #
 all: cli-args.com create.com \
-     delete.com drive.com filesize.com find.com \
+     delete.com filesize.com find.com \
      intest.com read.com ret.com tsize.com \
-     user-num.com write.com
+     write.com
 
 
 #
