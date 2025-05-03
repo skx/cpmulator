@@ -30,8 +30,7 @@ FCB1:   EQU 0x5C
         cp '4'
         jr z,   four
 
-;; nothing useful, show usage message
-show_usage:
+        ; nothing useful, show usage message
         ld     de, usage_message
         ld     c, 9
         call   0x0005

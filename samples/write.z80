@@ -78,11 +78,6 @@ FILL_DMA:
         jr exit_fn
 
 usage_message:
-        db "Usage: WRITE FILENAME.EXT"
-        ;; note fall-through here :)
-newline:
-        db 0xa, 0xd, "$"
+        db "Usage: WRITE FILENAME.EXT", 0xa, 0xd, "$"
 
-RECORD:
-        DB 0x00
 END

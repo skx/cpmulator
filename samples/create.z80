@@ -5,7 +5,6 @@ FCB1:    EQU 0x5C
 BDOS_ENTRY_POINT:    EQU  5
 BDOS_OUTPUT_STRING:  EQU  9
 BDOS_OPEN_FILE:      EQU 15
-BDOS_CLOSE_FILE:     EQU 16
 BDOS_MAKE_FILE:      EQU 22
 
         ;;
@@ -81,9 +80,6 @@ failed_message:
 present_message:
         DB "The file is already present, we cannot create it.", 0x0a, 0x0d, "$"
 usage_message:
-        db "Usage: CREATE FILENAME.EXT"
-        ;; note fall-through here :)
-newline:
-        db 0xa, 0xd, "$"
+        db "Usage: CREATE FILENAME.EXT", 0xa, 0xd, "$"
 
 END
