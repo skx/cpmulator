@@ -92,8 +92,22 @@ show_result:
 
         push af                 ; preserve return code from find first/next
 
-        ld a,(FCB1)             ; Output the drive-letter and separator
-        add a, 65 - 1
+        ;; If the drive is not-zero that means we have an explicit drive
+        ld a,(FCB1)
+        cp 0x00
+        jr nz, letter_drive
+
+        ;; So the drive is 0x00, which means we're using the current,
+        ;; or default, drive.  Find it.
+        ld c,25
+        call 0x0005
+
+        ;; Add one, now we can fall-through to the ASCII conversiion
+        inc a
+
+letter_drive:
+        ; 1 means A, 2 for B, etc
+        add a,'A' -1
         call print_character
 
         ld a, ':'
