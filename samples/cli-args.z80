@@ -65,15 +65,29 @@ DUMP_FCB:
         PUSH HL
         LD A, (HL)
 
-        ; A should have the drive number 0 means A, 1 for B, etc
-        add a,'A'
+        ;; If the drive is not-zero that means we have an explicit drive
+        cp 0x00
+        jr nz, letter_drive
 
-        ; Show drive
+        ;; So the drive is 0x00, which means we're using the current,
+        ;; or default, drive.  Find it.
+        ld c,25
+        call 0x0005
+
+        ;; Add one, now we can fall-through to the ASCII conversiion
+        inc a
+
+letter_drive:
+        ; 1 means A, 2 for B, etc
+        add a,'A' -1
+
+show_drive:
+        ;; Show the drive letter
         LD     E,A
         LD     C,0x02
         CALL   0x0005
 
-        ; Show ":"
+        ;; And the ":"
         LD     E,':'
         LD     C,0x02
         CALL   0x0005

@@ -1,6 +1,4 @@
-;; find.asm
-;;
-;; Show all files which match the given glob/pattern.
+;; find.asm - Show all files which match the given glob/pattern.
 ;;
 
 FCB1:    EQU 0x5C
@@ -94,8 +92,22 @@ show_result:
 
         push af                 ; preserve return code from find first/next
 
-        ld a,(FCB1)             ; Output the drive-letter and separator
-        add a, 65 - 1
+        ;; If the drive is not-zero that means we have an explicit drive
+        ld a,(FCB1)
+        cp 0x00
+        jr nz, letter_drive
+
+        ;; So the drive is 0x00, which means we're using the current,
+        ;; or default, drive.  Find it.
+        ld c,25
+        call 0x0005
+
+        ;; Add one, now we can fall-through to the ASCII conversiion
+        inc a
+
+letter_drive:
+        ; 1 means A, 2 for B, etc
+        add a,'A' -1
         call print_character
 
         ld a, ':'
@@ -186,16 +198,9 @@ call_bdos_and_return:
 ;;; The message displayed if no command-line argument was present.
 ;;;
 usage_message:
-        db "Usage: LOCATE pattern"
-
+        db "Usage: FIND pattern"
         ;; note fall-through here :)
 newline:
         db 0xa, 0xd, "$"
-
-;;; ***
-;;; If this is non-zero we skip showing the user-number
-;;;
-SHOW_USER_MARKER:
-     db 0
 
         END

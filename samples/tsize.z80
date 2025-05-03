@@ -1,4 +1,4 @@
-;; terminal.z80 - Show the terminal size.
+;; tsize.z80 - Show the terminal size.
 
 
 
@@ -24,7 +24,6 @@ MACRO POP_ALL
       ENDM
 ; }}
 
-FCB1:                 EQU 0x5C
 BDOS_ENTRY_POINT:     EQU 5
 BDOS_OUTPUT_STRING:   EQU 9
 

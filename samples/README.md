@@ -21,6 +21,10 @@ More significant programs are available within the sister-repository:
   * Create a file, given the name.
 * [delete.z80](delete.z80)
   * Delete files matching the given name/pattern.
+* [filesize.z80](filesize.z80)
+  * Show the size of the given file.
+* [find.z80](find.z80)
+  * Find files via their names.
 * [intest.z80](intest.z80)
   * Test the various character/line input methods for correctness.
 * [read.z80](read.z80) & [write.z80](write.z80)
@@ -29,7 +33,5 @@ More significant programs are available within the sister-repository:
   * Used to test sequential read/write operations.
 * [ret.z80](ret.z80)
   * Terminate the execution of a binary in four different ways.
-* [terminal.z80](terminal.z80)
+* [tsize.z80](tsize.z80)
   * Show the dimensions of the terminal we're running within.
-* [unimpl.z80](unimpl.z80)
-  * Attempt to call a BDOS function which isn't implemented.

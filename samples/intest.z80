@@ -259,9 +259,6 @@ C_RAWIO_PROMPT:
         DB "  Echo should NOT be enabled.", 0x0a, 0x0d
         DB "  Press 'q' to proceed/complete this test.", 0x0a, 0x0d, "$"
 
-C_RAWIO_BUFFER:
-        DB 0x00, "$"
-
 C_RAWIO_SPINNER_1:
         DB "x", 0x08, "$"
 C_RAWIO_SPINNER_2:

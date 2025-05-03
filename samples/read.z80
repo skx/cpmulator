@@ -15,7 +15,6 @@
 
 FCB1:                EQU 0x5C
 DMA:                 EQU 0x80
-DMA_LEN:             EQU 128
 BDOS_ENTRY_POINT:    EQU 5
 BDOS_OUTPUT_STRING:  EQU 9
 BDOS_READ_FILE:      EQU 20
@@ -189,16 +188,11 @@ show_a_register:
         ret
 
 usage_message:
-        db "Usage: READ FILENAME.EXT"
-        ;; note fall-through here :)
-newline:
-        db 0xa, 0xd, "$"
+        db "Usage: READ FILENAME.EXT", 0xa, 0xd, "$"
 FAILURE:
         db "Unexpected value reading file at record $"
 
 OPEN_FAILED:
         db "opening the file failed.", 0x0a, 0x0d, "$"
 
-RECORD:
-        DB 0x00
 END

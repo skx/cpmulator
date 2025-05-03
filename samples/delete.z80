@@ -5,8 +5,9 @@ FCB1:    EQU 0x5C
 
 BDOS_ENTRY_POINT:    EQU 5
 
-BDOS_OUTPUT_STRING:            EQU 9
-BDOS_DELETE_FILE:              EQU 19
+BDOS_OUTPUT_STRING:  EQU  9
+BDOS_OPEN_FILE:      EQU 15
+BDOS_DELETE_FILE:    EQU 19
 
         ;;
         ;; CP/M programs start at 0x100.
@@ -29,24 +30,56 @@ BDOS_DELETE_FILE:              EQU 19
         jr     exit_fn
 
 got_argument:
+        ;; Can we open the file?
+        ;; i.e. if it doesn't exist we must abort
+        call can_open
+        jr nz, not_found
+
+        ;; file exists, we can delete it.
         LD DE, FCB1
         LD C, BDOS_DELETE_FILE
         CALL BDOS_ENTRY_POINT
+
+        ;; did it work?
+        call can_open
+        jr z,   delete_failed
 
 exit_fn:
         ;; exit
         LD      C,0x00
         CALL    BDOS_ENTRY_POINT
 
+not_found:
+        ld de,  NOT_FOUND_MESSAGE
+        ld c,   BDOS_OUTPUT_STRING
+        call   BDOS_ENTRY_POINT
+        jr     exit_fn
+
+delete_failed:
+        ld de,  DELETE_FAILED_MESSAGE
+        ld c,   BDOS_OUTPUT_STRING
+        call   BDOS_ENTRY_POINT
+        jr     exit_fn
+
+;;  Test if we can open the file in the first FCB
+can_open:
+        ;; Open the file
+        ld de,  FCB1
+        ld c,   BDOS_OPEN_FILE
+        call    BDOS_ENTRY_POINT
+
+        ;; Did that succeed?
+        cp 00
+        ret
 
 ;;;
 ;;; The message displayed if no command-line argument was present.
 ;;;
+DELETE_FAILED_MESSAGE:
+        db "Deleting the file failed.", 0x0a, 0x0d, "$"
+NOT_FOUND_MESSAGE:
+        db "The file does does not exist.", 0x0a, 0x0d, "$"
 usage_message:
-        db "Usage: DELETE FILENAME.EXT"
-
-        ;; note fall-through here :)
-newline:
-        db 0xa, 0xd, "$"
+        db "Usage: DELETE FILENAME.EXT", 0xa, 0xd, "$"
 
 END
