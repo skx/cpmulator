@@ -83,10 +83,6 @@ Most other syscalls are more static, but there are examples where a call's behav
 
 We have the ability to paste controlled (console) input into the emulator, and this facility is used by the test-script beneath `test/`.
 
-Run:
+Run `./test/run-tests.sh` or `make test` to run the tests.  Individual tests can be launched via `./test/run-test.sh foo` for example.
 
-```
-$ ./test/test.sh
-```
-
-That _should_ run some basic tests, assuming you have the cpm-dist repository cloned alongside this one.
+Note that you will need to have the cpm-dist repository cloned above this directory.
