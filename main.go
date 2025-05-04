@@ -222,6 +222,8 @@ func main() {
 		defer logFile.Close()
 	}
 
+	// Setup a context, this is mostly ignored unless the user specified
+	// a timeout, but that is harmless.
 	ctx := context.Background()
 	var cancel context.CancelFunc
 	if *timeout != 0 {
@@ -454,12 +456,15 @@ func main() {
 				return
 			}
 
+			// Exceeded the timeout the user specified.
 			if err == cpm.ErrTimeout {
 				fmt.Printf("\r\nThe timeout of %d seconds was exceeded.  Terminating!\r\n", *timeout)
 				return
 			}
 
+			// Any other error.
 			fmt.Printf("\r\nError running CCP: %s\r\n", err)
+			unclean = true
 			return
 		}
 	}
