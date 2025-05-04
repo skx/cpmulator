@@ -28,6 +28,7 @@
 ;	SBB V4.1 11/27/81
 ;	SBB V4.1skx 18/05/24 - Rebased, added new built-ins QUIT/EXIT/HALT/CLS
 ;                            - Added PEEK, POKE, and made "#" a comment.
+;                            - Don't abort SUBMIT processing on keyboard input.
 ;
 ;******** Refer to CCPZ-Vxx.NOT File for Revision History ********
 ;
@@ -867,7 +868,8 @@ REDBUF:
 	CALL	CONOUT
 	LD	HL,CIBUFF	;PRINT COMMAND LINE FROM $$$.SUB
 	CALL	PRIN1
-	CALL	BREAK		;CHECK FOR ABORT (ANY CHAR)
+	;CALL	BREAK		;CHECK FOR ABORT (ANY CHAR)
+                                ;This was commented out by skx.  SUBMIT should run even if a keystroke is received
 ;
 	IF	CLEVEL3		;IF THIRD COMMAND LEVEL IS PERMITTED
 	RET	Z		;IF <NULL> (NO ABORT), RETURN TO CALLER AND RUN
