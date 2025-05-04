@@ -478,8 +478,7 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 	file, err := os.OpenFile(fileName, os.O_RDWR, 0644)
 	if err != nil {
 
-		// We might fail to open a file because it doesn't
-		// exist.
+		// We might fail to open a file because it doesn't exist.
 		if os.IsNotExist(err) {
 
 			l.Debug("failed to open, file does not exist",
@@ -494,7 +493,10 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 		l.Debug("failed to open",
 			slog.String("path", fileName),
 			slog.String("error", err.Error()))
-		return err
+
+		// Report the failure, but keep going.
+		cpm.CPU.States.AF.Hi = 0xFF
+		return nil
 	}
 
 	// Save the file handle in our cache.
