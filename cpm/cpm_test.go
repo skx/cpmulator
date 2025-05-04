@@ -311,7 +311,7 @@ func TestAutoExec(t *testing.T) {
 
 	// Ensure there's _something_ to read
 	obj.StuffText("nothing\n")
-	obj.RunAutoExec()
+	obj.RunAutoExec("")
 
 	var out string
 	out, err = obj.input.ReadLine(200)
@@ -346,7 +346,7 @@ func TestAutoExec(t *testing.T) {
 
 	// Ensure there's _something_ to read
 	obj.StuffText("nothing\n")
-	obj.RunAutoExec()
+	obj.RunAutoExec("")
 
 	out, err = obj.input.ReadLine(200)
 	if err != nil {

@@ -68,6 +68,7 @@ func main() {
 	logAll := flag.Bool("log-all", false, "Log all function invocations, including the noisy console I/O ones.")
 	logPath := flag.String("log-path", "", "Specify the file to write debug logs to.")
 	prnPath := flag.String("prn-path", "print.log", "Specify the file to write printer-output to.")
+	stuffTxt := flag.String("stuff", "", "Paste the supplied text into the input-buffer.")
 	showVersion := flag.Bool("version", false, "Report our version, and exit.")
 	timeout := flag.Int("timeout", 0, "Timeout execution after the given number of seconds")
 	useDirectories := flag.Bool("directories", false, "Use subdirectories on the host computer for CP/M drives.")
@@ -405,10 +406,19 @@ func main() {
 	// Show a startup-banner.
 	fmt.Printf("\ncpmulator %s\r\nConsole input:%s Console output:%s BIOS:0x%04X BDOS:0x%04X CCP:%s\r\n", cpmver.GetVersionString(), obj.GetInputDriver().GetName(), obj.GetOutputDriver().GetName(), obj.GetBIOSAddress(), obj.GetBDOSAddress(), obj.GetCCPName())
 
+	//
+	// If we've got some extra text to stuff into the input
+	// buffer we want to expand text appropriately.
+	//
+	extra := *stuffTxt
+	extra = strings.ReplaceAll(extra, "\\n", "\n")
+	extra = strings.ReplaceAll(extra, "\\r", "\r")
+	extra = strings.ReplaceAll(extra, "\\t", "\t")
+
 	// We will load AUTOEXEC.SUB, once, if it exists (*)
 	//
 	// * - Terms and conditions apply.
-	obj.RunAutoExec()
+	obj.RunAutoExec(extra)
 
 	// We load and re-run eternally - because many binaries the CCP
 	// would launch would end with "exit" which would otherwise cause
