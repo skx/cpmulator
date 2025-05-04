@@ -952,11 +952,15 @@ func (cpm *CPM) Execute(args []string) error {
 // a simple binary.
 //
 // If A:SUBMIT.COM and A:AUTOEXEC.SUB exist then we stuff the input-buffer with
-// a command to process them.
-func (cpm *CPM) RunAutoExec() {
+// a command to run the latter on startup.  Regardless of that we might also
+// add the extra-string
+func (cpm *CPM) RunAutoExec(extra string) {
 
 	// These files must be present
 	files := []string{"SUBMIT.COM", "AUTOEXEC.SUB"}
+
+	// How many of the expected files did we find?
+	found := 0
 
 	// If one of the files is missing we return
 	// without doing anything.
@@ -970,18 +974,25 @@ func (cpm *CPM) RunAutoExec() {
 
 		// Open it to see if it exists.
 		handle, err := os.OpenFile(dst, os.O_RDONLY, 0644)
-		if err != nil {
-
-			// We're assuming "file not found",
-			// or similar, here.
-			return
+		if err == nil {
+			found++
 		}
-
 		handle.Close()
 	}
 
-	// OK we have both files
-	cpm.input.StuffInput("SUBMIT AUTOEXEC\n")
+	text := ""
+
+	// If we got all the expected files then we can add the automation.
+	if found == len(files) {
+		text += "SUBMIT AUTOEXEC\n"
+	}
+
+	// Anything extra for the caller
+	text += extra
+
+	if len(text) > 0 {
+		cpm.input.StuffInput(text)
+	}
 }
 
 // SetStaticFilesystem allows adding a reference to an embedded filesystem.
