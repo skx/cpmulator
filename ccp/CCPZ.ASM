@@ -1456,8 +1456,9 @@ DIR8:
 DIR9:
 	POP	AF
 DIR10:
-	CALL	BREAK		;CHECK FOR ABORT
-	JR	NZ,DIR11
+	;CALL	BREAK		;CHECK FOR ABORT (ANY CHAR)
+                                ;This was commented out by skx.  DIR should run even if a keystroke is received
+	;JR	NZ,DIR11        ;And the test of the flag.
 	CALL	SEARN		;SEARCH FOR NEXT FILE
 	JR	DIR3		;CONTINUE
 DIR11:
