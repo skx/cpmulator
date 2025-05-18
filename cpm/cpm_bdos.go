@@ -1323,15 +1323,11 @@ func BdosSysCallReadRand(cpm *CPM) error {
 	// Translate the record to a byte-offset
 	fpos := int64(record) * blkSize
 
-	fmt.Printf("Before magic.  SeqOffset %d\n", fcbPtr.GetSequentialOffset())
-	fmt.Printf("\tRecord:%d\n", record)
-	fmt.Printf("\tOffset:%d\n", fpos)
-
 	// magic
+	//  This is a cheap way to try to update the sequential offset
+	// with the value that is chosen in the random-access record.
 	fcbPtr.Cr = fcbPtr.R0
 	fcbPtr.Ex = fcbPtr.R1
-
-	fmt.Printf("\tAfter magic.  SeqOffset %d\n", fcbPtr.GetSequentialOffset())
 
 	// Read the data
 	res := sysRead(obj.handle, fpos)
@@ -1429,16 +1425,11 @@ func BdosSysCallWriteRand(cpm *CPM) error {
 		return fmt.Errorf("failed to write to offset %d: %s", fpos, err)
 	}
 
-	fmt.Printf("Before magic.  SeqOffset %d\n", fcbPtr.GetSequentialOffset())
-	fmt.Printf("\tRecord:%d\n", record)
-	fmt.Printf("\tOffset:%d\n", fpos)
-
 	// magic
-	// magic
+	//  This is a cheap way to try to update the sequential offset
+	// with the value that is chosen in the random-access record.
 	fcbPtr.Cr = fcbPtr.R0
 	fcbPtr.Ex = fcbPtr.R1
-
-	fmt.Printf("\tAfter magic.  SeqOffset %d\n", fcbPtr.GetSequentialOffset())
 
 	// Update the FCB in memory
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
