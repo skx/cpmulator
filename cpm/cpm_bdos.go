@@ -578,9 +578,8 @@ func BdosSysCallFileClose(cpm *CPM) error {
 		return nil
 	}
 
-	// Is this a $-file?
-	if strings.Contains(obj.name, "$") {
-
+	// Is this a file created by submit?
+	if strings.HasSuffix(obj.name, "$$$.SUB") {
 		// Get the file size, in records
 		hostSize, _ := obj.handle.Seek(0, 2)
 		hostExtent := int((hostSize) / 16384)
