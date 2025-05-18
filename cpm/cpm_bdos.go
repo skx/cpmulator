@@ -743,7 +743,7 @@ func BdosSysCallDeleteFile(cpm *CPM) error {
 				slog.String("path", path),
 				slog.String("error", err.Error()))
 
-			cpm.CPU.States.AF.Hi = 0xFF
+			cpm.CPU.States.HL.SetU16(0x00FF)
 			return nil
 		}
 	}
@@ -773,7 +773,7 @@ func BdosSysCallRead(cpm *CPM) error {
 	if !ok {
 		slog.Error("SysCallRead: Attempting to read from a file that isn't open",
 			slog.String("filename", fcbPtr.GetFileName()))
-		cpm.CPU.States.AF.Hi = 0xFF
+		cpm.CPU.States.HL.SetU16(0x00FF)
 		return nil
 	}
 
@@ -804,7 +804,7 @@ func BdosSysCallRead(cpm *CPM) error {
 		i := 0
 
 		// default to being successful
-		cpm.CPU.States.AF.Hi = 0x00
+		cpm.CPU.States.HL.SetU16(0x0000)
 
 		// copy each appropriate byte into the data-area
 		for i < blkSize {
