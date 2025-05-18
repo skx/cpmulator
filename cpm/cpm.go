@@ -814,12 +814,21 @@ func (cpm *CPM) fixupRAM() {
 	}
 
 	//
-	// BDOS code will invoke our host function,
-	// again via an OUT instruction.
+	// BDOS code will invoke our host function via an OUT instruction.
+	//
+	// After the function returns HL should have the correct result-code,
+	// and we propogate that to the A and B registers.
 	//
 	SETMEM(BDOS+0, 0xED) // OUT (C), C
 	SETMEM(BDOS+1, 0x49) //    ""
-	SETMEM(BDOS+2, 0xC9) // RET
+	//
+	//                   // BDOS CALL HAPPENS HERE
+	//
+	SETMEM(BDOS+2, 0x44) // LD B,H
+	SETMEM(BDOS+3, 0x7D) // LD A,L
+	SETMEM(BDOS+4, 0xFE) // CP 0
+	SETMEM(BDOS+5, 0x00) //    ""
+	SETMEM(BDOS+6, 0xC9) // RET
 
 }
 
