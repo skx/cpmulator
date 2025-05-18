@@ -467,9 +467,24 @@ func New(options ...Option) (*CPM, error) {
 		// We don't zero-pad
 		Fake: true,
 	}
+	bdos[42] = Handler{
+		Desc:    "F_LOCK",
+		Handler: BdosSysCallFileLock,
+		Fake:    true,
+	}
 	bdos[45] = Handler{
 		Desc:    "F_ERRMODE",
 		Handler: BdosSysCallErrorMode,
+		Fake:    true,
+	}
+	bdos[48] = Handler{
+		Desc:    "DRV_FLUSH",
+		Handler: BdosSysCallDriveFlush,
+		Fake:    true,
+	}
+	bdos[102] = Handler{ // HiSoft C Compiler 3.09
+		Desc:    "F_TIMEDATE",
+		Handler: BdosSysCallFileTimeDate,
 		Fake:    true,
 	}
 	bdos[105] = Handler{
@@ -518,6 +533,16 @@ func New(options ...Option) (*CPM, error) {
 	bios[5] = Handler{
 		Desc:    "LIST",
 		Handler: BiosSysCallPrintChar,
+		Fake:    true,
+	}
+	bios[6] = Handler{
+		Desc:    "PUNCH",
+		Handler: BiosSysCallPunch,
+		Fake:    true,
+	}
+	bios[7] = Handler{
+		Desc:    "READER",
+		Handler: BiosSysCallReader,
 		Fake:    true,
 	}
 	bios[15] = Handler{

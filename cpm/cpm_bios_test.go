@@ -7,6 +7,29 @@ import (
 	"github.com/skx/cpmulator/memory"
 )
 
+func TestMisc(t *testing.T) {
+	// Create a new helper
+	c, err := New(WithPrinterPath("1.log"))
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+
+	// Punch (auxout) does nothing.
+	err = BiosSysCallPunch(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+
+	// Reader (auxin) should return Ctrl-Z
+	err = BiosSysCallReader(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	if c.CPU.States.AF.Hi != 26 {
+		t.Fatalf("auxin result was wrong %02X", c.CPU.States.AF.Hi)
+	}
+}
+
 func TestStatus(t *testing.T) {
 
 	// Create a new helper

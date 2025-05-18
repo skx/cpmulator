@@ -790,6 +790,19 @@ func TestBDOSCoverage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to call CPM")
 	}
+
+	err = BdosSysCallFileLock(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	err = BdosSysCallDriveFlush(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
+	err = BdosSysCallFileTimeDate(c)
+	if err != nil {
+		t.Fatalf("failed to call CPM")
+	}
 }
 
 // TestMakeCloseFile tests our file creation handler, and our close function too

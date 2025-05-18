@@ -101,6 +101,17 @@ func BiosSysCallPrintChar(cpm *CPM) error {
 	return err
 }
 
+// BiosSysCallPunch implements a fake version of PUNCH (AUXOUT).
+func BiosSysCallPunch(cpm *CPM) error {
+	return nil
+}
+
+// BiosSysCallReader implements a fake version of READER (AUXIN).
+func BiosSysCallReader(cpm *CPM) error {
+	cpm.CPU.States.AF.Hi = 26 // Ctrl-Z
+	return nil
+}
+
 // BiosSysCallPrinterStatus returns status of current printer device.
 //
 // This is fake, and always returns "ready".

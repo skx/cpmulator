@@ -1684,8 +1684,30 @@ func BdosSysCallDriveReset(cpm *CPM) error {
 	return nil
 }
 
+// BdosSysCallFileLock implements a NOP version of F_LOCK
+func BdosSysCallFileLock(cpm *CPM) error {
+	cpm.CPU.States.HL.SetU16(0x00FF)
+	return nil
+}
+
 // BdosSysCallErrorMode implements a NOP version of F_ERRMODE.
 func BdosSysCallErrorMode(cpm *CPM) error {
+	cpm.CPU.States.HL.SetU16(0x0000)
+	cpm.CPU.States.AF.Hi = 0x00
+	return nil
+}
+
+// BdosSysCallDriveFlush implements a NOP version of DRV_FLUSH
+func BdosSysCallDriveFlush(cpm *CPM) error {
+	cpm.CPU.States.HL.SetU16(0x0000)
+	cpm.CPU.States.AF.Hi = 0x00
+	return nil
+}
+
+// BdosSysCallFileTimeDate implements a NOP version of F_TIMEDATE
+func BdosSysCallFileTimeDate(cpm *CPM) error {
+	cpm.CPU.States.HL.SetU16(0x0000)
+	cpm.CPU.States.AF.Hi = 0x00
 	return nil
 }
 
