@@ -136,20 +136,26 @@ func (f *FCB) AsBytes() []uint8 {
 	return r
 }
 
-// ResetSequentialOffset updates the FCB to set the sequential offset
-// to be zero - this is called when a file is opened, or created.
-func (f *FCB) ResetSequentialOffset() {
-	f.Ex = 0
-	f.S2 = 0
-	f.Cr = 0
-}
+func (f *FCB) UpdateSequentialOffset(offset int64) {
+	SEQ_CR := func(n int64) int64 {
+		return (((n) % 16384) / 128)
+	}
 
-// ResetRandomOffset updates the FCB to set the random offset
-// to be zero - this is called when a file is opened, or created.
-func (f *FCB) ResetRandomOffset() {
-	f.R0 = 0
-	f.R1 = 0
-	f.R2 = 0
+	SEQ_EXTENT := func(n int64) int64 {
+		return n / 16384
+	}
+
+	SEQ_EX := func(n int64) int64 {
+		return (SEQ_EXTENT(n) % 32)
+	}
+
+	SEQ_S2 := func(n int64) int64 {
+		return (SEQ_EXTENT(n) / 32)
+	}
+
+	f.Cr = uint8(SEQ_CR(offset))
+	f.Ex = uint8(SEQ_EX(offset))
+	f.S2 = uint8((0x80 | SEQ_S2(offset)))
 }
 
 // GetSequentialOffset returns the offset the FCB contains for

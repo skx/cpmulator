@@ -333,6 +333,13 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
+	// Reset the offset
+	fcbPtr.Ex = 0
+	fcbPtr.S1 = 0
+	fcbPtr.S2 = 0
+	fcbPtr.RC = 0
+	fcbPtr.Cr = 0
+
 	// Get the actual name
 	fileName := fcbPtr.GetFileName()
 
@@ -455,10 +462,6 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 	if fLen < maxRC {
 		fcbPtr.RC = fLen
 	}
-
-	// Reset the offset
-	fcbPtr.ResetSequentialOffset()
-	fcbPtr.ResetRandomOffset()
 
 	l.Debug("result:OK",
 		slog.Int("fcb", int(ptr)),
@@ -800,6 +803,8 @@ func BdosSysCallRead(cpm *CPM) error {
 			slog.Error("error on readfile for virtual path",
 				slog.String("path", p),
 				slog.String("error", err.Error()))
+			cpm.CPU.States.HL.SetU16(0x00FF)
+			return nil
 		}
 		i := 0
 
@@ -831,12 +836,14 @@ func BdosSysCallRead(cpm *CPM) error {
 
 	_, err := obj.handle.Seek(int64(offset), io.SeekStart)
 	if err != nil {
+		cpm.CPU.States.HL.SetU16(0x0001)
 		return fmt.Errorf("cannot seek to position %d: %s", offset, err)
 	}
 
 	// Read from the file, now we're in the right place
 	_, err = obj.handle.Read(data)
 	if err != nil && err != io.EOF {
+		cpm.CPU.States.HL.SetU16(0x0001)
 		return fmt.Errorf("error reading file %s", err)
 	}
 
@@ -942,6 +949,13 @@ func BdosSysCallMakeFile(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
+	// Reset the offset
+	fcbPtr.Ex = 0
+	fcbPtr.S1 = 0
+	fcbPtr.S2 = 0
+	fcbPtr.RC = 0
+	fcbPtr.Cr = 0
+
 	// Get the actual name
 	fileName := fcbPtr.GetFileName()
 
@@ -1013,10 +1027,6 @@ func BdosSysCallMakeFile(cpm *CPM) error {
 	if fLen < maxRC {
 		fcbPtr.RC = fLen
 	}
-
-	// Reset the offset
-	fcbPtr.ResetSequentialOffset()
-	fcbPtr.ResetRandomOffset()
 
 	// Write our cache-key in the FCB
 	fcbPtr.Al[0] = uint8(ptr & 0xFF)
@@ -1278,6 +1288,8 @@ func BdosSysCallReadRand(cpm *CPM) error {
 			slog.Error("SysCallReadRand error on virtual path",
 				slog.String("path", p),
 				slog.String("error", err.Error()))
+			cpm.CPU.States.HL.SetU16(0x00FF)
+			return nil
 		}
 
 		// Get the record to read
@@ -1310,6 +1322,16 @@ func BdosSysCallReadRand(cpm *CPM) error {
 
 	// Translate the record to a byte-offset
 	fpos := int64(record) * blkSize
+
+	fmt.Printf("Before magic.  SeqOffset %d\n", fcbPtr.GetSequentialOffset())
+	fmt.Printf("\tRecord:%d\n", record)
+	fmt.Printf("\tOffset:%d\n", fpos)
+
+	// magic
+	fcbPtr.Cr = fcbPtr.R0
+	fcbPtr.Ex = fcbPtr.R1
+
+	fmt.Printf("\tAfter magic.  SeqOffset %d\n", fcbPtr.GetSequentialOffset())
 
 	// Read the data
 	res := sysRead(obj.handle, fpos)
@@ -1407,7 +1429,16 @@ func BdosSysCallWriteRand(cpm *CPM) error {
 		return fmt.Errorf("failed to write to offset %d: %s", fpos, err)
 	}
 
-	fcbPtr.IncreaseSequentialOffset()
+	fmt.Printf("Before magic.  SeqOffset %d\n", fcbPtr.GetSequentialOffset())
+	fmt.Printf("\tRecord:%d\n", record)
+	fmt.Printf("\tOffset:%d\n", fpos)
+
+	// magic
+	// magic
+	fcbPtr.Cr = fcbPtr.R0
+	fcbPtr.Ex = fcbPtr.R1
+
+	fmt.Printf("\tAfter magic.  SeqOffset %d\n", fcbPtr.GetSequentialOffset())
 
 	// Update the FCB in memory
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
