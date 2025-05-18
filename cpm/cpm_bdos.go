@@ -456,6 +456,10 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 		fcbPtr.RC = fLen
 	}
 
+	// Reset the offset
+	fcbPtr.ResetSequentialOffset()
+	fcbPtr.ResetRandomOffset()
+
 	l.Debug("result:OK",
 		slog.Int("fcb", int(ptr)),
 		slog.Int("handle", int(file.Fd())),
@@ -1009,6 +1013,10 @@ func BdosSysCallMakeFile(cpm *CPM) error {
 	if fLen < maxRC {
 		fcbPtr.RC = fLen
 	}
+
+	// Reset the offset
+	fcbPtr.ResetSequentialOffset()
+	fcbPtr.ResetRandomOffset()
 
 	// Write our cache-key in the FCB
 	fcbPtr.Al[0] = uint8(ptr & 0xFF)

@@ -136,6 +136,22 @@ func (f *FCB) AsBytes() []uint8 {
 	return r
 }
 
+// ResetSequentialOffset updates the FCB to set the sequential offset
+// to be zero - this is called when a file is opened, or created.
+func (f *FCB) ResetSequentialOffset() {
+	f.Ex = 0
+	f.S2 = 0
+	f.Cr = 0
+}
+
+// ResetRandomOffset updates the FCB to set the random offset
+// to be zero - this is called when a file is opened, or created.
+func (f *FCB) ResetRandomOffset() {
+	f.R0 = 0
+	f.R1 = 0
+	f.R2 = 0
+}
+
 // GetSequentialOffset returns the offset the FCB contains for
 // the sequential read/write calls - as used by the BDOS functions
 // F_READ and F_WRITE.
