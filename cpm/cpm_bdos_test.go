@@ -36,7 +36,7 @@ func TestConsoleInput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to call CP/M")
 	}
-	if c.CPU.States.AF.Hi != 's' {
+	if c.CPU.States.HL.Lo != 's' {
 		t.Fatalf("got the wrong input")
 	}
 
@@ -46,7 +46,7 @@ func TestConsoleInput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to call CP/M")
 	}
-	if c.CPU.States.AF.Hi != 'k' {
+	if c.CPU.States.HL.Lo != 'k' {
 		t.Fatalf("got the wrong input")
 	}
 
@@ -57,7 +57,7 @@ func TestConsoleInput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to call CP/M")
 	}
-	if c.CPU.States.AF.Hi != 'x' {
+	if c.CPU.States.HL.Lo != 'x' {
 		t.Fatalf("got the wrong input")
 	}
 
@@ -67,7 +67,7 @@ func TestConsoleInput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to call CP/M")
 	}
-	if c.CPU.States.AF.Hi != 0xFF {
+	if c.CPU.States.HL.Lo != 0xFF {
 		t.Fatalf("got the wrong response")
 	}
 
@@ -77,7 +77,7 @@ func TestConsoleInput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to call CP/M")
 	}
-	if c.CPU.States.AF.Hi != '1' {
+	if c.CPU.States.HL.Lo != '1' {
 		t.Fatalf("got the wrong response")
 	}
 
@@ -93,7 +93,7 @@ func TestConsoleInput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to call CP/M")
 	}
-	if c.CPU.States.AF.Hi != 0xFF {
+	if c.CPU.States.HL.Lo != 0xFF {
 		t.Fatalf("got the wrong response")
 	}
 }
@@ -306,11 +306,10 @@ func TestFind(t *testing.T) {
 		if err != nil {
 			t.Fatalf("error calling find next:err")
 		}
-		if c.CPU.States.AF.Hi != 0x00 {
+		if c.CPU.States.HL.U16() != 0x00 {
 			break
 		}
 		found++
-
 	}
 
 	if found != 5 {
@@ -347,7 +346,7 @@ func TestFind(t *testing.T) {
 		if err != nil {
 			t.Fatalf("error calling find next:err")
 		}
-		if c.CPU.States.AF.Hi != 0x00 {
+		if c.CPU.States.HL.U16() != 0x00 {
 			break
 		}
 		found++
@@ -374,7 +373,7 @@ func TestFind(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error calling find first:err")
 	}
-	if c.CPU.States.AF.Hi != 0xFF {
+	if c.CPU.States.HL.Lo != 0xFF {
 		t.Fatalf("Expected no matches, but got something else?")
 	}
 
@@ -398,7 +397,7 @@ func TestFind(t *testing.T) {
 		t.Fatalf("unexpected error %v", err)
 	}
 
-	if c.CPU.States.AF.Hi != 0xFF {
+	if c.CPU.States.HL.Lo != 0xFF {
 		t.Fatalf("error calling find first:A")
 	}
 }
@@ -480,15 +479,15 @@ func TestDriveGetSet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to call CP/M")
 	}
-	cur := c.CPU.States.AF.Hi
+	//	cur := c.CPU.States.AF.Hi
 
 	// Get the (updated)
 	err = BdosSysCallDriveGet(c)
 	if err != nil {
 		t.Fatalf("failed to call CP/M")
 	}
-	if c.CPU.States.AF.Hi != 3 || c.CPU.States.AF.Hi == cur {
-		t.Fatalf("setting the drive failed got %d", c.CPU.States.AF.Hi)
+	if c.CPU.States.HL.Lo != 3 {
+		t.Fatalf("setting the drive failed got %d", c.CPU.States.HL.Lo)
 	}
 
 	// Set a drive to a bogus value
@@ -503,8 +502,8 @@ func TestDriveGetSet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to call CP/M")
 	}
-	if c.CPU.States.AF.Hi != 15 {
-		t.Fatalf("setting the drive failed got %d - should have been P:", c.CPU.States.AF.Hi)
+	if c.CPU.States.HL.Lo != 15 {
+		t.Fatalf("setting the drive failed got %d - should have been P:", c.CPU.States.HL.Lo)
 	}
 
 }
@@ -562,7 +561,7 @@ func TestUserNumber(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to call CPM")
 	}
-	if c.CPU.States.AF.Hi != 05 {
+	if c.CPU.States.HL.Lo != 05 {
 		t.Fatalf("retriving user number failed")
 	}
 }
@@ -587,7 +586,7 @@ func TestDriveReset(t *testing.T) {
 		if err != nil {
 			t.Fatalf("reset drive call failed")
 		}
-		return c.CPU.States.AF.Hi
+		return c.CPU.States.HL.Lo
 	}
 
 	if getState() != 0x00 {
@@ -711,7 +710,7 @@ func TestIOByte(t *testing.T) {
 		t.Fatalf("error in CPM call")
 	}
 
-	if c.CPU.States.AF.Hi != 0xFE {
+	if c.CPU.States.HL.Lo != 0xFE {
 		t.Fatalf("unexpected updated IO byte")
 	}
 }
@@ -872,7 +871,7 @@ func TestMakeFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error calling CP/M")
 	}
-	if c.CPU.States.AF.Hi != 0xFF {
+	if c.CPU.States.HL.Lo != 0xFF {
 		t.Fatalf("expected error with empty file")
 	}
 
@@ -1080,7 +1079,7 @@ func TestRename(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error calling CP/M")
 	}
-	if c.CPU.States.AF.Hi != 0xFF {
+	if c.CPU.States.HL.Lo != 0xFF {
 		t.Fatalf("renaming to an impossible name succeeded")
 	}
 
@@ -1202,8 +1201,8 @@ func TestWriteFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error calling cp/m")
 	}
-	if c.CPU.States.AF.Hi != 0xFF {
-		t.Fatalf("expected A-reg to hold an error")
+	if c.CPU.States.HL.Lo != 0xFF {
+		t.Fatalf("expected an error")
 	}
 }
 
@@ -1231,8 +1230,8 @@ func TestReadFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error calling cp/m")
 	}
-	if c.CPU.States.AF.Hi != 0xFF {
-		t.Fatalf("expected A-reg to hold an error")
+	if c.CPU.States.HL.Lo != 0xFF {
+		t.Fatalf("expected an error")
 	}
 
 }
@@ -1292,7 +1291,7 @@ func TestFileOpen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open file: err")
 	}
-	if c.CPU.States.AF.Hi != 0xFF {
+	if c.CPU.States.HL.Lo != 0xFF {
 		t.Fatalf("failed to open file: A=%02X", c.CPU.States.AF.Hi)
 	}
 
@@ -1327,7 +1326,7 @@ func TestFileOpen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open file: err")
 	}
-	if c.CPU.States.AF.Hi != 0xFF {
+	if c.CPU.States.HL.Lo != 0xFF {
 		t.Fatalf("failed to open file: A=%02X", c.CPU.States.AF.Hi)
 	}
 
