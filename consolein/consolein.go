@@ -427,9 +427,7 @@ func (co *ConsoleIn) ReadLine(max uint8) (string, error) {
 		}
 
 		// Log the command
-		slog.Debug("ReadLine executed a command",
-			slog.String("cmd", text),
-		)
+		slog.Debug("ReadLine executed a command", slog.String("cmd", text))
 
 		// No error.
 		out := execOut.String()

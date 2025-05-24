@@ -4,9 +4,7 @@
 
 package consolein
 
-import (
-	"fmt"
-)
+import "fmt"
 
 var (
 	// ErrorInputName contains the name of this driver.

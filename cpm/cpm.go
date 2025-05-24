@@ -51,11 +51,17 @@ var (
 	// It should be handled and expected by callers.
 	ErrUnimplemented = errors.New("UNIMPLEMENTED")
 
+	// DefaultCCP contains the name of the default CCP to load.
+	DefaultCCP string = "ccp"
+
 	// DefaultInputDriver contains the name of the default console input driver.
 	DefaultInputDriver string = "term"
 
 	// DefaultOutputDriver contains the name of the default console output driver.
 	DefaultOutputDriver string = "adm-3a"
+
+	// DefaultPrinterPath contains the filename we log printer writes to.
+	DefaultPrinterPath string = "printer.log"
 
 	// DefaultDMAAddress is the default address of the DMA area, post-boot.
 	DefaultDMAAddress uint16 = 0x0080
@@ -125,18 +131,22 @@ type CPM struct {
 	ccp string
 
 	// files is the cache we use for File handles.
+	//
+	// NOTE: The key is the address of the FCB which we assume is static, but
+	// I'm increasingly of the opinion this is wrong - we should cache on the
+	// filepath.
 	files map[uint16]FileCache
 
 	// virtual contains a reference to a static filesystem which
 	// is embedded within our binary, if any.
 	static embed.FS
 
-	// input is our interface for reading from the console.
-	//
-	// This needs to take account of echo/no-echo status.
+	// input contains the handle to the dynamically loaded driver which may
+	// be used for reading from the console.
 	input *consolein.ConsoleIn
 
-	// output is used for writing characters to the console.
+	// output contains the handle to the dynamically loaded driver which may
+	// be used for writing characters to the console.
 	output *consoleout.ConsoleOut
 
 	// dma contains the address of the DMA area in RAM.
@@ -467,9 +477,24 @@ func New(options ...Option) (*CPM, error) {
 		// We don't zero-pad
 		Fake: true,
 	}
+	bdos[42] = Handler{
+		Desc:    "F_LOCK",
+		Handler: BdosSysCallFileLock,
+		Fake:    true,
+	}
 	bdos[45] = Handler{
 		Desc:    "F_ERRMODE",
 		Handler: BdosSysCallErrorMode,
+		Fake:    true,
+	}
+	bdos[48] = Handler{
+		Desc:    "DRV_FLUSH",
+		Handler: BdosSysCallDriveFlush,
+		Fake:    true,
+	}
+	bdos[102] = Handler{ // HiSoft C Compiler 3.09
+		Desc:    "F_TIMEDATE",
+		Handler: BdosSysCallFileTimeDate,
 		Fake:    true,
 	}
 	bdos[105] = Handler{
@@ -518,6 +543,16 @@ func New(options ...Option) (*CPM, error) {
 	bios[5] = Handler{
 		Desc:    "LIST",
 		Handler: BiosSysCallPrintChar,
+		Fake:    true,
+	}
+	bios[6] = Handler{
+		Desc:    "PUNCH",
+		Handler: BiosSysCallPunch,
+		Fake:    true,
+	}
+	bios[7] = Handler{
+		Desc:    "READER",
+		Handler: BiosSysCallReader,
 		Fake:    true,
 	}
 	bios[15] = Handler{
@@ -585,13 +620,13 @@ func New(options ...Option) (*CPM, error) {
 		BDOSSyscalls: bdos,
 		BIOSSyscalls: bios,
 		context:      context.Background(),
-		ccp:          "ccp", // default
+		ccp:          DefaultCCP,
 		dma:          DefaultDMAAddress,
 		drives:       make(map[string]string),
 		files:        make(map[uint16]FileCache),
-		input:        iDriver,       // default
-		output:       oDriver,       // default
-		prnPath:      "printer.log", // default
+		input:        iDriver, // default
+		output:       oDriver, // default
+		prnPath:      DefaultPrinterPath,
 		start:        0x0100,
 		launchTime:   time.Now(),
 		biosAddress:  envNumber("BIOS_ADDRESS", 0xFE00),
@@ -758,10 +793,8 @@ func (cpm *CPM) fixupRAM() {
 
 	// fake BIOS entry points for 30 syscalls.
 	//
-	// These are setup so that the RST instructions magically
-	// end up at our handlers - our Z80 emulator allows us to trap
-	// IN and OUT instructions, and later you'll see that we redirect
-	// OUT(0xff, N) to invoke our handler(s).
+	// Our Z80 emulator allows us to trap IN and OUT instructions, and later
+	// you'll see that we redirect OUT(0xff, N) to invoke our handler(s).
 	//
 	// See the function:
 	//
@@ -789,12 +822,23 @@ func (cpm *CPM) fixupRAM() {
 	}
 
 	//
-	// BDOS code will invoke our host function,
-	// again via an OUT instruction.
+	// BDOS code will invoke our host function via an OUT instruction.
+	//
+	// After the function returns HL should have the correct result-code,
+	// and we propagate that to the A and B registers.
 	//
 	SETMEM(BDOS+0, 0xED) // OUT (C), C
 	SETMEM(BDOS+1, 0x49) //    ""
-	SETMEM(BDOS+2, 0xC9) // RET
+	//
+	////
+	/////////////////////// BDOS CALL HAPPENS HERE
+	////
+	//
+	SETMEM(BDOS+2, 0x44) // LD B,H
+	SETMEM(BDOS+3, 0x7D) // LD A,L
+	SETMEM(BDOS+4, 0xFE) // CP 0
+	SETMEM(BDOS+5, 0x00) //    ""
+	SETMEM(BDOS+6, 0xC9) // RET
 
 }
 
