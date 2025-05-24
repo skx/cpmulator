@@ -137,25 +137,25 @@ func (f *FCB) AsBytes() []uint8 {
 }
 
 func (f *FCB) UpdateSequentialOffset(offset int64) {
-	SEQ_CR := func(n int64) int64 {
+	seqCR := func(n int64) int64 {
 		return (((n) % 16384) / 128)
 	}
 
-	SEQ_EXTENT := func(n int64) int64 {
+	seqExtent := func(n int64) int64 {
 		return n / 16384
 	}
 
-	SEQ_EX := func(n int64) int64 {
-		return (SEQ_EXTENT(n) % 32)
+	seqEx := func(n int64) int64 {
+		return (seqExtent(n) % 32)
 	}
 
-	SEQ_S2 := func(n int64) int64 {
-		return (SEQ_EXTENT(n) / 32)
+	seqS2 := func(n int64) int64 {
+		return (seqExtent(n) / 32)
 	}
 
-	f.Cr = uint8(SEQ_CR(offset))
-	f.Ex = uint8(SEQ_EX(offset))
-	f.S2 = uint8((0x80 | SEQ_S2(offset)))
+	f.Cr = uint8(seqCR(offset))
+	f.Ex = uint8(seqEx(offset))
+	f.S2 = uint8((0x80 | seqS2(offset)))
 }
 
 // GetSequentialOffset returns the offset the FCB contains for
