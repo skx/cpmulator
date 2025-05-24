@@ -2,6 +2,7 @@
 package fcb
 
 import (
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -136,6 +137,8 @@ func (f *FCB) AsBytes() []uint8 {
 	return r
 }
 
+// UpdateSequentialOffset updates the offset used for sequential reads/writes
+// to use the given value.
 func (f *FCB) UpdateSequentialOffset(offset int64) {
 	seqCR := func(n int64) int64 {
 		return (((n) % 16384) / 128)
@@ -156,6 +159,14 @@ func (f *FCB) UpdateSequentialOffset(offset int64) {
 	f.Cr = uint8(seqCR(offset))
 	f.Ex = uint8(seqEx(offset))
 	f.S2 = uint8((0x80 | seqS2(offset)))
+
+	// confirm this works
+	x := f.GetSequentialOffset()
+	if x != offset {
+		slog.Error("updating the sequential offset failed",
+			slog.Int64("expected", offset),
+			slog.Int64("real", x))
+	}
 }
 
 // GetSequentialOffset returns the offset the FCB contains for
