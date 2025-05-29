@@ -130,12 +130,12 @@ type CPM struct {
 	// ccp contains the name of the CCP we should load
 	ccp string
 
-	// files is the cache we use for File handles.
+	// files is the cache we use for File handles - to avoid having to open
+	// close files on the host-side during every operation.
 	//
-	// NOTE: The key is the address of the FCB which we assume is static, but
-	// I'm increasingly of the opinion this is wrong - we should cache on the
-	// filepath.
-	files map[uint16]FileCache
+	// The key is the name of the CP/M file, inside the guest.  (i.e. "FOO.BAR"
+	// rather than A/FOO.BAR which might be the ultimate path on the host.)
+	files map[string]FileCache
 
 	// virtual contains a reference to a static filesystem which
 	// is embedded within our binary, if any.
@@ -623,7 +623,7 @@ func New(options ...Option) (*CPM, error) {
 		ccp:          DefaultCCP,
 		dma:          DefaultDMAAddress,
 		drives:       make(map[string]string),
-		files:        make(map[uint16]FileCache),
+		files:        make(map[string]FileCache),
 		input:        iDriver, // default
 		output:       oDriver, // default
 		prnPath:      DefaultPrinterPath,
@@ -894,13 +894,13 @@ func (cpm *CPM) Execute(args []string) error {
 	// Reset any cached filehandles.
 	//
 	// This is only required when running the CCP, as there we're persistent.
-	for fcb, obj := range cpm.files {
+	for name, obj := range cpm.files {
 		slog.Debug("Closing handle in FileCache",
-			slog.String("path", obj.name),
-			slog.Int("fcb", int(fcb)))
+			slog.String("host", obj.name),
+			slog.String("guest", name))
 		obj.handle.Close()
 	}
-	cpm.files = make(map[uint16]FileCache)
+	cpm.files = make(map[string]FileCache)
 
 	// Create the CPU, pointing to our memory, and setting the initial program counter
 	// to point to our expected entry-point.

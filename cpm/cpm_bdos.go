@@ -394,7 +394,7 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 
 		// Yes we can!
 		// Save the file handle in our cache.
-		cpm.files[ptr] = FileCache{name: fileName, handle: nil}
+		cpm.files[fcbPtr.GetCacheKey()] = FileCache{name: fileName, handle: nil}
 
 		// Get file size, in blocks
 		fLen := uint8(len(virt) / blkSize)
@@ -404,10 +404,6 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 		if fLen < maxRC {
 			fcbPtr.RC = fLen
 		}
-
-		// Write our cache-key in the FCB
-		fcbPtr.Al[0] = uint8(ptr & 0xFF)
-		fcbPtr.Al[1] = uint8(ptr >> 8)
 
 		// Update the FCB in memory.
 		cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
@@ -443,7 +439,7 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 	}
 
 	// Save the file handle in our cache.
-	cpm.files[ptr] = FileCache{name: fileName, handle: file}
+	cpm.files[fcbPtr.GetCacheKey()] = FileCache{name: fileName, handle: file}
 
 	// Get file size, in bytes
 	fi, err := file.Stat()
@@ -468,10 +464,6 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 		slog.Int("handle", int(file.Fd())),
 		slog.Int("record_count", int(fcbPtr.RC)),
 		slog.Int64("file_size", fileSize))
-
-	// Write our cache-key in the FCB
-	fcbPtr.Al[0] = uint8(ptr & 0xFF)
-	fcbPtr.Al[1] = uint8(uint16(ptr >> 8))
 
 	// Update the FCB in memory.
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
@@ -498,14 +490,11 @@ func BdosSysCallFileClose(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
-	// Get our cache-key from the FCB
-	key := uint16(uint16(fcbPtr.Al[1])<<8 + uint16(fcbPtr.Al[0]))
-
 	// Get the file handle from our cache.
-	obj, ok := cpm.files[key]
+	obj, ok := cpm.files[fcbPtr.GetCacheKey()]
 	if !ok {
 		slog.Debug("SysCallFileClose tried to close a file that wasn't open",
-			slog.Int("fcb", int(ptr)))
+			slog.String("guest", fcbPtr.GetCacheKey()))
 		cpm.CPU.States.HL.SetU16(0x00FF)
 		return nil
 	}
@@ -545,11 +534,8 @@ func BdosSysCallFileClose(cpm *CPM) error {
 	}
 
 	// delete the entry from the cache.
-	delete(cpm.files, key)
+	delete(cpm.files, fcbPtr.GetCacheKey())
 
-	// Update the FCB in RAM
-	fcbPtr.Al[0] = 0x00
-	fcbPtr.Al[1] = 0x00
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
 
 	// Record success
@@ -768,11 +754,8 @@ func BdosSysCallRead(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
-	// Get our cache-key from the FCB
-	key := uint16(uint16(fcbPtr.Al[1])<<8 + uint16(fcbPtr.Al[0]))
-
 	// Get the file handle in our cache.
-	obj, ok := cpm.files[key]
+	obj, ok := cpm.files[fcbPtr.GetCacheKey()]
 	if !ok {
 		slog.Error("SysCallRead: Attempting to read from a file that isn't open",
 			slog.String("filename", fcbPtr.GetFileName()))
@@ -883,11 +866,8 @@ func BdosSysCallWrite(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
-	// Get our cache-key from the FCB
-	key := uint16(uint16(fcbPtr.Al[1])<<8 + uint16(fcbPtr.Al[0]))
-
 	// Get the file handle in our cache.
-	obj, ok := cpm.files[key]
+	obj, ok := cpm.files[fcbPtr.GetCacheKey()]
 	if !ok {
 		slog.Error("SysCallWrite: Attempting to write to a file that isn't open")
 		cpm.CPU.States.HL.SetU16(0x00FF)
@@ -1028,12 +1008,8 @@ func BdosSysCallMakeFile(cpm *CPM) error {
 		fcbPtr.RC = fLen
 	}
 
-	// Write our cache-key in the FCB
-	fcbPtr.Al[0] = uint8(ptr & 0xFF)
-	fcbPtr.Al[1] = uint8(ptr >> 8)
-
 	// Save the file-handle
-	cpm.files[ptr] = FileCache{name: fileName, handle: file}
+	cpm.files[fcbPtr.GetCacheKey()] = FileCache{name: fileName, handle: file}
 
 	l.Debug("result:OK",
 		slog.Int("fcb", int(ptr)),
@@ -1264,11 +1240,8 @@ func BdosSysCallReadRand(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
-	// Get our cache-key from the FCB
-	key := uint16(uint16(fcbPtr.Al[1])<<8 + uint16(fcbPtr.Al[0]))
-
 	// Get the file handle in our cache.
-	obj, ok := cpm.files[key]
+	obj, ok := cpm.files[fcbPtr.GetCacheKey()]
 	if !ok {
 		slog.Error("SysCallReadRand: Attempting to read from a file that isn't open",
 			slog.String("filename", fcbPtr.GetFileName()))
@@ -1361,11 +1334,8 @@ func BdosSysCallWriteRand(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
-	// Get our cache-key from the FCB
-	key := uint16(uint16(fcbPtr.Al[1])<<8 + uint16(fcbPtr.Al[0]))
-
 	// Get the file handle in our cache.
-	obj, ok := cpm.files[key]
+	obj, ok := cpm.files[fcbPtr.GetCacheKey()]
 	if !ok {
 		slog.Error("SysCallWriteRand: Attempting to write to a file that isn't open")
 		cpm.CPU.States.HL.SetU16(0x00FF)
