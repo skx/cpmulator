@@ -354,6 +354,11 @@ func FromBytes(bytes []uint8) FCB {
 // DoesMatch returns true if the filename specified matches the pattern in the FCB.
 func (f *FCB) DoesMatch(name string) bool {
 
+	// If the file doesn't have a dot then it can't be visible if it is too long
+	if strings.Contains(name, ".") == false && len(name) > 8 {
+		return false
+	}
+
 	// Having a .extension is fine, but if the
 	// suffix is longer than three characters we're
 	// not going to use it.

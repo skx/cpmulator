@@ -269,3 +269,18 @@ func TestSuffix(t *testing.T) {
 		t.Fatalf("type was weird '%s'", typ)
 	}
 }
+
+// TestIssue238 tests that #238 is closed - files that were too
+// long were showing up.
+func TestIssue238(t *testing.T) {
+
+	f := FromString("*.*")
+
+	if f.DoesMatch("DOCKERFILE") {
+		t.Fatalf("Dockerfile showed up, and it shouldn't have done.")
+	}
+	if f.DoesMatch("cpmulator") {
+		t.Fatalf("Ourself showed up, and it shouldn't have done.")
+	}
+
+}
