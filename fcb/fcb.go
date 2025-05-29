@@ -355,7 +355,7 @@ func FromBytes(bytes []uint8) FCB {
 func (f *FCB) DoesMatch(name string) bool {
 
 	// If the file doesn't have a dot then it can't be visible if it is too long
-	if strings.Contains(name, ".") == false && len(name) > 8 {
+	if len(name) > 8 && !strings.Contains(name, ".") {
 		return false
 	}
 
