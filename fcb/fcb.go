@@ -115,6 +115,33 @@ func (f *FCB) GetFileName() string {
 	return strings.TrimSpace(name)
 }
 
+// GetCacheKey returns a string which can be used for caching this
+// object in some way - it's the name of the file, as seen by the
+// CP/M system.
+func (f *FCB) GetCacheKey() string {
+	t := ""
+
+	// Name
+	for _, c := range f.Name {
+		if unicode.IsPrint(rune(c)) {
+			t += string(c)
+		} else {
+			t += " "
+		}
+	}
+
+	// Suffix
+	for _, c := range f.Type {
+		if unicode.IsPrint(rune(c)) {
+			t += string(c)
+		} else {
+			t += " "
+		}
+	}
+	return t
+
+}
+
 // AsBytes returns the entry of the FCB in a format suitable
 // for copying to RAM.
 func (f *FCB) AsBytes() []uint8 {

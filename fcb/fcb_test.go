@@ -78,6 +78,9 @@ func TestFCBFromString(t *testing.T) {
 	if f.GetType() != "   " {
 		t.Fatalf("unexpected suffix '%v'", f.GetType())
 	}
+	if f.GetCacheKey() != "FOO        " {
+		t.Fatalf("name wrong, got '%v'", f.GetCacheKey())
+	}
 
 	// Try a long name, to confirm it is truncated
 	f = FromString("c:this-is-a-long-name")
@@ -105,6 +108,9 @@ func TestFCBFromString(t *testing.T) {
 	if f.GetFileName() != "THIS-IS-.LON" {
 		t.Fatalf("wrong name returned, got %v", f.GetFileName())
 	}
+	if f.GetCacheKey() != "THIS-IS-LON" {
+		t.Fatalf("wrong cache returned, got %v", f.GetCacheKey())
+	}
 
 	// wildcard
 	f = FromString("c:steve*.*")
@@ -127,6 +133,15 @@ func TestFCBFromString(t *testing.T) {
 	}
 	if f.GetType() != "C??" {
 		t.Fatalf("name wrong, got '%v'", f.GetName())
+	}
+
+	f = FromString("")
+	f.Name[0] = 0x00
+	f.Name[1] = 0x01
+	f.Type[0] = 0x00
+	f.Type[1] = 0x01
+	if f.GetCacheKey() != "           " {
+		t.Fatalf("wrong cache returned, got %v", f.GetCacheKey())
 	}
 
 }
