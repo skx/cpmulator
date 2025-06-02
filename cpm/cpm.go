@@ -108,8 +108,11 @@ type Handler struct {
 // which have been opened by the CP/M binary/CCP.
 type FileCache struct {
 	// name holds the name of the file, when it was opened/created,
-	// on the host-side.
+	// on the guest-side.
 	name string
+
+	// host contains the resolved host-size
+	host string
 
 	// handle has the file handle of the opened file.
 	handle *os.File

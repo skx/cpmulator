@@ -8,6 +8,7 @@ package cpm
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -30,6 +31,47 @@ const maxRC = 128
 func BdosSysCallExit(cpm *CPM) error {
 	cpm.CPU.HALT = true
 	return ErrBoot
+}
+
+// TODO - rename
+func fcbToHost(cpm *CPM, fcb fcb.FCB) (string, error) {
+
+	// Get the actual name
+	name := strings.ToUpper(fcb.GetFileName())
+
+	// Get the path to which we should search.
+	// This is the currently selected driver
+	// TODO:
+	//  Should we only use this if the fcb-drive is zero?
+	//
+	path := cpm.drives[string(cpm.currentDrive+'A')]
+
+	//
+	// Ok we have a filename, but we probably have an upper-case
+	// filename.
+	//
+	// Run a glob, and if there's an existing file with the same
+	// name then replace with the mixed/lower cased version.
+	//
+	files, err := os.ReadDir(path)
+	if err != nil {
+		return "", err
+	}
+
+	for _, n := range files {
+		if strings.ToUpper(n.Name()) == name {
+			name = n.Name()
+		}
+	}
+
+	// ensure the path is qualified - with our updated name
+	name = filepath.Join(path, name)
+
+	// Remapped file
+	x := filepath.Base(name)
+	x = filepath.Join(string(cpm.currentDrive+'A'), x)
+
+	return name, nil
 }
 
 // BdosSysCallReadChar reads a single character from the console.
@@ -320,13 +362,93 @@ func BdosSysCallDriveSet(cpm *CPM) error {
 	return nil
 }
 
-// BdosSysCallFileOpen opens the filename that matches the pattern on the FCB supplied in DE
+// BdosSysCallFileOpen opens the filename that matches the pattern on the FCB supplied in DE.
+//
+// TODO: We don't handle virtual files here.
 func BdosSysCallFileOpen(cpm *CPM) error {
 
-	panic("BdosSysCallFileOpen")
+	// The pointer to the FCB
+	ptr := cpm.CPU.States.DE.U16()
 
-	// TODO
+	// Get the bytes which make up the FCB entry.
+	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
+
+	// Create an FCB object
+	f := fcb.FromBytes(xxx)
+
+	// Lookup the object in our cache
+	//
+	// If the file was already open then we do nothing.
+	// and report that as a success.
+	ent, ok := cpm.files[f.GetCacheKey()]
+	if ok {
+
+		// seek to the start of the file
+		ent.handle.Seek(0, io.SeekStart)
+
+		// set the record-count
+		f.SetRecordCount(ent.handle)
+		f.S2 = 0x00
+
+		// Update the FCB in RAM
+		data := f.AsBytes()
+		cpm.Memory.SetRange(ptr, data...)
+
+		// return success
+		cpm.CPU.States.HL.SetU16(0x0000)
+		cpm.CPU.States.AF.Hi = 0x00
+		cpm.CPU.States.BC.Hi = 0x00
+	}
+
+	// Find out where we should open
+	path, err := fcbToHost(cpm, f)
+
+	// Error opening?  Then return that to the caller.
+	if err != nil {
+		cpm.CPU.States.HL.SetU16(0x00FF)
+		cpm.CPU.States.AF.Hi = 0xFF
+		cpm.CPU.States.BC.Hi = 0x00
+		return nil
+	}
+
+	// Now we can open the file and see what we have
+	handle, err := os.Open(path)
+
+	// again if there is an error let the caller known
+	if err != nil {
+
+		slog.Debug("failed to open file",
+			slog.String("file", path),
+			slog.String("error", err.Error()))
+
+		cpm.CPU.States.HL.SetU16(0x00FF)
+		cpm.CPU.States.AF.Hi = 0xFF
+		cpm.CPU.States.BC.Hi = 0x00
+		return nil
+	}
+
+	// Create a cache entry
+	cache := FileCache{
+		name:   f.GetFileName(),
+		host:   path,
+		handle: handle,
+	}
+
+	// store it
+	cpm.files[f.GetCacheKey()] = cache
+
+	// set the record-count of the file.
+	f.SetRecordCount(ent.handle)
+	f.S2 = 0x00
+
+	// Update the FCB in RAM
+	data := f.AsBytes()
+	cpm.Memory.SetRange(ptr, data...)
+
+	// return success
 	cpm.CPU.States.HL.SetU16(0x0000)
+	cpm.CPU.States.AF.Hi = 0x00
+	cpm.CPU.States.BC.Hi = 0x00
 	return nil
 }
 
@@ -354,7 +476,6 @@ func BdosSysCallFileClose(cpm *CPM) error {
 	// Not found in the cache?  Then the file
 	// was not open and we return an error
 	if !ok {
-
 		cpm.CPU.States.HL.SetU16(0x00FF)
 		cpm.CPU.States.AF.Hi = 0xFF
 		cpm.CPU.States.BC.Hi = 0x00
