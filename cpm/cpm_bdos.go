@@ -64,10 +64,6 @@ func fcbToHost(cpm *CPM, fcb fcb.FCB) (string, error) {
 	// ensure the path is qualified - with our updated name
 	name = filepath.Join(path, name)
 
-	// Remapped file
-	x := filepath.Base(name)
-	x = filepath.Join(string(cpm.currentDrive+'A'), x)
-
 	return name, nil
 }
 

@@ -488,5 +488,5 @@ func (f *FCB) SetRandomOffset(offset uint16) {
 //
 // See also SetRandomOffset.
 func (f *FCB) GetRandomOffset() uint16 {
-	return uint16(f.R1<<8 | f.R0)
+	return uint16(uint16(f.R1)<<8 | uint16(f.R0))
 }
