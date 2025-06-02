@@ -333,15 +333,57 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 // BdosSysCallFileClose closes the filename that matches the pattern on the FCB supplied in DE.
 //
 // To handle SUBMIT we need to also do more than close an existing file handle, and remove
-// it from our cache.  It seems that we can also be required to _truncate_ a file. Because
-// I'm unsure exactly how much this is in-use I'm going to only implement it for
-// files with "$" in their name.
+// it from our cache.  It seems that we can also be required to _truncate_ a file - for the
+// moment this code has been removed.
+//
+// TODO: Handle truncation on closure.
 func BdosSysCallFileClose(cpm *CPM) error {
 
-	panic("BdosSysCallFileClose")
+	// The pointer to the FCB
+	ptr := cpm.CPU.States.DE.U16()
 
-	// TODO
+	// Get the bytes which make up the FCB entry.
+	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
+
+	// Create an FCB object
+	f := fcb.FromBytes(xxx)
+
+	// Lookup the object in our cache
+	ent, ok := cpm.files[f.GetCacheKey()]
+
+	// Not found in the cache?  Then the file
+	// was not open and we return an error
+	if !ok {
+
+		cpm.CPU.States.HL.SetU16(0x00FF)
+		cpm.CPU.States.AF.Hi = 0xFF
+		cpm.CPU.States.BC.Hi = 0x00
+		return nil
+	}
+
+	// Sync the file.
+	err := ent.handle.Sync()
+	if err != nil {
+		slog.Debug("failed to sync file",
+			slog.String("file", ent.name),
+			slog.String("error", err.Error()))
+	}
+
+	// Close the file
+	err = ent.handle.Close()
+	if err != nil {
+		slog.Debug("failed to close file",
+			slog.String("file", ent.name),
+			slog.String("error", err.Error()))
+	}
+
+	// Remove from the cache
+	delete(cpm.files, f.GetCacheKey())
+
+	// Return success
 	cpm.CPU.States.HL.SetU16(0x0000)
+	cpm.CPU.States.AF.Hi = 0x00
+	cpm.CPU.States.BC.Hi = 0x00
 	return nil
 }
 
