@@ -707,8 +707,8 @@ func BdosSysCallDeleteFile(cpm *CPM) error {
 	return err
 }
 
-// BdosSysCallRead reads a record from the file named in the FCB given in DE
-func BdosSysCallRead(cpm *CPM) error {
+// BdosSysCallFileRead reads a record from the file named in the FCB given in DE
+func BdosSysCallFileRead(cpm *CPM) error {
 
 	panic("BdosSysCallRead")
 
@@ -717,8 +717,8 @@ func BdosSysCallRead(cpm *CPM) error {
 	return nil
 }
 
-// BdosSysCallWrite writes a record to the file named in the FCB given in DE
-func BdosSysCallWrite(cpm *CPM) error {
+// BdosSysCallFileWrite writes a record to the file named in the FCB given in DE
+func BdosSysCallFileWrite(cpm *CPM) error {
 
 	panic("BdosSysCallWrite")
 

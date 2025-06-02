@@ -396,11 +396,11 @@ func New(options ...Option) (*CPM, error) {
 	}
 	bdos[20] = Handler{
 		Desc:    "F_READ",
-		Handler: BdosSysCallRead,
+		Handler: BdosSysCallFileRead,
 	}
 	bdos[21] = Handler{
 		Desc:    "F_WRITE",
-		Handler: BdosSysCallWrite,
+		Handler: BdosSysCallFileWrite,
 	}
 	bdos[22] = Handler{
 		Desc:    "F_MAKE",
