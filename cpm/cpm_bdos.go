@@ -710,10 +710,119 @@ func BdosSysCallDeleteFile(cpm *CPM) error {
 // BdosSysCallFileRead reads a record from the file named in the FCB given in DE
 func BdosSysCallFileRead(cpm *CPM) error {
 
-	panic("BdosSysCallRead")
+	// The pointer to the FCB
+	ptr := cpm.CPU.States.DE.U16()
 
-	// TODO
-	cpm.CPU.States.HL.SetU16(0x0000)
+	// Get the bytes which make up the FCB entry.
+	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
+
+	// Create an FCB object
+	f := fcb.FromBytes(xxx)
+
+	// Lookup the object in our cache
+	ent, ok := cpm.files[f.GetCacheKey()]
+
+	// Not found in the cache?  Then the file
+	// was not open and we return an error.
+	if !ok {
+		cpm.CPU.States.HL.SetU16(0x00FF)
+		cpm.CPU.States.AF.Hi = 0xFF
+		cpm.CPU.States.BC.Hi = 0x00
+		return nil
+	}
+
+	// OK now we need to read a record of data,
+	// so we create a space to read it into
+	data := make([]uint8, 128)
+
+	// Fill the data-area with Ctrl-Z
+	var i uint8 = 0
+	for i < 128 {
+		data[i] = 0x1A // ctrl-Z
+		i++
+	}
+
+	// Get the offset from which we should read.
+	offset := f.GetSequentialOffset()
+	length, eerr := f.GetFileSize(ent.handle)
+
+	if eerr != nil {
+		slog.Debug("failed to get file size",
+			slog.String("name", f.GetFileName()),
+			slog.String("error", eerr.Error()))
+
+		cpm.CPU.States.HL.SetU16(0x0001)
+		cpm.CPU.States.AF.Hi = 0x01
+		cpm.CPU.States.BC.Hi = 0x00
+		return nil
+	}
+
+	// reading beyond the end of the file is going to fail.
+	if offset > length {
+		slog.Debug("reading beyond the end of the file",
+			slog.Int64("size", length),
+			slog.Int64("offset", offset))
+
+		cpm.CPU.States.HL.SetU16(0x0001)
+		cpm.CPU.States.AF.Hi = 0x01
+		cpm.CPU.States.BC.Hi = 0x00
+		return nil
+	}
+
+	slog.Debug("reading file",
+		slog.String("name", ent.name),
+		slog.Int64("size", length),
+		slog.Int64("offset", offset))
+
+	// Seek to that offset.
+	_, err := ent.handle.Seek(offset, io.SeekStart)
+	if err != nil {
+		slog.Debug("failed to seek",
+			slog.Int64("size", length),
+			slog.Int64("offset", offset),
+			slog.String("error", err.Error()))
+
+		cpm.CPU.States.HL.SetU16(0x0001)
+		cpm.CPU.States.AF.Hi = 0x01
+		cpm.CPU.States.BC.Hi = 0x00
+		return nil
+	}
+
+	var n int
+	n, err = ent.handle.Read(data)
+	if err != nil && err != io.EOF {
+		slog.Debug("failed to read",
+			slog.Int64("size", length),
+			slog.Int64("offset", offset),
+			slog.String("error", err.Error()))
+		cpm.CPU.States.HL.SetU16(0x0001)
+		cpm.CPU.States.AF.Hi = 0x01
+		cpm.CPU.States.BC.Hi = 0x00
+		return nil
+	}
+
+	if n > 0 {
+
+		// Update the offset to the next record
+		f.UpdateSequentialOffset(offset + 128)
+
+		// Update the FCB in RAM, so that
+		// record-change takes effect.
+		d := f.AsBytes()
+		cpm.Memory.SetRange(ptr, d...)
+
+		// Update the DMA area, with the read data
+		cpm.Memory.SetRange(cpm.dma, data...)
+
+		cpm.CPU.States.HL.SetU16(0x0000)
+		cpm.CPU.States.AF.Hi = 0x00
+		cpm.CPU.States.BC.Hi = 0x00
+		return nil
+	}
+
+	cpm.CPU.States.HL.SetU16(0x0001)
+	cpm.CPU.States.AF.Hi = 0x01
+	cpm.CPU.States.BC.Hi = 0x00
 	return nil
 }
 

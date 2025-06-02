@@ -460,3 +460,16 @@ func (f *FCB) SetRecordCount(file *os.File) {
 		}
 	}
 }
+
+// Get FileSize returns the size of the given file.
+func (f *FCB) GetFileSize(file *os.File) (int64, error) {
+
+	fi, err := file.Stat()
+	if err != nil {
+		return 0, err
+	}
+
+	size := fi.Size()
+
+	return size, nil
+}
