@@ -474,11 +474,13 @@ func New(options ...Option) (*CPM, error) {
 		Fake:    true,
 	}
 	bdos[40] = Handler{
+		//
+		// This handler is the same as WriteRand.
+		//
+		// (That does zero-pad the file when instructed
+		// to write beyond the end of the existing size.)
 		Desc:    "F_WRITEZF",
 		Handler: BdosSysCallWriteRand,
-
-		// We don't zero-pad
-		Fake: true,
 	}
 	bdos[42] = Handler{
 		Desc:    "F_LOCK",

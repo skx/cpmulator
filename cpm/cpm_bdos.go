@@ -1094,21 +1094,219 @@ func BdosSysCallUserNumber(cpm *CPM) error {
 // BdosSysCallReadRand reads a random block from the FCB pointed to by DE into the DMA area.
 func BdosSysCallReadRand(cpm *CPM) error {
 
-	panic("BdosSysCallReadRand")
+	// The pointer to the FCB
+	ptr := cpm.CPU.States.DE.U16()
 
-	// TODO
-	cpm.CPU.States.HL.SetU16(0x0000)
+	// Get the bytes which make up the FCB entry.
+	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
+
+	// Create an FCB object
+	f := fcb.FromBytes(xxx)
+
+	// Lookup the object in our cache
+	ent, ok := cpm.files[f.GetCacheKey()]
+
+	// Not found in the cache?  Then the file
+	// was not open and we return an error.
+	if !ok {
+		cpm.CPU.States.HL.SetU16(0x00FF)
+		cpm.CPU.States.AF.Hi = 0xFF
+		cpm.CPU.States.BC.Hi = 0x00
+		return nil
+	}
+
+	// OK now we need to read a record of data,
+	// so we create a space to read it into
+	data := make([]uint8, 128)
+
+	// Fill the data-area with Ctrl-Z
+	var i uint8 = 0
+	for i < 128 {
+		data[i] = 0x1A // ctrl-Z
+		i++
+	}
+
+	// Get the offset from which we should read.
+	offset := int64(f.GetRandomOffset())
+	length, eerr := f.GetFileSize(ent.handle)
+
+	if eerr != nil {
+		slog.Debug("failed to get file size",
+			slog.String("name", f.GetFileName()),
+			slog.String("error", eerr.Error()))
+
+		cpm.CPU.States.HL.SetU16(0x0001)
+		cpm.CPU.States.AF.Hi = 0x01
+		cpm.CPU.States.BC.Hi = 0x00
+		return nil
+	}
+
+	// OS workaround for app bug: Turbo Pascal expects a read just past the end of file to succeed.
+	if offset == length {
+		cpm.CPU.States.HL.SetU16(0x0001)
+		cpm.CPU.States.AF.Hi = 0x01
+		cpm.CPU.States.BC.Hi = 0x00
+		return nil
+	}
+
+	if length > offset {
+
+		_, err := ent.handle.Seek(offset, io.SeekStart)
+		if err != nil {
+
+			slog.Debug("seeking failed",
+				slog.Int64("size", length),
+				slog.Int64("offset", offset),
+				slog.String("error", err.Error()))
+
+			cpm.CPU.States.HL.SetU16(0x0001)
+			cpm.CPU.States.AF.Hi = 0x01
+			cpm.CPU.States.BC.Hi = 0x00
+			return nil
+		}
+
+		n := 0
+		n, err = ent.handle.Read(data)
+		if err != nil && err != io.EOF {
+
+			slog.Debug("reading failed",
+				slog.Int64("size", length),
+				slog.Int64("offset", offset),
+				slog.String("error", err.Error()))
+
+			cpm.CPU.States.HL.SetU16(0x0001)
+			cpm.CPU.States.AF.Hi = 0x01
+			cpm.CPU.States.BC.Hi = 0x00
+			return nil
+		}
+		if n > 0 {
+			f.UpdateSequentialOffset(offset)
+
+			// Update the FCB in RAM
+			data := f.AsBytes()
+			cpm.Memory.SetRange(ptr, data...)
+
+			// Update the DMA area, with the read data
+			cpm.Memory.SetRange(cpm.dma, data...)
+
+			cpm.CPU.States.HL.SetU16(0x0000)
+			cpm.CPU.States.AF.Hi = 0x00
+			cpm.CPU.States.BC.Hi = 0x00
+			return nil
+		}
+	}
+	cpm.CPU.States.HL.SetU16(0x0001)
+	cpm.CPU.States.AF.Hi = 0x01
+	cpm.CPU.States.BC.Hi = 0x00
 	return nil
 }
 
-// BdosSysCallWriteRand writes a random block from DMA area to the FCB pointed to by DE.
+// BdosSysCallWriteRand writes a block of 128 bytes from the DMA area
+// to the FCB pointed to by DE.
 func BdosSysCallWriteRand(cpm *CPM) error {
 
-	panic("BdosSysCallWriteRand")
+	// The pointer to the FCB
+	ptr := cpm.CPU.States.DE.U16()
 
-	// TODO
-	cpm.CPU.States.HL.SetU16(0x0000)
+	// Get the bytes which make up the FCB entry.
+	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
+
+	// Create an FCB object
+	f := fcb.FromBytes(xxx)
+
+	// Lookup the object in our cache
+	ent, ok := cpm.files[f.GetCacheKey()]
+
+	// Not found in the cache?  Then the file
+	// was not open and we return an error.
+	if !ok {
+		cpm.CPU.States.HL.SetU16(0x00FF)
+		cpm.CPU.States.AF.Hi = 0xFF
+		cpm.CPU.States.BC.Hi = 0x00
+		return nil
+	}
+
+	// The data we will write will come from the DMA area.
+	data := cpm.Memory.GetRange(cpm.dma, 128)
+
+	// Get the offset and file size
+	offset := int64(f.GetRandomOffset())
+	length, eerr := f.GetFileSize(ent.handle)
+
+	if eerr != nil {
+		slog.Debug("failed to get file size",
+			slog.String("name", f.GetFileName()),
+			slog.String("error", eerr.Error()))
+
+		cpm.CPU.States.HL.SetU16(0x0001)
+		cpm.CPU.States.AF.Hi = 0x01
+		cpm.CPU.States.BC.Hi = 0x00
+		return nil
+	}
+
+	// Are we being asked to write beyond the end of the file?
+	// That's cool - but we need to zero-pad the space.
+	if offset > length {
+
+		// Seek to the offset
+		_, err := ent.handle.Seek(offset, io.SeekStart)
+		if err != nil {
+			slog.Debug("failed to seek beyond the end of the file",
+				slog.Int64("size", length),
+				slog.Int64("offset", offset),
+				slog.String("error", err.Error()))
+
+			cpm.CPU.States.HL.SetU16(0x0001)
+			cpm.CPU.States.AF.Hi = 0x01
+			cpm.CPU.States.BC.Hi = 0x00
+			return nil
+		}
+
+		// Now the file size is the offset size
+		length = offset
+	}
+
+	if length >= offset {
+
+		n, err := ent.handle.Write(data)
+
+		if err != nil {
+			// Error writing
+			slog.Debug("failed to write to file",
+				slog.Int64("size", length),
+				slog.Int64("offset", offset),
+				slog.String("error", err.Error()))
+
+			cpm.CPU.States.HL.SetU16(0x0001)
+			cpm.CPU.States.AF.Hi = 0x01
+			cpm.CPU.States.BC.Hi = 0x00
+			return nil
+		}
+
+		if n > 0 {
+
+			// The CP/M spec says random write should set the file offset such
+			// that the following sequential I/O will be from the SAME location
+			// as this random write -- not 128 bytes beyond.
+			_, _ = ent.handle.Seek(offset, io.SeekStart)
+
+			f.UpdateSequentialOffset(offset)
+			data := f.AsBytes()
+			cpm.Memory.SetRange(ptr, data...)
+
+			cpm.CPU.States.HL.SetU16(0x0000)
+			cpm.CPU.States.AF.Hi = 0x00
+			cpm.CPU.States.BC.Hi = 0x00
+			return nil
+		}
+
+	}
+
+	cpm.CPU.States.HL.SetU16(0x0001)
+	cpm.CPU.States.AF.Hi = 0x01
+	cpm.CPU.States.BC.Hi = 0x00
 	return nil
+
 }
 
 // BdosSysCallFileSize updates the Random Record bytes of the given FCB to the
