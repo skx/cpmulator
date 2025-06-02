@@ -323,6 +323,8 @@ func BdosSysCallDriveSet(cpm *CPM) error {
 // BdosSysCallFileOpen opens the filename that matches the pattern on the FCB supplied in DE
 func BdosSysCallFileOpen(cpm *CPM) error {
 
+	panic("BdosSysCallFileOpen")
+
 	// TODO
 	cpm.CPU.States.HL.SetU16(0x0000)
 	return nil
@@ -335,6 +337,9 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 // I'm unsure exactly how much this is in-use I'm going to only implement it for
 // files with "$" in their name.
 func BdosSysCallFileClose(cpm *CPM) error {
+
+	panic("BdosSysCallFileClose")
+
 	// TODO
 	cpm.CPU.States.HL.SetU16(0x0000)
 	return nil
@@ -542,6 +547,8 @@ func BdosSysCallDeleteFile(cpm *CPM) error {
 // BdosSysCallRead reads a record from the file named in the FCB given in DE
 func BdosSysCallRead(cpm *CPM) error {
 
+	panic("BdosSysCallRead")
+
 	// TODO
 	cpm.CPU.States.HL.SetU16(0x0000)
 	return nil
@@ -549,6 +556,9 @@ func BdosSysCallRead(cpm *CPM) error {
 
 // BdosSysCallWrite writes a record to the file named in the FCB given in DE
 func BdosSysCallWrite(cpm *CPM) error {
+
+	panic("BdosSysCallWrite")
+
 	// TODO
 	cpm.CPU.States.HL.SetU16(0x0000)
 	return nil
@@ -556,6 +566,9 @@ func BdosSysCallWrite(cpm *CPM) error {
 
 // BdosSysCallMakeFile creates the file named in the FCB given in DE
 func BdosSysCallMakeFile(cpm *CPM) error {
+
+	panic("BdosSysCallMakeFile")
+
 	// TODO
 	cpm.CPU.States.HL.SetU16(0x0000)
 	return nil
@@ -716,6 +729,9 @@ func BdosSysCallUserNumber(cpm *CPM) error {
 
 // BdosSysCallReadRand reads a random block from the FCB pointed to by DE into the DMA area.
 func BdosSysCallReadRand(cpm *CPM) error {
+
+	panic("BdosSysCallReadRand")
+
 	// TODO
 	cpm.CPU.States.HL.SetU16(0x0000)
 	return nil
@@ -723,6 +739,8 @@ func BdosSysCallReadRand(cpm *CPM) error {
 
 // BdosSysCallWriteRand writes a random block from DMA area to the FCB pointed to by DE.
 func BdosSysCallWriteRand(cpm *CPM) error {
+
+	panic("BdosSysCallWriteRand")
 
 	// TODO
 	cpm.CPU.States.HL.SetU16(0x0000)
@@ -733,106 +751,9 @@ func BdosSysCallWriteRand(cpm *CPM) error {
 // number of records in the file.
 func BdosSysCallFileSize(cpm *CPM) error {
 
-	// The pointer to the FCB
-	ptr := cpm.CPU.States.DE.U16()
+	panic("BdosSysCallFileSize")
 
-	// Get the bytes which make up the FCB entry.
-	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
-
-	// Create a structure with the contents
-	fcbPtr := fcb.FromBytes(xxx)
-
-	//
-	// Seems this doesn't require a file to be open.
-	//
-	// So we have to go through the dance of getting the filename.
-	//
-
-	// Get the actual name
-	fileName := fcbPtr.GetFileName()
-
-	// Should we remap drives?
-	path := cpm.drives[string(cpm.currentDrive+'A')]
-
-	//
-	// Ok we have a filename, but we probably have an upper-case
-	// filename.
-	//
-	// Run a glob, and if there's an existing file with the same
-	// name then replace with the mixed/lower cased version.
-	//
-	files, err2 := os.ReadDir(path)
-	if err2 == nil {
-		for _, n := range files {
-			if strings.ToUpper(n.Name()) == fileName {
-				fileName = n.Name()
-			}
-		}
-	}
-
-	// ensure the path is qualified
-	fileName = filepath.Join(path, fileName)
-
-	// Remapped file
-	x := filepath.Base(fileName)
-	x = filepath.Join(string(cpm.currentDrive+'A'), x)
-
-	// fileSize we'll determine
-	var fileSize int64
-
-	// Can we open this file from our embedded filesystem?
-	virt, er := cpm.static.ReadFile(x)
-	if er == nil {
-
-		fileSize = int64(len(virt))
-	} else {
-
-		file, err := os.OpenFile(fileName, os.O_RDONLY, 0644)
-		if err != nil {
-			return fmt.Errorf("failed to open file for FileSize %s:%s", fileName, err)
-		}
-
-		// ensure we close
-		defer file.Close()
-
-		// Get file size, in bytes
-		fi, err := file.Stat()
-		if err != nil {
-			return fmt.Errorf("failed to get file size of %s: %s", fileName, err)
-		}
-
-		fileSize = fi.Size()
-
-	}
-
-	// Now we have the size we need to turn it into the number
-	// of records
-	records := int(fileSize / 128)
-
-	// Block size is used so round up, if we need to.
-	if (fileSize % blkSize) != 0 {
-		records++
-	}
-
-	// Cap the size appropriately.
-	if records >= 65536 {
-		records = 65536
-	}
-
-	// Store the value in the three fields
-	fcbPtr.R0 = uint8(records & 0xFF)
-	fcbPtr.R1 = uint8(records >> 8)
-	fcbPtr.R2 = uint8(records >> 16)
-
-	// sanity check because I've messed this up in the past
-	n := int(int(fcbPtr.R2)<<16) | int(int(fcbPtr.R1)<<8) | int(fcbPtr.R0)
-	if n != records {
-		return fmt.Errorf("failed to update because maths is hard %d != %d", n, records)
-	}
-
-	// Update the FCB in memory
-	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
-
+	// TODO
 	cpm.CPU.States.HL.SetU16(0x0000)
 	return nil
 }
@@ -841,33 +762,9 @@ func BdosSysCallFileSize(cpm *CPM) error {
 // of the last record read/written by the sequential I/O calls.
 func BdosSysCallRandRecord(cpm *CPM) error {
 
-	// The pointer to the FCB
-	ptr := cpm.CPU.States.DE.U16()
+	panic("BdosSysCallRandRecord")
 
-	// Get the bytes which make up the FCB entry.
-	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
-
-	// Create a structure with the contents
-	fcbPtr := fcb.FromBytes(xxx)
-
-	// So the sequential offset is found here
-	offset := int(fcbPtr.GetSequentialOffset())
-
-	// Now we set the "random record" which is R0,R1,R2
-	fcbPtr.R0 = uint8(offset & 0xFF)
-	fcbPtr.R1 = uint8(offset >> 8)
-	fcbPtr.R2 = uint8(offset >> 16)
-
-	// sanity check because I've messed this up in the past
-	n := int(int(fcbPtr.R2)<<16) | int(int(fcbPtr.R1)<<8) | int(fcbPtr.R0)
-	if n != offset {
-		return fmt.Errorf("failed to update because maths is hard %d != %d", n, offset)
-	}
-
-	// Update the FCB in memory.
-	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
-
-	// Return success
+	// TODO
 	cpm.CPU.States.HL.SetU16(0x0000)
 	return nil
 }
