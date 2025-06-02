@@ -438,3 +438,69 @@ func (f *FCB) GetMatches(prefix string) ([]Find, error) {
 	// Return the entries we found, if any.
 	return ret, nil
 }
+
+// SetRecordCountFromFile updates the RC value of the given file
+// with the filesize (in records).
+//
+// The size is taken from the file handle, via a Stat() call.
+func (f *FCB) SetRecordCountFromFile(file *os.File) {
+
+	// Ensure we take account of any pending writes.
+	_ = file.Sync()
+
+	// Stat the file.
+	fi, err := file.Stat()
+	if err != nil {
+		return
+	}
+
+	// Get the size
+	size := fi.Size()
+
+	// Use it
+	f.SetRecordCount(size)
+}
+
+// SetRecordCount updates the RC value of the given file
+// with the filesize (in records)
+func (f *FCB) SetRecordCount(size int64) {
+	if size >= 16*1024 {
+		f.RC = 128
+	} else {
+		tailSize := (size % (16 * 1024)) // won't matter because of 16k check above
+		f.RC = uint8(tailSize / 128)
+		if (tailSize % 128) != 0 {
+			f.RC++
+		}
+	}
+}
+
+// GetFileSize returns the size of the given file.
+func (f *FCB) GetFileSize(file *os.File) (int64, error) {
+
+	// Run a stat to get the size.
+	fi, err := file.Stat()
+	if err != nil {
+		return 0, err
+	}
+
+	// Now return the size from the result
+	size := fi.Size()
+	return size, nil
+}
+
+// SetRandomOffset updates the random I/O offset for the given FCB.
+//
+// See also GetRandomOffset.
+func (f *FCB) SetRandomOffset(offset uint16) {
+	f.R0 = uint8(0xff & offset)
+	f.R1 = uint8((offset & 0xFF00) >> 8)
+	f.R2 = 0
+}
+
+// GetRandomOffset returns the random I/O offset for the given FCB.
+//
+// See also SetRandomOffset.
+func (f *FCB) GetRandomOffset() uint16 {
+	return uint16(uint16(f.R1)<<8 | uint16(f.R0))
+}

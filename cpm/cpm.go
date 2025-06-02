@@ -108,8 +108,11 @@ type Handler struct {
 // which have been opened by the CP/M binary/CCP.
 type FileCache struct {
 	// name holds the name of the file, when it was opened/created,
-	// on the host-side.
+	// on the guest-side.
 	name string
+
+	// host contains the resolved host-size
+	host string
 
 	// handle has the file handle of the opened file.
 	handle *os.File
@@ -393,11 +396,11 @@ func New(options ...Option) (*CPM, error) {
 	}
 	bdos[20] = Handler{
 		Desc:    "F_READ",
-		Handler: BdosSysCallRead,
+		Handler: BdosSysCallFileRead,
 	}
 	bdos[21] = Handler{
 		Desc:    "F_WRITE",
-		Handler: BdosSysCallWrite,
+		Handler: BdosSysCallFileWrite,
 	}
 	bdos[22] = Handler{
 		Desc:    "F_MAKE",
@@ -471,11 +474,13 @@ func New(options ...Option) (*CPM, error) {
 		Fake:    true,
 	}
 	bdos[40] = Handler{
+		//
+		// This handler is the same as WriteRand.
+		//
+		// (That does zero-pad the file when instructed
+		// to write beyond the end of the existing size.)
 		Desc:    "F_WRITEZF",
 		Handler: BdosSysCallWriteRand,
-
-		// We don't zero-pad
-		Fake: true,
 	}
 	bdos[42] = Handler{
 		Desc:    "F_LOCK",

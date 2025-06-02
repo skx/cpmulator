@@ -933,7 +933,7 @@ func TestCloseDollar(t *testing.T) {
 	c.Memory.Set(c.dma+4, 'e')
 	c.Memory.Set(c.dma+5, 0x00)
 	c.CPU.States.DE.SetU16(0x0200)
-	err = BdosSysCallWrite(c)
+	err = BdosSysCallFileWrite(c)
 	if err != nil {
 		t.Fatalf("got error writing to file: err")
 	}
@@ -1141,7 +1141,7 @@ func TestWriteFile(t *testing.T) {
 	c.Memory.Set(c.dma+4, 'e')
 	c.Memory.Set(c.dma+5, 0x00)
 
-	err = BdosSysCallWrite(c)
+	err = BdosSysCallFileWrite(c)
 	if err != nil {
 		t.Fatalf("got error writing to file: err")
 	}
@@ -1197,7 +1197,7 @@ func TestWriteFile(t *testing.T) {
 	f := fcb.FromBytes(data)
 	c.Memory.SetRange(0x0200, f.AsBytes()...)
 	c.CPU.States.DE.SetU16(0x0200)
-	err = BdosSysCallWrite(c)
+	err = BdosSysCallFileWrite(c)
 	if err != nil {
 		t.Fatalf("error calling cp/m")
 	}
@@ -1226,7 +1226,7 @@ func TestReadFile(t *testing.T) {
 	f := fcb.FromBytes(data)
 	c.Memory.SetRange(0x0200, f.AsBytes()...)
 	c.CPU.States.DE.SetU16(0x0200)
-	err = BdosSysCallRead(c)
+	err = BdosSysCallFileRead(c)
 	if err != nil {
 		t.Fatalf("error calling cp/m")
 	}
@@ -1383,7 +1383,7 @@ func TestRead(t *testing.T) {
 
 	// Call the read function
 	c.CPU.States.DE.SetU16(0x0200)
-	err = BdosSysCallRead(c)
+	err = BdosSysCallFileRead(c)
 	if err != nil {
 		t.Fatalf("error calling CP/M")
 	}
@@ -1445,7 +1445,7 @@ func TestRead(t *testing.T) {
 
 	// Call read
 	c.CPU.States.DE.SetU16(0x0200)
-	err = BdosSysCallRead(c)
+	err = BdosSysCallFileRead(c)
 	if err != nil {
 		t.Fatalf("error calling CP/M")
 	}
