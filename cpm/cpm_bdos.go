@@ -1050,7 +1050,7 @@ func BdosSysCallFileSize(cpm *CPM) error {
 
 	// Round up.
 	for fileSize%128 != 0 {
-		fileSize += 1
+		fileSize++
 	}
 
 	// Update the random IO offset
