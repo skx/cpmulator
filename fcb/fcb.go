@@ -439,11 +439,14 @@ func (f *FCB) GetMatches(prefix string) ([]Find, error) {
 	return ret, nil
 }
 
-// SetRecordCount updates the RC value of the given file
+// SetRecordCountFromFile updates the RC value of the given file
 // with the filesize (in records).
 //
-// The size is taken from the file
+// The size is taken from the file handle, via a Stat() call.
 func (f *FCB) SetRecordCountFromFile(file *os.File) {
+
+	// Ensure we take account of any pending writes.
+	_ = file.Sync()
 
 	// Stat the file.
 	fi, err := file.Stat()
