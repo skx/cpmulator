@@ -1023,10 +1023,58 @@ func BdosSysCallWriteRand(cpm *CPM) error {
 // number of records in the file.
 func BdosSysCallFileSize(cpm *CPM) error {
 
-	panic("BdosSysCallFileSize")
+	// The pointer to the FCB
+	ptr := cpm.CPU.States.DE.U16()
 
-	// TODO
+	// Get the bytes which make up the FCB entry.
+	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
+
+	// Create an FCB object
+	f := fcb.FromBytes(xxx)
+
+	// Lookup the object in our cache
+	ent, ok := cpm.files[f.GetCacheKey()]
+
+	// Not found in the cache?  Then the file
+	// was not open and we return an error
+	if !ok {
+		cpm.CPU.States.HL.SetU16(0x00FF)
+		cpm.CPU.States.AF.Hi = 0xFF
+		cpm.CPU.States.BC.Hi = 0x00
+		return nil
+	}
+
+	// Get the size
+	fileSize, err := f.GetFileSize(ent.handle)
+	if err != nil {
+		slog.Debug("failed to get file size",
+			slog.String("error", err.Error()))
+		cpm.CPU.States.HL.SetU16(0x00FF)
+		cpm.CPU.States.AF.Hi = 0xFF
+		cpm.CPU.States.BC.Hi = 0x00
+		return nil
+	}
+
+	// Round up.
+	for fileSize%128 != 0 {
+		fileSize += 1
+	}
+
+	// Update the random IO offset
+	f.SetRandomOffset(uint16(fileSize / 128))
+
+	v := f.GetRandomOffset()
+	if v != uint16(fileSize/128) {
+		panic("mismatch")
+	}
+
+	data := f.AsBytes()
+	cpm.Memory.SetRange(ptr, data...)
+
+	// return success
 	cpm.CPU.States.HL.SetU16(0x0000)
+	cpm.CPU.States.AF.Hi = 0x00
+	cpm.CPU.States.BC.Hi = 0x00
 	return nil
 }
 

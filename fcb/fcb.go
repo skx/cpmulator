@@ -473,3 +473,15 @@ func (f *FCB) GetFileSize(file *os.File) (int64, error) {
 
 	return size, nil
 }
+
+// SetRandomOffset updates the random I/O offset for the given FCB.
+func (f *FCB) SetRandomOffset(offset uint16) {
+	f.R0 = uint8(0xff & offset)
+	f.R1 = uint8((offset & 0xFF00) >> 8)
+	f.R2 = 0
+}
+
+// GetRandomOffset returns the random I/O offset for the given FCB.
+func (f *FCB) GetRandomOffset() uint16 {
+	return uint16(f.R1<<8 | f.R0)
+}
