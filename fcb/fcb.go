@@ -440,16 +440,27 @@ func (f *FCB) GetMatches(prefix string) ([]Find, error) {
 }
 
 // SetRecordCount updates the RC value of the given file
-// with the filesize (in records)
-func (f *FCB) SetRecordCount(file *os.File) {
+// with the filesize (in records).
+//
+// The size is taken from the file
+func (f *FCB) SetRecordCountFromFile(file *os.File) {
 
+	// Stat the file.
 	fi, err := file.Stat()
 	if err != nil {
 		return
 	}
 
+	// Get the size
 	size := fi.Size()
 
+	// Use it
+	f.SetRecordCount(size)
+}
+
+// SetRecordCount updates the RC value of the given file
+// with the filesize (in records)
+func (f *FCB) SetRecordCount(size int64) {
 	if size >= 16*1024 {
 		f.RC = 128
 	} else {

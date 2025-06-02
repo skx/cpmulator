@@ -380,7 +380,7 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 		ent.handle.Seek(0, io.SeekStart)
 
 		// set the record-count
-		f.SetRecordCount(ent.handle)
+		f.SetRecordCountFromFile(ent.handle)
 		f.S2 = 0x00
 
 		// Update the FCB in RAM
@@ -431,7 +431,7 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 	cpm.files[f.GetCacheKey()] = cache
 
 	// set the record-count of the file.
-	f.SetRecordCount(ent.handle)
+	f.SetRecordCountFromFile(ent.handle)
 	f.S2 = 0x00
 
 	// Update the FCB in RAM
@@ -829,13 +829,112 @@ func BdosSysCallFileWrite(cpm *CPM) error {
 	return nil
 }
 
-// BdosSysCallMakeFile creates the file named in the FCB given in DE
+// BdosSysCallMakeFile creates the file named in the FCB given in DE.
+//
+// If the file exists that's actually okay, but it WILL be truncated.
 func BdosSysCallMakeFile(cpm *CPM) error {
 
-	panic("BdosSysCallMakeFile")
+	// The pointer to the FCB
+	ptr := cpm.CPU.States.DE.U16()
 
-	// TODO
+	// Get the bytes which make up the FCB entry.
+	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
+
+	// Create an FCB object
+	f := fcb.FromBytes(xxx)
+
+	// Lookup the object in our cache
+	//
+	// If the file was already open then we do nothing.
+	// and report that as a success.
+	ent, ok := cpm.files[f.GetCacheKey()]
+	if ok {
+		fmt.Printf("MAKE FILE ON EXISTING FILE!\n")
+
+		// seek to the start of the file
+		ent.handle.Seek(0, io.SeekStart)
+
+		// truncate it
+		ent.handle.Truncate(0)
+
+		// set the record-count to zero,
+		// because we just truncated.
+		f.SetRecordCount(0)
+
+		// Reset other fields
+		f.Cr = 0
+		f.Ex = 0
+		f.S2 = 0
+
+		// Update the FCB in RAM
+		data := f.AsBytes()
+		cpm.Memory.SetRange(ptr, data...)
+
+		// return success
+		cpm.CPU.States.HL.SetU16(0x0000)
+		cpm.CPU.States.AF.Hi = 0x00
+		cpm.CPU.States.BC.Hi = 0x00
+		return nil
+	}
+
+	// Find out where we should open
+	path, err := fcbToHost(cpm, f)
+
+	// Error opening?  Then return that to the caller.
+	if err != nil {
+		slog.Debug("failed to get host path",
+			slog.String("file", path),
+			slog.String("error", err.Error()))
+
+		cpm.CPU.States.HL.SetU16(0x00FF)
+		cpm.CPU.States.AF.Hi = 0xFF
+		cpm.CPU.States.BC.Hi = 0x00
+		return nil
+	}
+
+	// Now we can open the file and see what we have
+	handle, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0644)
+
+	// again if there is an error let the caller known
+	if err != nil {
+
+		slog.Debug("failed to make file",
+			slog.String("file", path),
+			slog.String("error", err.Error()))
+
+		cpm.CPU.States.HL.SetU16(0x00FF)
+		cpm.CPU.States.AF.Hi = 0xFF
+		cpm.CPU.States.BC.Hi = 0x00
+		return nil
+	}
+
+	// Create a cache entry
+	cache := FileCache{
+		name:   f.GetFileName(),
+		host:   path,
+		handle: handle,
+	}
+
+	// store it
+	cpm.files[f.GetCacheKey()] = cache
+
+	// set the record-count to zero,
+	// because we just truncated.
+	f.SetRecordCount(0)
+
+	// Reset other fields
+	f.Cr = 0
+	f.Ex = 0
+	f.S2 = 0
+
+	// Update the FCB in RAM
+	data := f.AsBytes()
+	cpm.Memory.SetRange(ptr, data...)
+
+	// return success
 	cpm.CPU.States.HL.SetU16(0x0000)
+	cpm.CPU.States.AF.Hi = 0x00
+	cpm.CPU.States.BC.Hi = 0x00
 	return nil
 }
 
