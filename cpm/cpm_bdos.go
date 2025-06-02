@@ -24,9 +24,6 @@ import (
 // blkSize is the size of block-based I/O operations
 const blkSize = 128
 
-// maxRC is the maximum read count
-const maxRC = 128
-
 // BdosSysCallExit implements the Exit syscall
 func BdosSysCallExit(cpm *CPM) error {
 	cpm.CPU.HALT = true
