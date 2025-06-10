@@ -722,6 +722,17 @@ func BdosSysCallDeleteFile(cpm *CPM) error {
 		// Host path
 		path := entry.Host
 
+		// Ensure we don't have this cached
+		x := fcb.FromString(entry.Name)
+
+		// If we have a cached handle ensure we close the file,
+		// then delete the entry.
+		obj, ok := cpm.files[x.GetCacheKey()]
+		if ok {
+			obj.handle.Close()
+			delete(cpm.files, x.GetCacheKey())
+		}
+
 		slog.Debug("SysCallDeleteFile: deleting file",
 			slog.String("path", path))
 
