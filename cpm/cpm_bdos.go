@@ -950,6 +950,14 @@ func BdosSysCallMakeFile(cpm *CPM) error {
 	// Get the actual name
 	fileName := fcbPtr.GetFileName()
 
+	// Is this already cached?  Then cleanup by
+	// closing the file, and removing the cache-key
+	obj, ok := cpm.files[fcbPtr.GetCacheKey()]
+	if ok {
+		obj.handle.Close()
+		delete(cpm.files, fcbPtr.GetCacheKey())
+	}
+
 	// No filename?  That's an error
 	if fileName == "" {
 		cpm.CPU.States.HL.SetU16(0x00FF)
@@ -1000,6 +1008,15 @@ func BdosSysCallMakeFile(cpm *CPM) error {
 			slog.String("error", err.Error()))
 		return err
 	}
+
+	// If the file already exists, truncate and rewind.
+	//
+	// This ensures that "make file" will always result
+	// in either a) an error, or b) an empty file ready
+	// for use.
+	_ = file.Truncate(0)
+	_, _ = file.Seek(0, io.SeekStart)
+	_ = file.Sync()
 
 	// Get file size, in bytes
 	fi, err := file.Stat()

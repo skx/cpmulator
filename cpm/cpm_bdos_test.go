@@ -1706,3 +1706,90 @@ func TestIssue241(t *testing.T) {
 		t.Fatalf("unexpectedly cached filehandle object is still present")
 	}
 }
+
+// TestIssue2412tests #242 is closed:
+//   - Makefile should truncate an existing file, if present.
+func TestIssue242(t *testing.T) {
+
+	fileExists := func(path string) bool {
+		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+			return false
+		}
+		return true
+	}
+	fileSize := func(path string) (int64, error) {
+		si, err := os.Stat(path)
+		if err != nil {
+			return 0, err
+		}
+		return si.Size(), nil
+	}
+
+	// Create a new helper
+	c, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+
+	// All drives will be "."
+	c.SetDrives(false)
+
+	// ensure we have RAM
+	c.Memory = new(memory.Memory)
+
+	// Create an FCB
+	fcbPtr := fcb.FromString("TEST.242")
+
+	// Write the FCB into memory, and point to it
+	c.Memory.SetRange(0x000, fcbPtr.AsBytes()...)
+	c.CPU.States.DE.Lo = 0x00
+	c.CPU.States.DE.Hi = 0x00
+
+	// This should now create a file
+	err = BdosSysCallMakeFile(c)
+	if err != nil {
+		t.Fatalf("failed to create file %s", err.Error())
+	}
+
+	// Now we write a record to the file
+	// We'll be taking the default DMA memory here, i.e. zeros,
+	// but that doesn't matter. We'll just be testing the size changes
+	err = BdosSysCallWrite(c)
+	if err != nil {
+		t.Fatalf("failed to write to file %s", err.Error())
+	}
+
+	// We should now have a file "TEST.242", which is 128 bytes
+	// in size (i.e. one record)
+	if !fileExists("TEST.242") {
+		t.Fatalf("failed to create file")
+	}
+	sz, err2 := fileSize("TEST.242")
+	if sz != 128 {
+		t.Fatalf("unexpected size %d: %v ", sz, err2)
+	}
+
+	// So we've made the file, now re-make it
+	err = BdosSysCallMakeFile(c)
+	if err != nil {
+		t.Fatalf("failed to create file - attempt #2 %s", err.Error())
+	}
+
+	// We should now have a file "TEST.242", which is ZERO bytes in size.
+	sz, err2 = fileSize("TEST.242")
+	if sz != 0 {
+		t.Fatalf("unexpected size %d: %v ", sz, err2)
+	}
+
+	// File deletion should remove it though.
+	err = BdosSysCallDeleteFile(c)
+	if err != nil {
+		t.Fatalf("failed to delete file %s", err.Error())
+	}
+
+	// We should now no longer have a file "TEST.242"
+	if fileExists("TEST.242") {
+		t.Fatalf("failed to delete file")
+	}
+
+}
