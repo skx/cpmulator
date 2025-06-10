@@ -1643,3 +1643,66 @@ func TestExecOutput(t *testing.T) {
 		t.Fatalf("wrong text received")
 	}
 }
+
+// TestIssue241 tests #241 is closed:
+// Deleting a file should delete the cached FCB entry
+func TestIssue241(t *testing.T) {
+
+	fileExists := func(path string) bool {
+		if _, err2 := os.Stat(path); errors.Is(err2, os.ErrNotExist) {
+			return false
+		}
+		return true
+	}
+
+	// Create a new helper
+	c, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+
+	// All drives will be "."
+	c.SetDrives(false)
+
+	// ensure we have RAM
+	c.Memory = new(memory.Memory)
+
+	// Create an FCB
+	fcbPtr := fcb.FromString("TEST.241")
+
+	// Write the FCB into memory, and point to it
+	c.Memory.SetRange(0x000, fcbPtr.AsBytes()...)
+	c.CPU.States.DE.Lo = 0x00
+	c.CPU.States.DE.Hi = 0x00
+
+	// This should now create a file
+	err = BdosSysCallMakeFile(c)
+	if err != nil {
+		t.Fatalf("failed to create file %s", err.Error())
+	}
+
+	// We should now have a file "TEST.241" and a cached handle
+	// for it
+	if !fileExists("TEST.241") {
+		t.Fatalf("failed to create file")
+	}
+	if len(c.files) != 1 {
+		t.Fatalf("unexpectedly missing cached filehandle object")
+	}
+
+	// File deletion should remove it
+	err = BdosSysCallDeleteFile(c)
+	if err != nil {
+		t.Fatalf("failed to delete file %s", err.Error())
+	}
+
+	// We should now no longer have a file "TEST.241"
+	if fileExists("TEST.241") {
+		t.Fatalf("failed to delete file")
+	}
+
+	// And our cached list should be empty
+	if len(c.files) != 0 {
+		t.Fatalf("unexpectedly cached filehandle object is still present")
+	}
+}
