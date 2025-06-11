@@ -79,6 +79,26 @@ Most other syscalls are more static, but there are examples where a call's behav
 
 
 
+## BDOS Handling
+
+BDOS returns 16-bit result-codes and this is required, without this for example BBC BASIC will fail to load/save programs.
+
+We see similar things with the HiSoft C compilers too, the "HL" register is directly tested to determine a syscalls' result.
+
+To handle this all the BDOS system calls set their value in the HL register-pair, and after the code is completed we run:
+
+```
+SETMEM(BDOS+2, 0x44) // LD B,H
+SETMEM(BDOS+3, 0x7D) // LD A,L
+SETMEM(BDOS+4, 0xFE) // CP 0
+SETMEM(BDOS+5, 0x00) //    ""
+SETMEM(BDOS+6, 0xC9) // RET
+```
+
+This ensures the return-code is in both "A" and "L", and B/H are (usually) set to Zero.
+
+
+
 ## Automated Testing
 
 We have the ability to paste controlled (console) input into the emulator, and this facility is used by the test-script beneath `test/`.
