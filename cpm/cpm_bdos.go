@@ -1273,6 +1273,22 @@ func BdosSysCallRenameFile(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
+	// Log the FCB
+	cpm.log = cpm.log.With(
+		slog.Group("src",
+			slog.String("drive", fmt.Sprintf("%02X", fcbPtr.Drive)),
+			slog.String("name", fcbPtr.GetName()),
+			slog.String("type", fcbPtr.GetType()),
+			slog.String("Ex", fmt.Sprintf("%02X", fcbPtr.Ex)),
+			slog.String("S1", fmt.Sprintf("%02X", fcbPtr.S1)),
+			slog.String("S2", fmt.Sprintf("%02X", fcbPtr.S2)),
+			slog.String("RC", fmt.Sprintf("%02X", fcbPtr.RC)),
+			slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
+			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
+			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
+		))
+
 	// Get the actual name
 	fileName := fcbPtr.GetFileName()
 
@@ -1305,25 +1321,35 @@ func BdosSysCallRenameFile(cpm *CPM) error {
 	// Create a structure with the contents
 	dstPtr := fcb.FromBytes(xxx2)
 
+	// Log the FCB
+	cpm.log = cpm.log.With(
+		slog.Group("dst",
+			slog.String("drive", fmt.Sprintf("%02X", dstPtr.Drive)),
+			slog.String("name", dstPtr.GetName()),
+			slog.String("type", dstPtr.GetType()),
+			slog.String("Ex", fmt.Sprintf("%02X", dstPtr.Ex)),
+			slog.String("S1", fmt.Sprintf("%02X", dstPtr.S1)),
+			slog.String("S2", fmt.Sprintf("%02X", dstPtr.S2)),
+			slog.String("RC", fmt.Sprintf("%02X", dstPtr.RC)),
+			slog.String("CR", fmt.Sprintf("%02X", dstPtr.Cr)),
+			slog.String("R0", fmt.Sprintf("%02X", dstPtr.R0)),
+			slog.String("R1", fmt.Sprintf("%02X", dstPtr.R1)),
+			slog.String("R2", fmt.Sprintf("%02X", dstPtr.R2)),
+		))
+
 	// Get the name
 	dstName := dstPtr.GetFileName()
 
 	// ensure the name is qualified
 	dstName = filepath.Join(path, dstName)
 
-	slog.Debug("Renaming file",
-		slog.String("src", fileName),
-		slog.String("dst", dstName))
-
 	err := os.Rename(fileName, dstName)
 	if err != nil {
-		slog.Debug("Renaming file failed",
-			slog.String("error", err.Error()))
 		cpm.CPU.States.HL.SetU16(0x00FF)
 		return nil
 	}
 
-	// Return values:
+	// Return values
 	cpm.CPU.States.HL.SetU16(0x0000)
 	return nil
 }
