@@ -519,6 +519,11 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 		fcbPtr.RC = fLen
 	}
 
+	// If the size is bigger than a multiple we deal with that.
+	if fileSize > int64(int64(fLen)*int64(blkSize)) {
+		fcbPtr.RC += 1
+	}
+
 	l.Debug("result:OK",
 		slog.Int("fcb", int(ptr)),
 		slog.Int("handle", int(file.Fd())),
@@ -711,6 +716,11 @@ func BdosSysCallFindFirst(cpm *CPM) error {
 			// Get file size, in blocks
 			x.RC = uint8(fileSize / blkSize)
 
+			// If the size is bigger than a multiple we deal with that.
+			if fileSize > int64(int64(x.RC)*int64(blkSize)) {
+				x.RC += 1
+			}
+
 		}
 	}
 
@@ -761,6 +771,11 @@ func BdosSysCallFindNext(cpm *CPM) error {
 
 			// Get file size, in blocks
 			x.RC = uint8(fileSize / blkSize)
+
+			// If the size is bigger than a multiple we deal with that.
+			if fileSize > int64(int64(x.RC)*int64(blkSize)) {
+				x.RC += 1
+			}
 
 		}
 	}
@@ -1144,6 +1159,11 @@ func BdosSysCallMakeFile(cpm *CPM) error {
 		fcbPtr.RC = fLen
 	}
 
+	// If the size is bigger than a multiple we deal with that.
+	if fileSize > int64(int64(fcbPtr.RC)*int64(blkSize)) {
+		fcbPtr.RC += 1
+	}
+
 	// Save the file-handle
 	cpm.files[fcbPtr.GetCacheKey()] = FileCache{name: fileName, handle: file}
 
@@ -1329,8 +1349,6 @@ func BdosSysCallReadRand(cpm *CPM) error {
 		// Get file size, in bytes
 		fi, err := f.Stat()
 		if err != nil {
-			slog.Error("ReadRand:failed to get file size",
-				slog.String("error", err.Error()))
 			return 0xFF
 		}
 		fileSize := fi.Size()
@@ -1343,9 +1361,6 @@ func BdosSysCallReadRand(cpm *CPM) error {
 
 		_, err = f.Seek(offset, io.SeekStart)
 		if err != nil {
-			slog.Error("ReadRand: cannot seek to position",
-				slog.Int64("offset", offset),
-				slog.String("error", err.Error()))
 			return 0xFF
 		}
 
@@ -1356,12 +1371,16 @@ func BdosSysCallReadRand(cpm *CPM) error {
 		_, err = f.Read(data)
 		if err != nil {
 			if err != io.EOF {
-				slog.Error("ReadRand: failed to read offset",
-					slog.Int64("offset", offset),
-					slog.String("error", err.Error()))
 				return 0xFF
 			}
 		}
+
+		// Log the record we read.
+		cpm.log = cpm.log.With(
+			slog.Group("record",
+				slog.String("offset", fmt.Sprintf("%d", offset)),
+				slog.String("size", fmt.Sprintf("%d", fileSize)),
+				slog.String("dump", data2String(data))))
 
 		cpm.Memory.SetRange(cpm.dma, data...)
 		return 0
@@ -1376,11 +1395,25 @@ func BdosSysCallReadRand(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
+	// Log the FCB
+	cpm.log = cpm.log.With(
+		slog.Group("fcb",
+			slog.String("drive", fmt.Sprintf("%02X", fcbPtr.Drive)),
+			slog.String("name", fcbPtr.GetName()),
+			slog.String("type", fcbPtr.GetType()),
+			slog.String("Ex", fmt.Sprintf("%02X", fcbPtr.Ex)),
+			slog.String("S1", fmt.Sprintf("%02X", fcbPtr.S1)),
+			slog.String("S2", fmt.Sprintf("%02X", fcbPtr.S2)),
+			slog.String("RC", fmt.Sprintf("%02X", fcbPtr.RC)),
+			slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
+			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
+			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
+		))
+
 	// Get the file handle in our cache.
 	obj, ok := cpm.files[fcbPtr.GetCacheKey()]
 	if !ok {
-		slog.Error("SysCallReadRand: Attempting to read from a file that isn't open",
-			slog.String("filename", fcbPtr.GetFileName()))
 		cpm.CPU.States.HL.SetU16(0x00FF)
 		return nil
 	}
@@ -1432,24 +1465,8 @@ func BdosSysCallReadRand(cpm *CPM) error {
 	// Translate the record to a byte-offset
 	fpos := int64(record) * blkSize
 
-	// magic
-	//  This is a cheap way to try to update the sequential offset
-	// with the value that is chosen in the random-access record.
-	fcbPtr.Cr = fcbPtr.R0
-	fcbPtr.Ex = fcbPtr.R1
-
 	// Read the data
 	res := sysRead(obj.handle, fpos)
-
-	// Add logging of the result and details.
-	slog.Debug("SysCallReadRand",
-		slog.Int("dma", int(cpm.dma)),
-		slog.Int("fcb", int(ptr)),
-		slog.Int("handle", int(obj.handle.Fd())),
-		slog.Int("record_count", int(fcbPtr.RC)),
-		slog.Int("record", record),
-		slog.Int64("fpos", fpos),
-		slog.Int("result", res))
 
 	// Update the FCB in memory
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
@@ -1469,6 +1486,22 @@ func BdosSysCallWriteRand(cpm *CPM) error {
 
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
+
+	// Log the FCB
+	cpm.log = cpm.log.With(
+		slog.Group("fcb",
+			slog.String("drive", fmt.Sprintf("%02X", fcbPtr.Drive)),
+			slog.String("name", fcbPtr.GetName()),
+			slog.String("type", fcbPtr.GetType()),
+			slog.String("Ex", fmt.Sprintf("%02X", fcbPtr.Ex)),
+			slog.String("S1", fmt.Sprintf("%02X", fcbPtr.S1)),
+			slog.String("S2", fmt.Sprintf("%02X", fcbPtr.S2)),
+			slog.String("RC", fmt.Sprintf("%02X", fcbPtr.RC)),
+			slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
+			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
+			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
+		))
 
 	// Get the file handle in our cache.
 	obj, ok := cpm.files[fcbPtr.GetCacheKey()]
@@ -1535,12 +1568,6 @@ func BdosSysCallWriteRand(cpm *CPM) error {
 	if err != nil {
 		return fmt.Errorf("failed to write to offset %d: %s", fpos, err)
 	}
-
-	// magic
-	//  This is a cheap way to try to update the sequential offset
-	// with the value that is chosen in the random-access record.
-	fcbPtr.Cr = fcbPtr.R0
-	fcbPtr.Ex = fcbPtr.R1
 
 	// Update the FCB in memory
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
@@ -1630,8 +1657,8 @@ func BdosSysCallFileSize(cpm *CPM) error {
 	records := int(fileSize / 128)
 
 	// Block size is used so round up, if we need to.
-	if (fileSize % blkSize) != 0 {
-		records++
+	if fileSize > int64(int64(records)*int64(blkSize)) {
+		records += 1
 	}
 
 	// Cap the size appropriately.
