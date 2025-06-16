@@ -971,6 +971,13 @@ func BdosSysCallRead(cpm *CPM) error {
 		return nil
 	}
 
+	// length of the file
+	fi, err3 := obj.handle.Stat()
+	if err3 != nil {
+		return fmt.Errorf("failed to get file size of: %s", err3)
+	}
+	fileSize := fi.Size()
+
 	_, err := obj.handle.Seek(int64(offset), io.SeekStart)
 	if err != nil {
 		cpm.CPU.States.HL.SetU16(0x0001)
@@ -986,6 +993,13 @@ func BdosSysCallRead(cpm *CPM) error {
 
 	// Copy the data to the DMA area
 	cpm.Memory.SetRange(cpm.dma, data...)
+
+	// Log the data we read
+	cpm.log = cpm.log.With(
+		slog.Group("record",
+			slog.String("offset", fmt.Sprintf("%d", offset)),
+			slog.String("size", fmt.Sprintf("%d", fileSize)),
+			slog.String("dump", data2String(data))))
 
 	// Update the next read position
 	fcbPtr.IncreaseSequentialOffset()
@@ -1007,6 +1021,7 @@ func BdosSysCallWrite(cpm *CPM) error {
 
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
+
 	// Get the bytes which make up the FCB entry.
 	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
 
@@ -1058,6 +1073,12 @@ func BdosSysCallWrite(cpm *CPM) error {
 	if err != nil {
 		return fmt.Errorf("error writing to file %s", err)
 	}
+
+	// Log the record we're writing
+	cpm.log = cpm.log.With(
+		slog.Group("record",
+			slog.String("offset", fmt.Sprintf("%d", offset)),
+			slog.String("dump", data2String(data))))
 
 	// Update the next write position
 	fcbPtr.IncreaseSequentialOffset()
@@ -1718,6 +1739,14 @@ func BdosSysCallFileSize(cpm *CPM) error {
 	fcbPtr.R0 = uint8(records & 0xFF)
 	fcbPtr.R1 = uint8(records >> 8)
 	fcbPtr.R2 = uint8(records >> 16)
+
+	cpm.log = cpm.log.With(
+		slog.Group("filesize",
+			slog.String("records", fmt.Sprintf("%d", records)),
+			slog.String("size", fmt.Sprintf("%d", fileSize)),
+			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
+			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2))))
 
 	// sanity check because I've messed this up in the past
 	n := int(int(fcbPtr.R2)<<16) | int(int(fcbPtr.R1)<<8) | int(fcbPtr.R0)
