@@ -450,13 +450,6 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 		}
 	}
 
-	// child logger with more details.
-	l := slog.With(
-		slog.String("function", "SysCallFileOpen"),
-		slog.String("name", fileName),
-		slog.String("drive", string(cpm.currentDrive+'A')),
-		slog.String("result", fileName))
-
 	// Ensure the filename is qualified
 	fileName = filepath.Join(path, fileName)
 
@@ -496,18 +489,9 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 		// We might fail to open a file because it doesn't exist.
 		if os.IsNotExist(err) {
 
-			l.Debug("failed to open, file does not exist",
-				slog.String("path", fileName),
-				slog.String("error", err.Error()))
-
 			cpm.CPU.States.HL.SetU16(0x00FF)
 			return nil
 		}
-
-		// Ok a different error
-		l.Debug("failed to open",
-			slog.String("path", fileName),
-			slog.String("error", err.Error()))
 
 		// Report the failure, but keep going.
 		cpm.CPU.States.HL.SetU16(0x00FF)
@@ -539,12 +523,6 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 	if fileSize > int64(int64(fLen)*int64(blkSize)) {
 		fcbPtr.RC += 1
 	}
-
-	l.Debug("result:OK",
-		slog.Int("fcb", int(ptr)),
-		slog.Int("handle", int(file.Fd())),
-		slog.Int("record_count", int(fcbPtr.RC)),
-		slog.Int64("file_size", fileSize))
 
 	// Update the FCB in memory.
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
@@ -938,8 +916,6 @@ func BdosSysCallRead(cpm *CPM) error {
 	// Get the file handle in our cache.
 	obj, ok := cpm.files[fcbPtr.GetCacheKey()]
 	if !ok {
-		slog.Error("SysCallRead: Attempting to read from a file that isn't open",
-			slog.String("filename", fcbPtr.GetFileName()))
 		cpm.CPU.States.HL.SetU16(0x00FF)
 		return nil
 	}
@@ -964,9 +940,6 @@ func BdosSysCallRead(cpm *CPM) error {
 		// open
 		file, err := fs.ReadFile(cpm.static, p)
 		if err != nil {
-			slog.Error("error on readfile for virtual path",
-				slog.String("path", p),
-				slog.String("error", err.Error()))
 			cpm.CPU.States.HL.SetU16(0x00FF)
 			return nil
 		}
@@ -1010,13 +983,6 @@ func BdosSysCallRead(cpm *CPM) error {
 		cpm.CPU.States.HL.SetU16(0x0001)
 		return fmt.Errorf("error reading file %s", err)
 	}
-
-	// Add logging of the result and details.
-	slog.Debug("SysCallRead",
-		slog.Int("dma", int(cpm.dma)),
-		slog.Int("fcb", int(ptr)),
-		slog.Int("handle", int(obj.handle.Fd())),
-		slog.Int("offset", int(offset)))
 
 	// Copy the data to the DMA area
 	cpm.Memory.SetRange(cpm.dma, data...)
@@ -1066,7 +1032,6 @@ func BdosSysCallWrite(cpm *CPM) error {
 	// Get the file handle in our cache.
 	obj, ok := cpm.files[fcbPtr.GetCacheKey()]
 	if !ok {
-		slog.Error("SysCallWrite: Attempting to write to a file that isn't open")
 		cpm.CPU.States.HL.SetU16(0x00FF)
 		return nil
 	}
@@ -1078,13 +1043,6 @@ func BdosSysCallWrite(cpm *CPM) error {
 
 	// Get the next write position
 	offset := fcbPtr.GetSequentialOffset()
-
-	// Add logging of the result and details.
-	slog.Debug("SysCallWrite",
-		slog.Int("dma", int(cpm.dma)),
-		slog.Int("fcb", int(ptr)),
-		slog.Int("handle", int(obj.handle.Fd())),
-		slog.Int("offset", int(offset)))
 
 	// Get the data range from the DMA area
 	data := cpm.Memory.GetRange(cpm.dma, 128)
@@ -1191,23 +1149,12 @@ func BdosSysCallMakeFile(cpm *CPM) error {
 		}
 	}
 
-	// child logger with more details.
-	l := slog.With(
-		slog.String("function", "SysCallMakeFile"),
-		slog.String("name", fileName),
-		slog.String("drive", string(cpm.currentDrive+'A')),
-		slog.String("result", fileName))
-
 	// Qualify the path
 	fileName = filepath.Join(path, fileName)
 
 	// Create the file
 	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
-
-		l.Debug("failed to open",
-			slog.String("path", fileName),
-			slog.String("error", err.Error()))
 		return err
 	}
 
@@ -1245,12 +1192,6 @@ func BdosSysCallMakeFile(cpm *CPM) error {
 
 	// Save the file-handle
 	cpm.files[fcbPtr.GetCacheKey()] = FileCache{name: fileName, handle: file}
-
-	l.Debug("result:OK",
-		slog.Int("fcb", int(ptr)),
-		slog.Int("handle", int(file.Fd())),
-		slog.Int("record_count", int(fcbPtr.RC)),
-		slog.Int64("file_size", fileSize))
 
 	// Update the FCB in memory
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
@@ -1532,9 +1473,6 @@ func BdosSysCallReadRand(cpm *CPM) error {
 		// open
 		file, err := fs.ReadFile(cpm.static, p)
 		if err != nil {
-			slog.Error("SysCallReadRand error on virtual path",
-				slog.String("path", p),
-				slog.String("error", err.Error()))
 			cpm.CPU.States.HL.SetU16(0x00FF)
 			return nil
 		}
@@ -1611,7 +1549,6 @@ func BdosSysCallWriteRand(cpm *CPM) error {
 	// Get the file handle in our cache.
 	obj, ok := cpm.files[fcbPtr.GetCacheKey()]
 	if !ok {
-		slog.Error("SysCallWriteRand: Attempting to write to a file that isn't open")
 		cpm.CPU.States.HL.SetU16(0x00FF)
 		return nil
 	}
@@ -1645,16 +1582,6 @@ func BdosSysCallWriteRand(cpm *CPM) error {
 	// If the offset we're writing to is bigger than the file size then
 	// we need to add an appropriate amount of padding.
 	padding := fpos - fileSize
-
-	// Add logging of the result and details.
-	slog.Debug("SysCallWriteRand",
-		slog.Int("dma", int(cpm.dma)),
-		slog.Int("fcb", int(ptr)),
-		slog.Int("padding", int(padding)),
-		slog.Int("handle", int(obj.handle.Fd())),
-		slog.Int("record_count", int(fcbPtr.RC)),
-		slog.Int("record", record),
-		slog.Int64("fpos", fpos))
 
 	for padding > 0 {
 		_, er := obj.handle.Write([]byte{0x00})
