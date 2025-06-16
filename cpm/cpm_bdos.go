@@ -27,6 +27,51 @@ const blkSize = 128
 // maxRC is the maximum read count
 const maxRC = 128
 
+// data2String is a simple helper that is designed to dump a small
+// array of data to a string.
+//
+// It is used to write FCB values and I/O records to logs.
+func data2String(data []uint8) string {
+
+	// Ensure we're only dumping a single record
+	if len(data) > 128 {
+		panic("too big")
+	}
+
+	// copy into a record just to deal with short
+	// reads or writes.
+	t := make([]uint8, 128)
+	for n, e := range data {
+		t[n] = e
+	}
+
+	// now output
+	res := ""
+	hex := ""
+	asc := ""
+	for n, e := range t {
+
+		// Sixteen bytes at a time.
+		if n%16 == 0 && len(hex) > 0 {
+			res += hex
+			res += " | "
+			res += asc
+			res += "\n"
+
+			hex = ""
+			asc = ""
+		}
+
+		hex += fmt.Sprintf("%02X ", e)
+		if e > 32 && e < 128 {
+			asc += string(e)
+		} else {
+			asc += " "
+		}
+	}
+	return res
+}
+
 // BdosSysCallExit implements the Exit syscall
 func BdosSysCallExit(cpm *CPM) error {
 	cpm.CPU.HALT = true
@@ -615,7 +660,9 @@ func BdosSysCallFindFirst(cpm *CPM) error {
 		return res[i].Name < res[j].Name
 	})
 
-	// Log the glob-parameter, and the results match
+	cpm.log = cpm.log.With(
+		slog.Group("fcb",
+			slog.String("dump", data2String(xxx))))
 	cpm.log = cpm.log.With(
 		slog.Group("glob",
 			slog.String("pattern", fcbPtr.GetFileName()),
@@ -1415,6 +1462,11 @@ func BdosSysCallWriteRand(cpm *CPM) error {
 
 	// Get the data range from the DMA area
 	data := cpm.Memory.GetRange(cpm.dma, 128)
+
+	// Log the record we're writing
+	cpm.log = cpm.log.With(
+		slog.Group("record",
+			slog.String("dump", data2String(data))))
 
 	// Get the record to write
 	record := int(int(fcbPtr.R2)<<16) | int(int(fcbPtr.R1)<<8) | int(fcbPtr.R0)
