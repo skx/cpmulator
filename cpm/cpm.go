@@ -247,9 +247,7 @@ func WithPrinterPath(path string) Option {
 
 // WithOutputDriver allows the default console output driver to be changed in our constructor.
 func WithOutputDriver(name string) Option {
-
 	return func(c *CPM) error {
-
 		driver, err := consoleout.New(name)
 		if err != nil {
 			return err
@@ -262,9 +260,7 @@ func WithOutputDriver(name string) Option {
 
 // WithInputDriver allows the default console input driver to be changed in our constructor.
 func WithInputDriver(name string) Option {
-
 	return func(c *CPM) error {
-
 		driver, err := consolein.New(name)
 		if err != nil {
 			return err
@@ -892,10 +888,7 @@ func (cpm *CPM) Execute(args []string) error {
 	// Reset any cached filehandles.
 	//
 	// This is only required when running the CCP, as there we're persistent.
-	for name, obj := range cpm.files {
-		slog.Debug("Closing handle in FileCache",
-			slog.String("host", obj.name),
-			slog.String("guest", name))
+	for _, obj := range cpm.files {
 		obj.handle.Close()
 	}
 	cpm.files = make(map[string]FileCache)
@@ -1067,10 +1060,6 @@ func (cpm *CPM) SetDrivePath(drive string, path string) {
 //
 // This is called by our embedded Z80 emulator.
 func (cpm *CPM) In(addr uint8) uint8 {
-	slog.Debug("I/O IN",
-		slog.String("PC", fmt.Sprintf("%04X", cpm.CPU.PC)),
-		slog.Int("port", int(addr)))
-
 	return 0
 }
 
@@ -1185,7 +1174,7 @@ func (cpm *CPM) Out(addr uint8, val uint8) {
 		return
 	}
 
-	// Setup the default logger
+	// Setup the default logger before we invoke the handler.
 	cpm.log = slog.Default()
 
 	// Ensure we log the incoming registers
@@ -1210,7 +1199,9 @@ func (cpm *CPM) Out(addr uint8, val uint8) {
 	// Log an actual message
 	//
 	// This will have the side-effect of logging any register values we've setup
-	cpm.log.Debug(handler.Desc)
+	if !handler.Noisy {
+		cpm.log.Debug(handler.Desc)
+	}
 
 	// If we got an error we stop
 	if cpm.syscallErr != nil {
