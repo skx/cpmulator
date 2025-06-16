@@ -609,7 +609,7 @@ func BdosSysCallFindFirst(cpm *CPM) error {
 	// Build up all the results so we can log those.
 	tmpn := []any{}
 	for i, e := range res {
-		tmpn = append(tmpn, slog.String(fmt.Sprintf("match_1%d", i), e.Name))
+		tmpn = append(tmpn, slog.String(fmt.Sprintf("match_%d", i), e.Name))
 	}
 
 	// Now make those available for logging.
