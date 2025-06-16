@@ -340,47 +340,7 @@ func TestCustom(t *testing.T) {
 	_ = BiosSysCallReserved1(c)
 
 	// 0x0006
-	// Debug Flag
-	c.CPU.States.HL.SetU16(0x0006)
-	c.CPU.States.BC.Lo = 0xFF
-	err = BiosSysCallReserved1(c)
-	if err != nil {
-		t.Fatalf("error calling reserved function")
-	}
-	// Set it
-	c.CPU.States.HL.SetU16(0x0006)
-	c.CPU.States.BC.Lo = 0x00
-	err = BiosSysCallReserved1(c)
-	if err != nil {
-		t.Fatalf("error calling reserved function")
-	}
-	// Make sure it worked
-	c.CPU.States.HL.SetU16(0x0006)
-	c.CPU.States.BC.Lo = 0xFF
-	err = BiosSysCallReserved1(c)
-	if err != nil {
-		t.Fatalf("error calling reserved function")
-	}
-	if c.CPU.States.BC.Lo != 0x00 {
-		t.Fatalf("setting flag failed")
-	}
-
-	c.CPU.States.HL.SetU16(0x0006)
-	c.CPU.States.BC.Lo = 0x01
-	err = BiosSysCallReserved1(c)
-	if err != nil {
-		t.Fatalf("error calling reserved function")
-	}
-	// Make sure it worked
-	c.CPU.States.HL.SetU16(0x0006)
-	c.CPU.States.BC.Lo = 0xFF
-	err = BiosSysCallReserved1(c)
-	if err != nil {
-		t.Fatalf("error calling reserved function")
-	}
-	if c.CPU.States.BC.Lo != 0x01 {
-		t.Fatalf("setting flag failed")
-	}
+	//  Simple Debug - Retired.
 
 	// 0x0007
 	// Get/Set console input driver
@@ -608,8 +568,6 @@ func TestBIOSError(t *testing.T) {
 			t.Fatalf("teardown failed %s", tErr.Error())
 		}
 	}()
-
-	c.simpleDebug = true
 
 	// Ensure we get an error when printing
 	err = c.prnC('s')

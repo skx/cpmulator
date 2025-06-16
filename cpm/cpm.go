@@ -215,15 +215,12 @@ type CPM struct {
 	// is called.
 	findFirstResults []fcb.Find
 
-	// simpleDebug is used to output the name of syscalls which are being
-	// invoked, directly to the console.
-	//
-	// For real debugging we expect the caller to use our Logger, via
-	// the logfile.
-	simpleDebug bool
-
 	// launchTime is the time at which the application was launched
 	launchTime time.Time
+
+	// log will be updated by some of the BDOS syscalls, and used to log
+	// results. BIOS calls are not logged like that.
+	log *slog.Logger
 }
 
 // Option defines a config-setting option for our constructor.
@@ -626,6 +623,7 @@ func New(options ...Option) (*CPM, error) {
 		files:        make(map[string]FileCache),
 		input:        iDriver, // default
 		output:       oDriver, // default
+		log:          slog.Default(),
 		prnPath:      DefaultPrinterPath,
 		start:        0x0100,
 		launchTime:   time.Now(),
@@ -1187,31 +1185,34 @@ func (cpm *CPM) Out(addr uint8, val uint8) {
 		return
 	}
 
-	// Log the call, if we should.
-	if !handler.Noisy {
+	// Setup the default logger
+	cpm.log = slog.Default()
 
-		// show the function being invoked.
-		if cpm.simpleDebug {
-			fmt.Printf("%03d %s %s\r\n", val, callType, handler.Desc)
-		}
-
-		// Log the call we're going to make
-		slog.Info(callType,
-			slog.String("name", handler.Desc),
-			slog.String("type", callType),
-			slog.Int("syscall", int(val)),
-			slog.String("syscallHex", fmt.Sprintf("0x%02X", val)),
-			slog.Group("registers",
-				slog.String("AF", fmt.Sprintf("%04X", cpm.CPU.States.AF.U16())),
-				slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
-				slog.String("DE", fmt.Sprintf("%04X", cpm.CPU.States.DE.U16())),
-				slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16()))))
-	}
+	// Ensure we log the incoming registers
+	cpm.log = cpm.log.With(
+		slog.Group("input_registers",
+			slog.String("AF", fmt.Sprintf("%04X", cpm.CPU.States.AF.U16())),
+			slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
+			slog.String("DE", fmt.Sprintf("%04X", cpm.CPU.States.DE.U16())),
+			slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16()))))
 
 	// Invoke the handler, and save any error that we receive.
-	//
-	// If an error was returned we halt the emulation of the virtual Z80.
 	cpm.syscallErr = handler.Handler(cpm)
+
+	// Ensure we log the resulting registers.
+	cpm.log = cpm.log.With(
+		slog.Group("output_registers",
+			slog.String("AF", fmt.Sprintf("%04X", cpm.CPU.States.AF.U16())),
+			slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
+			slog.String("DE", fmt.Sprintf("%04X", cpm.CPU.States.DE.U16())),
+			slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16()))))
+
+	// Log an actual message
+	//
+	// This will have the side-effect of logging any register values we've setup
+	cpm.log.Debug(handler.Desc)
+
+	// If we got an error we stop
 	if cpm.syscallErr != nil {
 		cpm.CPU.HALT = true
 	}

@@ -190,7 +190,6 @@ func TestUnimplemented(t *testing.T) {
 	}
 
 	// Finally launch it
-	c.simpleDebug = true
 	err = c.Execute([]string{"foo", "bar", "baz"})
 	if err == nil {
 		t.Fatalf("expected an error, got none")
@@ -245,7 +244,6 @@ func TestBoot(t *testing.T) {
 	}
 
 	// Finally launch it
-	c.simpleDebug = true
 	err = c.Execute([]string{"foo", "bar", "baz"})
 	if err == nil {
 		t.Fatalf("expected an error, got none")
@@ -264,7 +262,6 @@ func TestFind(t *testing.T) {
 		t.Fatalf("failed to create CPM")
 	}
 	c.Memory = new(memory.Memory)
-
 	c.fixupRAM()
 	c.SetDrives(false)
 	c.SetStaticFilesystem(static.GetContent())
@@ -1585,7 +1582,6 @@ func TestFileCache(t *testing.T) {
 		t.Fatalf("error loading a binary")
 	}
 
-	c.simpleDebug = true
 	err = c.Execute([]string{"foo", "bar", "baz"})
 	if err == nil {
 		t.Fatalf("expected an error, got none")

@@ -562,11 +562,6 @@ func BdosSysCallFindFirst(cpm *CPM) error {
 	// Find files in the FCB.
 	res, err := fcbPtr.GetMatches(dir)
 	if err != nil {
-		slog.Debug("fcbPtr.GetMatches returned error",
-			slog.String("path", dir),
-			slog.String("error", err.Error()))
-
-		// Error
 		cpm.CPU.States.HL.SetU16(0x00FF)
 		return nil
 	}
@@ -604,6 +599,22 @@ func BdosSysCallFindFirst(cpm *CPM) error {
 	sort.Slice(res, func(i, j int) bool {
 		return res[i].Name < res[j].Name
 	})
+
+	// Log the glob-parameter, and the results match
+	cpm.log = cpm.log.With(
+		slog.Group("glob",
+			slog.String("pattern", fcbPtr.GetFileName()),
+			slog.Int("matches", len(res))))
+
+	// Build up all the results so we can log those.
+	tmpn := []any{}
+	for i, e := range res {
+		tmpn = append(tmpn, slog.String(fmt.Sprintf("match_1%d", i), e.Name))
+	}
+
+	// Now make those available for logging.
+	cpm.log = cpm.log.With(
+		slog.Group("matches", tmpn...))
 
 	// Here we save the results in our cache,
 	// dropping the first
@@ -672,6 +683,12 @@ func BdosSysCallFindNext(cpm *CPM) error {
 
 		}
 	}
+
+	// Log that we're returning the next result.
+	cpm.log = cpm.log.With(
+		slog.Group("returning",
+			slog.String("name", x.GetFileName()),
+			slog.String("RecordCount", fmt.Sprintf("%d", x.RC))))
 
 	data := x.AsBytes()
 	cpm.Memory.SetRange(cpm.dma, data...)

@@ -363,28 +363,8 @@ func BiosSysCallReserved1(cpm *CPM) error {
 	// Get/Set the debug-flag
 	case 0x0006:
 
-		// if C == 00
-		//   Disable debug
-		//
-		// if C == 01
-		//   Enable debug
-		//
-		// If C == 0xFF
-		//   Return the statues of the flag in C.
-		//
-		if c == 0x00 {
-			cpm.simpleDebug = false
-		}
-		if c == 0x01 {
-			cpm.simpleDebug = true
-		}
-		if c == 0xFF {
-			if cpm.simpleDebug {
-				cpm.CPU.States.BC.Lo = 0x01
-			} else {
-				cpm.CPU.States.BC.Lo = 0x00
-			}
-		}
+		// Retired.
+		return nil
 
 	// Get/Set the input driver.
 	case 0x0007:
