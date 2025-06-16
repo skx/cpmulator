@@ -616,6 +616,22 @@ func BdosSysCallFindFirst(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
+	// Log the FCB
+	cpm.log = cpm.log.With(
+		slog.Group("fcb",
+			slog.String("drive", fmt.Sprintf("%02X", fcbPtr.Drive)),
+			slog.String("name", fcbPtr.GetName()),
+			slog.String("type", fcbPtr.GetType()),
+			slog.String("Ex", fmt.Sprintf("%02X", fcbPtr.Ex)),
+			slog.String("S1", fmt.Sprintf("%02X", fcbPtr.S1)),
+			slog.String("S2", fmt.Sprintf("%02X", fcbPtr.S2)),
+			slog.String("RC", fmt.Sprintf("%02X", fcbPtr.RC)),
+			slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
+			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
+			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
+		))
+
 	// Look in the correct location.
 	dir := cpm.drives[string(cpm.currentDrive+'A')]
 
@@ -660,9 +676,6 @@ func BdosSysCallFindFirst(cpm *CPM) error {
 		return res[i].Name < res[j].Name
 	})
 
-	cpm.log = cpm.log.With(
-		slog.Group("fcb",
-			slog.String("dump", data2String(xxx))))
 	cpm.log = cpm.log.With(
 		slog.Group("glob",
 			slog.String("pattern", fcbPtr.GetFileName()),
@@ -777,9 +790,21 @@ func BdosSysCallDeleteFile(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
-	// Show what we're going to delete
-	slog.Debug("SysCallDeleteFile",
-		slog.String("pattern", fcbPtr.GetFileName()))
+	// Log the FCB
+	cpm.log = cpm.log.With(
+		slog.Group("fcb",
+			slog.String("drive", fmt.Sprintf("%02X", fcbPtr.Drive)),
+			slog.String("name", fcbPtr.GetName()),
+			slog.String("type", fcbPtr.GetType()),
+			slog.String("Ex", fmt.Sprintf("%02X", fcbPtr.Ex)),
+			slog.String("S1", fmt.Sprintf("%02X", fcbPtr.S1)),
+			slog.String("S2", fmt.Sprintf("%02X", fcbPtr.S2)),
+			slog.String("RC", fmt.Sprintf("%02X", fcbPtr.RC)),
+			slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
+			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
+			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
+		))
 
 	// drive will default to our current drive, if the FCB drive field is 0
 	drive := cpm.currentDrive + 'A'
@@ -790,13 +815,9 @@ func BdosSysCallDeleteFile(cpm *CPM) error {
 	// Remap to the place we're supposed to use.
 	path := cpm.drives[string(drive)]
 
-	// Find files in the FCB.
+	// Find files that match the FCB-pattern.
 	res, err := fcbPtr.GetMatches(path)
 	if err != nil {
-		slog.Debug("SysCallDeleteFile - fcbPtr.GetMatches returned error",
-			slog.String("path", path),
-			slog.String("error", err.Error()))
-
 		cpm.CPU.States.HL.SetU16(0x00FF)
 		return nil
 	}
@@ -818,20 +839,22 @@ func BdosSysCallDeleteFile(cpm *CPM) error {
 			delete(cpm.files, x.GetCacheKey())
 		}
 
-		slog.Debug("SysCallDeleteFile: deleting file",
-			slog.String("path", path))
-
 		err = os.Remove(path)
 		if err != nil {
-
-			slog.Debug("SysCallDeleteFile: failed to delete file",
-				slog.String("path", path),
-				slog.String("error", err.Error()))
-
 			cpm.CPU.States.HL.SetU16(0x00FF)
 			return nil
 		}
 	}
+
+	// Build up all the results so we can log those.
+	tmpn := []any{}
+	for i, e := range res {
+		tmpn = append(tmpn, slog.String(fmt.Sprintf("match_%d", i), e.Name))
+	}
+
+	// Now make those available for logging.
+	cpm.log = cpm.log.With(
+		slog.Group("deleted", tmpn...))
 
 	// Return values:
 	cpm.CPU.States.HL.SetU16(0x0000)
