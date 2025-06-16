@@ -170,12 +170,22 @@ func BdosSysCallSetIOByte(cpm *CPM) error {
 func BdosSysCallWriteString(cpm *CPM) error {
 	addr := cpm.CPU.States.DE.U16()
 
+	str := ""
+
 	c := cpm.Memory.Get(addr)
 	for c != '$' {
+		// save the string we write
+		str += string(c)
+
 		cpm.output.PutCharacter(c)
 		addr++
 		c = cpm.Memory.Get(addr)
 	}
+
+	// Log the message we wrote, and its length.
+	cpm.log = slog.With(
+		slog.String("output", str),
+		slog.String("length", fmt.Sprintf("%d", len(str))))
 
 	// Return values:
 	cpm.CPU.States.HL.SetU16(0x0000)
@@ -221,6 +231,11 @@ func BdosSysCallReadString(cpm *CPM) error {
 
 		return err
 	}
+
+	// Log the input the console received, and its length.
+	cpm.log = slog.With(
+		slog.String("input", text),
+		slog.String("length", fmt.Sprintf("%d", len(text))))
 
 	// addr[0] is the size of the input buffer
 	// addr[1] should be the size of input read, set it:
@@ -271,7 +286,7 @@ func BdosSysCallDriveAllReset(cpm *CPM) error {
 	cpm.Memory.Set(0x0004, (cpm.userNumber<<4 | cpm.currentDrive))
 
 	// Default return value
-	var ret uint8 = 0
+	var ret uint16 = 0
 
 	// drive will default to our current drive, if the FCB drive field is 0
 	drive := string(cpm.currentDrive + 'A')
@@ -293,7 +308,7 @@ func BdosSysCallDriveAllReset(cpm *CPM) error {
 	cpm.dma = 0x80
 
 	// Return values:
-	cpm.CPU.States.HL.SetU16(uint16(ret))
+	cpm.CPU.States.HL.SetU16(ret)
 	return nil
 }
 
@@ -638,6 +653,12 @@ func BdosSysCallFindFirst(cpm *CPM) error {
 
 		}
 	}
+
+	// Log the first result we're returning.
+	cpm.log = cpm.log.With(
+		slog.Group("returning",
+			slog.String("name", x.GetFileName()),
+			slog.String("RecordCount", fmt.Sprintf("%d", x.RC))))
 
 	// Update the results
 	data := x.AsBytes()
