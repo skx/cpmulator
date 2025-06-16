@@ -393,6 +393,22 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
+	// Log the FCB
+	cpm.log = cpm.log.With(
+		slog.Group("fcb",
+			slog.String("drive", fmt.Sprintf("%02X", fcbPtr.Drive)),
+			slog.String("name", fcbPtr.GetName()),
+			slog.String("type", fcbPtr.GetType()),
+			slog.String("Ex", fmt.Sprintf("%02X", fcbPtr.Ex)),
+			slog.String("S1", fmt.Sprintf("%02X", fcbPtr.S1)),
+			slog.String("S2", fmt.Sprintf("%02X", fcbPtr.S2)),
+			slog.String("RC", fmt.Sprintf("%02X", fcbPtr.RC)),
+			slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
+			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
+			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
+		))
+
 	// Reset the offset
 	fcbPtr.Ex = 0
 	fcbPtr.S1 = 0
@@ -555,14 +571,32 @@ func BdosSysCallFileClose(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
+	// Log the FCB
+	cpm.log = cpm.log.With(
+		slog.Group("fcb",
+			slog.String("drive", fmt.Sprintf("%02X", fcbPtr.Drive)),
+			slog.String("name", fcbPtr.GetName()),
+			slog.String("type", fcbPtr.GetType()),
+			slog.String("Ex", fmt.Sprintf("%02X", fcbPtr.Ex)),
+			slog.String("S1", fmt.Sprintf("%02X", fcbPtr.S1)),
+			slog.String("S2", fmt.Sprintf("%02X", fcbPtr.S2)),
+			slog.String("RC", fmt.Sprintf("%02X", fcbPtr.RC)),
+			slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
+			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
+			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
+		))
+
 	// Get the file handle from our cache.
 	obj, ok := cpm.files[fcbPtr.GetCacheKey()]
 	if !ok {
-		slog.Debug("SysCallFileClose tried to close a file that wasn't open",
-			slog.String("guest", fcbPtr.GetCacheKey()))
 		cpm.CPU.States.HL.SetU16(0x00FF)
 		return nil
 	}
+
+	// delete the entry from the cache - regardless
+	// of success/failure.
+	delete(cpm.files, fcbPtr.GetCacheKey())
 
 	// Close of a virtual file.
 	if obj.handle == nil {
@@ -597,9 +631,6 @@ func BdosSysCallFileClose(cpm *CPM) error {
 	if err != nil {
 		return fmt.Errorf("failed to close file %04X:%s", ptr, err)
 	}
-
-	// delete the entry from the cache.
-	delete(cpm.files, fcbPtr.GetCacheKey())
 
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
 
@@ -888,6 +919,22 @@ func BdosSysCallRead(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
+	// Log the FCB
+	cpm.log = cpm.log.With(
+		slog.Group("fcb",
+			slog.String("drive", fmt.Sprintf("%02X", fcbPtr.Drive)),
+			slog.String("name", fcbPtr.GetName()),
+			slog.String("type", fcbPtr.GetType()),
+			slog.String("Ex", fmt.Sprintf("%02X", fcbPtr.Ex)),
+			slog.String("S1", fmt.Sprintf("%02X", fcbPtr.S1)),
+			slog.String("S2", fmt.Sprintf("%02X", fcbPtr.S2)),
+			slog.String("RC", fmt.Sprintf("%02X", fcbPtr.RC)),
+			slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
+			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
+			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
+		))
+
 	// Get the file handle in our cache.
 	obj, ok := cpm.files[fcbPtr.GetCacheKey()]
 	if !ok {
@@ -1000,6 +1047,22 @@ func BdosSysCallWrite(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
+	// Log the FCB
+	cpm.log = cpm.log.With(
+		slog.Group("fcb",
+			slog.String("drive", fmt.Sprintf("%02X", fcbPtr.Drive)),
+			slog.String("name", fcbPtr.GetName()),
+			slog.String("type", fcbPtr.GetType()),
+			slog.String("Ex", fmt.Sprintf("%02X", fcbPtr.Ex)),
+			slog.String("S1", fmt.Sprintf("%02X", fcbPtr.S1)),
+			slog.String("S2", fmt.Sprintf("%02X", fcbPtr.S2)),
+			slog.String("RC", fmt.Sprintf("%02X", fcbPtr.RC)),
+			slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
+			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
+			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
+		))
+
 	// Get the file handle in our cache.
 	obj, ok := cpm.files[fcbPtr.GetCacheKey()]
 	if !ok {
@@ -1062,6 +1125,22 @@ func BdosSysCallMakeFile(cpm *CPM) error {
 
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
+
+	// Log the FCB
+	cpm.log = cpm.log.With(
+		slog.Group("fcb",
+			slog.String("drive", fmt.Sprintf("%02X", fcbPtr.Drive)),
+			slog.String("name", fcbPtr.GetName()),
+			slog.String("type", fcbPtr.GetType()),
+			slog.String("Ex", fmt.Sprintf("%02X", fcbPtr.Ex)),
+			slog.String("S1", fmt.Sprintf("%02X", fcbPtr.S1)),
+			slog.String("S2", fmt.Sprintf("%02X", fcbPtr.S2)),
+			slog.String("RC", fmt.Sprintf("%02X", fcbPtr.RC)),
+			slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
+			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
+			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
+		))
 
 	// Reset the offset
 	fcbPtr.Ex = 0
@@ -1589,6 +1668,22 @@ func BdosSysCallFileSize(cpm *CPM) error {
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
 
+	// Log the FCB
+	cpm.log = cpm.log.With(
+		slog.Group("fcb",
+			slog.String("drive", fmt.Sprintf("%02X", fcbPtr.Drive)),
+			slog.String("name", fcbPtr.GetName()),
+			slog.String("type", fcbPtr.GetType()),
+			slog.String("Ex", fmt.Sprintf("%02X", fcbPtr.Ex)),
+			slog.String("S1", fmt.Sprintf("%02X", fcbPtr.S1)),
+			slog.String("S2", fmt.Sprintf("%02X", fcbPtr.S2)),
+			slog.String("RC", fmt.Sprintf("%02X", fcbPtr.RC)),
+			slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
+			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
+			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
+		))
+
 	//
 	// Seems this doesn't require a file to be open.
 	//
@@ -1696,6 +1791,22 @@ func BdosSysCallRandRecord(cpm *CPM) error {
 
 	// Create a structure with the contents
 	fcbPtr := fcb.FromBytes(xxx)
+
+	// Log the FCB
+	cpm.log = cpm.log.With(
+		slog.Group("fcb",
+			slog.String("drive", fmt.Sprintf("%02X", fcbPtr.Drive)),
+			slog.String("name", fcbPtr.GetName()),
+			slog.String("type", fcbPtr.GetType()),
+			slog.String("Ex", fmt.Sprintf("%02X", fcbPtr.Ex)),
+			slog.String("S1", fmt.Sprintf("%02X", fcbPtr.S1)),
+			slog.String("S2", fmt.Sprintf("%02X", fcbPtr.S2)),
+			slog.String("RC", fmt.Sprintf("%02X", fcbPtr.RC)),
+			slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
+			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
+			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
+		))
 
 	// So the sequential offset is found here
 	offset := int(fcbPtr.GetSequentialOffset())
