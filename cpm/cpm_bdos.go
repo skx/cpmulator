@@ -319,6 +319,7 @@ func BdosSysCallBDOSVersion(cpm *CPM) error {
 
 	// HL = 0x0022 -CP/M 2.2
 	cpm.CPU.States.HL.SetU16(0x0022)
+	cpm.CPU.States.AF.Hi = 0x22
 	return nil
 }
 
@@ -484,7 +485,7 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 	}
 
 	// Now we open from the filesystem
-	file, err := os.OpenFile(fileName, os.O_RDWR, 0644)
+	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		cpm.log = cpm.log.With(slog.Group("error", slog.String("message", err.Error())))
 		setResult(cpm, 0xFF)

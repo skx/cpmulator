@@ -164,7 +164,9 @@ func main() {
 				if ent.Fake {
 					fake = "FAKE"
 				}
-				fmt.Printf("\t%03d %-20s %s\r\n", int(id), ent.Desc, fake)
+				if ent.Desc != "" {
+					fmt.Printf("\t%03d %-25s %s\r\n", int(id), ent.Desc, fake)
+				}
 			}
 		}
 
