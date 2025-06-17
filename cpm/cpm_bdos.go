@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/koron-go/z80"
 	"github.com/skx/cpmulator/consolein"
 	"github.com/skx/cpmulator/fcb"
 )
@@ -61,6 +62,25 @@ func data2String(data []uint8) (string, string) {
 	return hex, asc
 }
 
+// setResult sets up all four of the registers that we should
+// return to BDOS - A, B, H, L.
+func setResult(cpm *CPM, res uint8) {
+	// H = 0
+	// B = 0
+	// L = A = res
+	cpm.CPU.States.AF.Hi = res
+	cpm.CPU.States.HL.Lo = res
+
+	cpm.CPU.States.HL.Hi = 0x00
+	cpm.CPU.States.BC.Hi = 0x00
+
+	if res == 0 {
+		cpm.CPU.States.SetFlag(z80.FlagZ)
+	} else {
+		cpm.CPU.States.ResetFlag(z80.FlagZ)
+	}
+}
+
 // BdosSysCallExit implements the Exit syscall
 func BdosSysCallExit(cpm *CPM) error {
 	cpm.CPU.HALT = true
@@ -76,8 +96,7 @@ func BdosSysCallReadChar(cpm *CPM) error {
 		return fmt.Errorf("error in call to BlockForCharacter: %s", err)
 	}
 
-	// Return values:
-	cpm.CPU.States.HL.SetU16(uint16(c))
+	setResult(cpm, c)
 	return nil
 }
 
@@ -86,7 +105,7 @@ func BdosSysCallWriteChar(cpm *CPM) error {
 
 	cpm.output.PutCharacter(cpm.CPU.States.DE.Lo)
 
-	cpm.CPU.States.HL.SetU16(0x0000)
+	setResult(cpm, 0x00)
 	return nil
 }
 
@@ -101,8 +120,7 @@ func BdosSysCallAuxRead(cpm *CPM) error {
 		return fmt.Errorf("error in call to BlockForCharacterNoEcho: %s", err)
 	}
 
-	// Return values:
-	cpm.CPU.States.HL.SetU16(uint16(c))
+	setResult(cpm, c)
 	return nil
 }
 
@@ -114,7 +132,7 @@ func BdosSysCallAuxWrite(cpm *CPM) error {
 	c := cpm.CPU.States.BC.Lo
 	cpm.output.PutCharacter(c)
 
-	cpm.CPU.States.HL.SetU16(0x0000)
+	setResult(cpm, 0x00)
 	return nil
 }
 
@@ -125,7 +143,7 @@ func BdosSysCallPrinterWrite(cpm *CPM) error {
 	// write the character to our printer-file
 	err := cpm.prnC(cpm.CPU.States.DE.Lo)
 
-	cpm.CPU.States.HL.SetU16(0x0000)
+	setResult(cpm, 0x00)
 	return err
 }
 
@@ -138,7 +156,7 @@ func BdosSysCallPrinterWrite(cpm *CPM) error {
 // this is the single hardest function to work with.  Meh.
 func BdosSysCallRawIO(cpm *CPM) error {
 
-	cpm.CPU.States.HL.SetU16(0x0000)
+	setResult(cpm, 0x0000)
 
 	switch cpm.CPU.States.DE.Lo {
 	case 0xFF:
@@ -148,14 +166,14 @@ func BdosSysCallRawIO(cpm *CPM) error {
 			if err != nil {
 				return err
 			}
-			cpm.CPU.States.HL.SetU16(uint16(out))
+			setResult(cpm, out)
 		}
 		return nil
 	case 0xFE:
 
 		// Return console input status. Zero if no character is waiting, nonzero otherwise.
 		if cpm.input.PendingInput() {
-			cpm.CPU.States.HL.SetU16(0x00FF)
+			setResult(cpm, 0xFF)
 		}
 		return nil
 	case 0xFD:
@@ -164,7 +182,7 @@ func BdosSysCallRawIO(cpm *CPM) error {
 		if err != nil {
 			return err
 		}
-		cpm.CPU.States.HL.SetU16(uint16(out))
+		setResult(cpm, out)
 		return nil
 	default:
 		// Anything else is to output a character.
@@ -179,11 +197,9 @@ func BdosSysCallRawIO(cpm *CPM) error {
 // The IOByte lives at 0x0003 in RAM, so it is often accessed directly when it is used.
 func BdosSysCallGetIOByte(cpm *CPM) error {
 
-	// Get the value
 	c := cpm.Memory.Get(0x0003)
 
-	// return it
-	cpm.CPU.States.HL.SetU16(uint16(c))
+	setResult(cpm, c)
 	return nil
 }
 
@@ -196,7 +212,7 @@ func BdosSysCallSetIOByte(cpm *CPM) error {
 	// Set the value
 	cpm.Memory.Set(0x003, cpm.CPU.States.DE.Lo)
 
-	cpm.CPU.States.HL.SetU16(0x0000)
+	setResult(cpm, 0x00)
 	return nil
 }
 
@@ -221,8 +237,7 @@ func BdosSysCallWriteString(cpm *CPM) error {
 		slog.String("output", str),
 		slog.String("length", fmt.Sprintf("%d", len(str))))
 
-	// Return values:
-	cpm.CPU.States.HL.SetU16(0x0000)
+	setResult(cpm, 0x00)
 	return nil
 }
 
@@ -282,20 +297,20 @@ func BdosSysCallReadString(cpm *CPM) error {
 		i++
 	}
 
-	// Return values:
-	cpm.CPU.States.HL.SetU16(0x0000)
+	setResult(cpm, 0x00)
 	return nil
 }
 
 // BdosSysCallConsoleStatus tests if we have pending console (character) input.
 func BdosSysCallConsoleStatus(cpm *CPM) error {
 
-	// Default to assuming nothing is pending
-	cpm.CPU.States.HL.SetU16(0x0000)
-
 	if cpm.input.PendingInput() {
-		cpm.CPU.States.HL.SetU16(0x00FF)
+		setResult(cpm, 0xFF)
+		return nil
 	}
+
+	// nothing pending.
+	setResult(cpm, 0x00)
 	return nil
 }
 
@@ -320,7 +335,7 @@ func BdosSysCallDriveAllReset(cpm *CPM) error {
 	cpm.Memory.Set(0x0004, (cpm.userNumber<<4 | cpm.currentDrive))
 
 	// Default return value
-	var ret uint16 = 0x0000
+	var ret uint8 = 0x00
 
 	// drive will default to our current drive, if the FCB drive field is 0
 	drive := string(cpm.currentDrive + 'A')
@@ -333,7 +348,7 @@ func BdosSysCallDriveAllReset(cpm *CPM) error {
 	if err == nil {
 		for _, n := range files {
 			if ret == 0x0000 && strings.Contains(n.Name(), "$") {
-				ret = 0x00FF
+				ret = 0xFF
 			}
 		}
 	}
@@ -342,7 +357,7 @@ func BdosSysCallDriveAllReset(cpm *CPM) error {
 	cpm.dma = 0x80
 
 	// Return values:
-	cpm.CPU.States.HL.SetU16(ret)
+	setResult(cpm, ret)
 	return nil
 }
 
@@ -364,9 +379,7 @@ func BdosSysCallDriveSet(cpm *CPM) error {
 	// Update RAM
 	cpm.Memory.Set(0x0004, (cpm.userNumber<<4 | cpm.currentDrive))
 
-	// Return values:
-	cpm.CPU.States.HL.SetU16(0x0000)
-
+	setResult(cpm, 0x00)
 	return nil
 }
 
@@ -409,7 +422,7 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 
 	// No filename?  That's an error
 	if fileName == "" {
-		cpm.CPU.States.HL.SetU16(0x00FF)
+		setResult(cpm, 0xFF)
 		return nil
 	}
 
@@ -466,23 +479,14 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 		cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
 
 		// Return success
-		cpm.CPU.States.HL.SetU16(0x0000)
+		setResult(cpm, 0x00)
 		return nil
 	}
 
 	// Now we open from the filesystem
 	file, err := os.OpenFile(fileName, os.O_RDWR, 0644)
 	if err != nil {
-
-		// We might fail to open a file because it doesn't exist.
-		if os.IsNotExist(err) {
-
-			cpm.CPU.States.HL.SetU16(0x00FF)
-			return nil
-		}
-
-		// Report the failure, but keep going.
-		cpm.CPU.States.HL.SetU16(0x00FF)
+		setResult(cpm, 0xFF)
 		return nil
 	}
 
@@ -528,8 +532,7 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 		slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
 		slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)))
 
-	// Return success
-	cpm.CPU.States.HL.SetU16(0x0000)
+	setResult(cpm, 0x00)
 	return nil
 }
 
@@ -568,7 +571,7 @@ func BdosSysCallFileClose(cpm *CPM) error {
 	// Get the file handle from our cache.
 	obj, ok := cpm.files[fcbPtr.GetCacheKey()]
 	if !ok {
-		cpm.CPU.States.HL.SetU16(0x00FF)
+		setResult(cpm, 0xFF)
 		return nil
 	}
 
@@ -579,7 +582,7 @@ func BdosSysCallFileClose(cpm *CPM) error {
 	// Close of a virtual file.
 	if obj.handle == nil {
 		// Record success
-		cpm.CPU.States.HL.SetU16(0x0000)
+		setResult(cpm, 0x00)
 		return nil
 	}
 
@@ -618,7 +621,7 @@ func BdosSysCallFileClose(cpm *CPM) error {
 	}
 
 	// Record success
-	cpm.CPU.States.HL.SetU16(0x0000)
+	setResult(cpm, 0x00)
 	return nil
 }
 
@@ -656,7 +659,7 @@ func BdosSysCallFindFirst(cpm *CPM) error {
 	// Find files in the FCB.
 	res, err := fcbPtr.GetMatches(dir)
 	if err != nil {
-		cpm.CPU.States.HL.SetU16(0x00FF)
+		setResult(cpm, 0xFF)
 		return nil
 	}
 
@@ -684,7 +687,7 @@ func BdosSysCallFindFirst(cpm *CPM) error {
 
 	// No matches?  Return an error
 	if len(res) < 1 {
-		cpm.CPU.States.HL.SetU16(0x00FF)
+		setResult(cpm, 0xFF)
 		return nil
 	}
 
@@ -748,7 +751,7 @@ func BdosSysCallFindFirst(cpm *CPM) error {
 	cpm.Memory.SetRange(cpm.dma, data...)
 
 	// Return 0x00 to point to the first entry in the DMA area.
-	cpm.CPU.States.HL.SetU16(0x0000)
+	setResult(cpm, 0x00)
 	return nil
 }
 
@@ -759,7 +762,7 @@ func BdosSysCallFindNext(cpm *CPM) error {
 	//
 	if len(cpm.findFirstResults) == 0 {
 		// Return 0xFF to signal an error
-		cpm.CPU.States.HL.SetU16(0x00FF)
+		setResult(cpm, 0xFF)
 		return nil
 	}
 
@@ -803,7 +806,7 @@ func BdosSysCallFindNext(cpm *CPM) error {
 	cpm.Memory.SetRange(cpm.dma, data...)
 
 	// Return 0x00 to point to the first entry in the DMA area.
-	cpm.CPU.States.HL.SetU16(0x0000)
+	setResult(cpm, 0x00)
 	return nil
 }
 
@@ -845,7 +848,7 @@ func BdosSysCallDeleteFile(cpm *CPM) error {
 	// Find files that match the FCB-pattern.
 	res, err := fcbPtr.GetMatches(path)
 	if err != nil {
-		cpm.CPU.States.HL.SetU16(0x00FF)
+		setResult(cpm, 0xFF)
 		return nil
 	}
 
@@ -868,7 +871,7 @@ func BdosSysCallDeleteFile(cpm *CPM) error {
 
 		err = os.Remove(path)
 		if err != nil {
-			cpm.CPU.States.HL.SetU16(0x00FF)
+			setResult(cpm, 0xFF)
 			return nil
 		}
 	}
@@ -883,8 +886,7 @@ func BdosSysCallDeleteFile(cpm *CPM) error {
 	cpm.log = cpm.log.With(
 		slog.Group("deleted", tmpn...))
 
-	// Return values:
-	cpm.CPU.States.HL.SetU16(0x0000)
+	setResult(cpm, 0x00)
 	return err
 }
 
@@ -918,7 +920,7 @@ func BdosSysCallRead(cpm *CPM) error {
 	// Get the file handle in our cache.
 	obj, ok := cpm.files[fcbPtr.GetCacheKey()]
 	if !ok {
-		cpm.CPU.States.HL.SetU16(0x00FF)
+		setResult(cpm, 0xFF)
 		return nil
 	}
 
@@ -942,20 +944,21 @@ func BdosSysCallRead(cpm *CPM) error {
 		// open
 		file, err := fs.ReadFile(cpm.static, p)
 		if err != nil {
-			cpm.CPU.States.HL.SetU16(0x00FF)
+			setResult(cpm, 0xFF)
 			return nil
 		}
 		i := 0
 
-		// default to being successful
-		cpm.CPU.States.HL.SetU16(0x0000)
+		// Assume success
+		setResult(cpm, 0x00)
 
 		// copy each appropriate byte into the data-area
 		for i < blkSize {
 			if int(offset)+i < len(file) {
 				data[i] = file[int(offset)+i]
 			} else {
-				cpm.CPU.States.HL.SetU16(0x0001)
+				setResult(cpm, 0x01)
+				break
 			}
 			i++
 		}
@@ -982,14 +985,14 @@ func BdosSysCallRead(cpm *CPM) error {
 
 	_, err := obj.handle.Seek(int64(offset), io.SeekStart)
 	if err != nil {
-		cpm.CPU.States.HL.SetU16(0x0001)
+		setResult(cpm, 0x01)
 		return fmt.Errorf("cannot seek to position %d: %s", offset, err)
 	}
 
 	// Read from the file, now we're in the right place
 	_, err = obj.handle.Read(data)
 	if err != nil && err != io.EOF {
-		cpm.CPU.States.HL.SetU16(0x0001)
+		setResult(cpm, 0x01)
 		return fmt.Errorf("error reading file %s", err)
 	}
 
@@ -1012,9 +1015,9 @@ func BdosSysCallRead(cpm *CPM) error {
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
 
 	// All done
-	cpm.CPU.States.HL.SetU16(0x0000)
+	setResult(cpm, 0x00)
 	if err == io.EOF {
-		cpm.CPU.States.HL.SetU16(0x0001)
+		setResult(cpm, 0x01)
 	}
 
 	return nil
@@ -1050,7 +1053,7 @@ func BdosSysCallWrite(cpm *CPM) error {
 	// Get the file handle in our cache.
 	obj, ok := cpm.files[fcbPtr.GetCacheKey()]
 	if !ok {
-		cpm.CPU.States.HL.SetU16(0x00FF)
+		setResult(cpm, 0xFF)
 		return nil
 	}
 
@@ -1095,7 +1098,7 @@ func BdosSysCallWrite(cpm *CPM) error {
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
 
 	// All done
-	cpm.CPU.States.HL.SetU16(0x0000)
+	setResult(cpm, 0x00)
 	return nil
 }
 
@@ -1131,7 +1134,7 @@ func BdosSysCallMakeFile(cpm *CPM) error {
 
 	// No filename?  That's an error
 	if fileName == "" {
-		cpm.CPU.States.HL.SetU16(0x00FF)
+		setResult(cpm, 0xFF)
 		return nil
 	}
 
@@ -1218,7 +1221,7 @@ func BdosSysCallMakeFile(cpm *CPM) error {
 			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
 			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2))))
 
-	cpm.CPU.States.HL.SetU16(0x0000)
+	setResult(cpm, 0x00)
 	return nil
 }
 
@@ -1306,12 +1309,11 @@ func BdosSysCallRenameFile(cpm *CPM) error {
 
 	err := os.Rename(fileName, dstName)
 	if err != nil {
-		cpm.CPU.States.HL.SetU16(0x00FF)
+		setResult(cpm, 0xFF)
 		return nil
 	}
 
-	// Return values
-	cpm.CPU.States.HL.SetU16(0x0000)
+	setResult(cpm, 0x00)
 	return nil
 }
 
@@ -1324,7 +1326,7 @@ func BdosSysCallLoginVec(cpm *CPM) error {
 
 // BdosSysCallDriveGet returns the number of the active drive.
 func BdosSysCallDriveGet(cpm *CPM) error {
-	cpm.CPU.States.HL.SetU16(uint16(cpm.currentDrive))
+	setResult(cpm, cpm.currentDrive)
 	return nil
 }
 
@@ -1338,7 +1340,7 @@ func BdosSysCallSetDMA(cpm *CPM) error {
 	cpm.dma = addr
 
 	// Return values:
-	cpm.CPU.States.HL.SetU16(0x0000)
+	setResult(cpm, 0x00)
 	return nil
 }
 
@@ -1362,7 +1364,7 @@ func BdosSysCallDriveSetRO(cpm *CPM) error {
 // Bit 7 of H corresponds to P: while bit 0 of L corresponds to A:. A bit is set if the corresponding drive is
 // set to read-only in software.  As we never set drives to read-only we return 0x0000
 func BdosSysCallDriveROVec(cpm *CPM) error {
-	cpm.CPU.States.HL.SetU16(0x0000)
+	cpm.CPU.States.HL.SetU16(0xfffe)
 	return nil
 }
 
@@ -1375,7 +1377,7 @@ func BdosSysCallSetFileAttributes(cpm *CPM) error {
 
 // BdosSysCallGetDriveDPB returns the address of the DPB, which is faked.
 func BdosSysCallGetDriveDPB(cpm *CPM) error {
-	cpm.CPU.States.HL.SetU16(0x0000)
+	cpm.CPU.States.HL.SetU16(0xff60)
 	return nil
 }
 
@@ -1394,8 +1396,7 @@ func BdosSysCallUserNumber(cpm *CPM) error {
 		cpm.Memory.Set(0x0004, (cpm.userNumber<<4 | cpm.currentDrive))
 	}
 
-	// Return values:
-	cpm.CPU.States.HL.SetU16(uint16(cpm.userNumber))
+	setResult(cpm, cpm.userNumber)
 	return nil
 }
 
@@ -1410,7 +1411,7 @@ func BdosSysCallReadRand(cpm *CPM) error {
 	//  0 : read something successfully
 	//  1 : read nothing - error really
 	//
-	sysRead := func(f *os.File, offset int64) int {
+	sysRead := func(f *os.File, offset int64) uint8 {
 
 		// Get file size, in bytes
 		fi, err := f.Stat()
@@ -1481,7 +1482,7 @@ func BdosSysCallReadRand(cpm *CPM) error {
 	// Get the file handle in our cache.
 	obj, ok := cpm.files[fcbPtr.GetCacheKey()]
 	if !ok {
-		cpm.CPU.States.HL.SetU16(0x00FF)
+		setResult(cpm, 0xFF)
 		return nil
 	}
 
@@ -1494,7 +1495,7 @@ func BdosSysCallReadRand(cpm *CPM) error {
 		// open
 		file, err := fs.ReadFile(cpm.static, p)
 		if err != nil {
-			cpm.CPU.States.HL.SetU16(0x00FF)
+			setResult(cpm, 0xFF)
 			return nil
 		}
 
@@ -1516,7 +1517,7 @@ func BdosSysCallReadRand(cpm *CPM) error {
 		// Copy the data to the DMA area
 		cpm.Memory.SetRange(cpm.dma, data...)
 
-		cpm.CPU.States.HL.SetU16(uint16(res))
+		setResult(cpm, res)
 		return nil
 	}
 
@@ -1532,7 +1533,7 @@ func BdosSysCallReadRand(cpm *CPM) error {
 	// Update the FCB in memory
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
 
-	cpm.CPU.States.HL.SetU16(uint16(res))
+	setResult(cpm, res)
 	return nil
 }
 
@@ -1566,7 +1567,7 @@ func BdosSysCallWriteRand(cpm *CPM) error {
 	// Get the file handle in our cache.
 	obj, ok := cpm.files[fcbPtr.GetCacheKey()]
 	if !ok {
-		cpm.CPU.States.HL.SetU16(0x00FF)
+		setResult(cpm, 0xFF)
 		return nil
 	}
 
@@ -1623,7 +1624,7 @@ func BdosSysCallWriteRand(cpm *CPM) error {
 	// Update the FCB in memory
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
 
-	cpm.CPU.States.HL.SetU16(0x0000)
+	setResult(cpm, 0x00)
 	return nil
 }
 
@@ -1696,7 +1697,6 @@ func BdosSysCallFileSize(cpm *CPM) error {
 	// Can we open this file from our embedded filesystem?
 	virt, er := cpm.static.ReadFile(x)
 	if er == nil {
-
 		fileSize = int64(len(virt))
 	} else {
 
@@ -1746,7 +1746,7 @@ func BdosSysCallFileSize(cpm *CPM) error {
 	// Update the FCB in memory
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
 
-	cpm.CPU.States.HL.SetU16(0x0000)
+	setResult(cpm, 0x00)
 	return nil
 }
 
@@ -1794,7 +1794,7 @@ func BdosSysCallRandRecord(cpm *CPM) error {
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
 
 	// Return success
-	cpm.CPU.States.HL.SetU16(0x0000)
+	setResult(cpm, 0x00)
 	return nil
 }
 
