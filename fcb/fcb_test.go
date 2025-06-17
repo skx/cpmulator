@@ -2,6 +2,7 @@ package fcb
 
 import (
 	"fmt"
+	"sort"
 	"testing"
 )
 
@@ -207,11 +208,28 @@ func TestGetMatches(t *testing.T) {
 		t.Fatalf("failed to get matches")
 	}
 
-	if len(out) != 1 {
-		t.Fatalf("unexpected number of matches")
+	if len(out) < 10 {
+		t.Fatalf("unexpected number of matches got %d", len(out))
 	}
-	if out[0].Host != "../main.go" {
+
+	// sort the files - so we can be predictable
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].Name < out[j].Name
+	})
+
+	// first file, alphabetically
+	if out[0].Host != "../ccp/ccp.go" {
 		t.Fatalf("unexpected name %s", out[0].Host)
+	}
+
+	found := false
+	for _, e := range out {
+		if e.Host == "../static/static.go" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("failed to find static.go")
 	}
 
 	_, err = f.GetMatches("!>>//path/not/found")
