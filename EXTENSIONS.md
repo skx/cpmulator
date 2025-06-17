@@ -88,18 +88,9 @@ This is an obsolete function, which does nothing.
 
 
 
-## Function 0x06: Get/Set Debug flag
+## Function 0x06: NOP
 
-* If C is 0x01 debug-mode is enabled.
-* If C is 0x00 debug-mode is disabled.
-* If C is 0xFF debug-mode is queried.
-   * 0x00 means it is not active.
-   * 0x01 means it is enabled.
-
-Debug mode shows a summary of syscalls, and their results.  It is faster
-than using the logfile and it is useful to be able to toggle it at runtime.
-
-Demonstrated in [static/debug.z80](static/debug.z80)
+This is an obsolete function, which does nothing.
 
 
 
@@ -141,6 +132,7 @@ the BIOS extensions documented upon this page.  On entry DE is used to determine
 * 0x0004 - Disable both the embedded filesystem, and the custom BIOS functions, but do so quietly.
 
 Demonstrated in [static/disable.z80](static/disable.z80)
+
 
 
 ## Function 0x0A: Get/Set Printer Log Path

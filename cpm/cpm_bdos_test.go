@@ -190,7 +190,6 @@ func TestUnimplemented(t *testing.T) {
 	}
 
 	// Finally launch it
-	c.simpleDebug = true
 	err = c.Execute([]string{"foo", "bar", "baz"})
 	if err == nil {
 		t.Fatalf("expected an error, got none")
@@ -245,7 +244,6 @@ func TestBoot(t *testing.T) {
 	}
 
 	// Finally launch it
-	c.simpleDebug = true
 	err = c.Execute([]string{"foo", "bar", "baz"})
 	if err == nil {
 		t.Fatalf("expected an error, got none")
@@ -264,7 +262,6 @@ func TestFind(t *testing.T) {
 		t.Fatalf("failed to create CPM")
 	}
 	c.Memory = new(memory.Memory)
-
 	c.fixupRAM()
 	c.SetDrives(false)
 	c.SetStaticFilesystem(static.GetContent())
@@ -838,7 +835,7 @@ func TestMakeFile(t *testing.T) {
 	c.CPU.States.DE.SetU16(0x0200)
 	err = BdosSysCallMakeFile(c)
 	if err != nil {
-		t.Fatalf("error calling CP/M")
+		t.Fatalf("error calling CP/M %s", err.Error())
 	}
 
 	if c.CPU.States.AF.Hi != 0x00 {
@@ -869,7 +866,7 @@ func TestMakeFile(t *testing.T) {
 	c.CPU.States.DE.SetU16(0x1200)
 	err = BdosSysCallMakeFile(c)
 	if err != nil {
-		t.Fatalf("error calling CP/M")
+		t.Fatalf("error calling CP/M: %s", err.Error())
 	}
 	if c.CPU.States.HL.Lo != 0xFF {
 		t.Fatalf("expected error with empty file")
@@ -1585,7 +1582,6 @@ func TestFileCache(t *testing.T) {
 		t.Fatalf("error loading a binary")
 	}
 
-	c.simpleDebug = true
 	err = c.Execute([]string{"foo", "bar", "baz"})
 	if err == nil {
 		t.Fatalf("expected an error, got none")

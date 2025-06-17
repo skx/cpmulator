@@ -164,28 +164,13 @@ func (f *FCB) AsBytes() []uint8 {
 	return r
 }
 
-// UpdateSequentialOffset updates the offset used for sequential reads/writes
+// SetSequentialOffset updates the offset used for sequential reads/writes
 // to use the given value.
-func (f *FCB) UpdateSequentialOffset(offset int64) {
-	seqCR := func(n int64) int64 {
-		return (((n) % 16384) / 128)
-	}
+func (f *FCB) SetSequentialOffset(offset int64) {
 
-	seqExtent := func(n int64) int64 {
-		return n / 16384
-	}
-
-	seqEx := func(n int64) int64 {
-		return (seqExtent(n) % 32)
-	}
-
-	seqS2 := func(n int64) int64 {
-		return (seqExtent(n) / 32)
-	}
-
-	f.Cr = uint8(seqCR(offset))
-	f.Ex = uint8(seqEx(offset))
-	f.S2 = uint8((0x80 | seqS2(offset)))
+	f.Cr = uint8((offset % 16384) / 128)
+	f.Ex = uint8((offset % 524288) / 16384)
+	f.S2 = uint8(offset / 524288)
 
 	// confirm this works
 	x := f.GetSequentialOffset()
@@ -196,42 +181,29 @@ func (f *FCB) UpdateSequentialOffset(offset int64) {
 	}
 }
 
+// GetRandomOffset returns the value held in the random fields, R0, R1, and R2.
+func (f *FCB) GetRandomOffset() int64 {
+	return int64(int64(f.R2)<<16) | int64(int64(f.R1)<<8) | int64(f.R0)
+}
+
+// SetRandomOffset updates the value held in the random fields, R0, R1, and R2.
+func (f *FCB) SetRandomOffset(offset int64) {
+
+	// Now we set the "random record" which is R0,R1,R2
+	f.R0 = uint8(offset & 0xFF)
+	f.R1 = uint8(offset >> 8)
+	f.R2 = uint8(offset >> 16)
+}
+
 // GetSequentialOffset returns the offset the FCB contains for
 // the sequential read/write calls - as used by the BDOS functions
 // F_READ and F_WRITE.
-//
-// IncreaseSequentialOffset updates the value.
 func (f *FCB) GetSequentialOffset() int64 {
 
-	// Helpers
-	BlkS2 := 4096
-	BlkEx := 128
-	MaxS2 := 15
-	blkSize := 128
-
-	offset := int64((int(f.S2)&MaxS2)*BlkS2*blkSize +
-		int(f.Ex)*BlkEx*blkSize +
-		int(f.Cr)*blkSize)
+	offset := (int64(f.S2) * 524288) +
+		(int64(f.Ex) * 16384) +
+		(int64(f.Cr) * 128)
 	return offset
-}
-
-// IncreaseSequentialOffset updates the read/write offset which
-// would be used for the sequential read functions.
-func (f *FCB) IncreaseSequentialOffset() {
-
-	MaxCR := 128
-	MaxEX := 31
-
-	f.S2 &= 0x7F // reset unmodified flag
-	f.Cr++
-	if int(f.Cr) > MaxCR {
-		f.Cr = 1
-		f.Ex++
-	}
-	if int(f.Ex) > MaxEX {
-		f.Ex = 0
-		f.S2++
-	}
 }
 
 // FromString returns an FCB entry from the given string.

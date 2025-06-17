@@ -215,15 +215,12 @@ type CPM struct {
 	// is called.
 	findFirstResults []fcb.Find
 
-	// simpleDebug is used to output the name of syscalls which are being
-	// invoked, directly to the console.
-	//
-	// For real debugging we expect the caller to use our Logger, via
-	// the logfile.
-	simpleDebug bool
-
 	// launchTime is the time at which the application was launched
 	launchTime time.Time
+
+	// log will be updated by some of the BDOS syscalls, and used to log
+	// results. BIOS calls are not logged like that.
+	log *slog.Logger
 }
 
 // Option defines a config-setting option for our constructor.
@@ -250,9 +247,7 @@ func WithPrinterPath(path string) Option {
 
 // WithOutputDriver allows the default console output driver to be changed in our constructor.
 func WithOutputDriver(name string) Option {
-
 	return func(c *CPM) error {
-
 		driver, err := consoleout.New(name)
 		if err != nil {
 			return err
@@ -265,9 +260,7 @@ func WithOutputDriver(name string) Option {
 
 // WithInputDriver allows the default console input driver to be changed in our constructor.
 func WithInputDriver(name string) Option {
-
 	return func(c *CPM) error {
-
 		driver, err := consolein.New(name)
 		if err != nil {
 			return err
@@ -626,6 +619,7 @@ func New(options ...Option) (*CPM, error) {
 		files:        make(map[string]FileCache),
 		input:        iDriver, // default
 		output:       oDriver, // default
+		log:          slog.Default(),
 		prnPath:      DefaultPrinterPath,
 		start:        0x0100,
 		launchTime:   time.Now(),
@@ -823,22 +817,18 @@ func (cpm *CPM) fixupRAM() {
 
 	//
 	// BDOS code will invoke our host function via an OUT instruction.
+	// After the function returns HL/A/B should have the correct values.
 	//
-	// After the function returns HL should have the correct result-code,
-	// and we propagate that to the A and B registers.
+	// NOTE: That the Z-flag, and other flags, might not be correct as
+	// we're setting the register contents outwith the emulated instruction
+	// stream, poking from the outside.
 	//
 	SETMEM(BDOS+0, 0xED) // OUT (C), C
 	SETMEM(BDOS+1, 0x49) //    ""
 	//
-	////
-	/////////////////////// BDOS CALL HAPPENS HERE
-	////
+	// BDOS call happens here ...
 	//
-	SETMEM(BDOS+2, 0x44) // LD B,H
-	SETMEM(BDOS+3, 0x7D) // LD A,L
-	SETMEM(BDOS+4, 0xFE) // CP 0
-	SETMEM(BDOS+5, 0x00) //    ""
-	SETMEM(BDOS+6, 0xC9) // RET
+	SETMEM(BDOS+2, 0xC9) // RET
 
 }
 
@@ -894,10 +884,7 @@ func (cpm *CPM) Execute(args []string) error {
 	// Reset any cached filehandles.
 	//
 	// This is only required when running the CCP, as there we're persistent.
-	for name, obj := range cpm.files {
-		slog.Debug("Closing handle in FileCache",
-			slog.String("host", obj.name),
-			slog.String("guest", name))
+	for _, obj := range cpm.files {
 		obj.handle.Close()
 	}
 	cpm.files = make(map[string]FileCache)
@@ -1069,10 +1056,6 @@ func (cpm *CPM) SetDrivePath(drive string, path string) {
 //
 // This is called by our embedded Z80 emulator.
 func (cpm *CPM) In(addr uint8) uint8 {
-	slog.Debug("I/O IN",
-		slog.String("PC", fmt.Sprintf("%04X", cpm.CPU.PC)),
-		slog.Int("port", int(addr)))
-
 	return 0
 }
 
@@ -1187,31 +1170,36 @@ func (cpm *CPM) Out(addr uint8, val uint8) {
 		return
 	}
 
-	// Log the call, if we should.
-	if !handler.Noisy {
+	// Setup the default logger before we invoke the handler.
+	cpm.log = slog.Default()
 
-		// show the function being invoked.
-		if cpm.simpleDebug {
-			fmt.Printf("%03d %s %s\r\n", val, callType, handler.Desc)
-		}
-
-		// Log the call we're going to make
-		slog.Info(callType,
-			slog.String("name", handler.Desc),
-			slog.String("type", callType),
-			slog.Int("syscall", int(val)),
-			slog.String("syscallHex", fmt.Sprintf("0x%02X", val)),
-			slog.Group("registers",
-				slog.String("AF", fmt.Sprintf("%04X", cpm.CPU.States.AF.U16())),
-				slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
-				slog.String("DE", fmt.Sprintf("%04X", cpm.CPU.States.DE.U16())),
-				slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16()))))
-	}
+	// Ensure we log the incoming registers
+	cpm.log = cpm.log.With(
+		slog.Group("input_registers",
+			slog.String("AF", fmt.Sprintf("%04X", cpm.CPU.States.AF.U16())),
+			slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
+			slog.String("DE", fmt.Sprintf("%04X", cpm.CPU.States.DE.U16())),
+			slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16()))))
 
 	// Invoke the handler, and save any error that we receive.
-	//
-	// If an error was returned we halt the emulation of the virtual Z80.
 	cpm.syscallErr = handler.Handler(cpm)
+
+	// Ensure we log the resulting registers.
+	cpm.log = cpm.log.With(
+		slog.Group("output_registers",
+			slog.String("AF", fmt.Sprintf("%04X", cpm.CPU.States.AF.U16())),
+			slog.String("BC", fmt.Sprintf("%04X", cpm.CPU.States.BC.U16())),
+			slog.String("DE", fmt.Sprintf("%04X", cpm.CPU.States.DE.U16())),
+			slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16()))))
+
+	// Log an actual message
+	//
+	// This will have the side-effect of logging any register values we've setup
+	if !handler.Noisy {
+		cpm.log.Debug(handler.Desc)
+	}
+
+	// If we got an error we stop
 	if cpm.syscallErr != nil {
 		cpm.CPU.HALT = true
 	}

@@ -43,6 +43,8 @@ If neither of these options are suitable you may download a binary from [our rel
 Releases will be made as/when features seem to justify it, but it should be noted that I consider the CLI tool, and the emulator itself, the "product".  That means that the internal APIs can and will change around as necessary.
 
 
+
+
 # Quick Start
 
 
@@ -153,7 +155,6 @@ There are many available command-line options, which are shown in the output of 
   * Enable/Disable the embedded binaries we unconditionally add to the A:-drive.  (The utilities to change the output driver, toggle debugging, etc.)
 * `-log-path /path/to/file`
   * Output debug-logs to the given file, creating it if necessary.
-  * **NOTE**: You can run `A:!DEBUG 1` to enable "quick debug logging", and `A:!DEBUG 0` to turn it back off again, at runtime.
 * `-prn-path /path/to/file`
   * All output which CP/M sends to the "printer" will be written to the given file.
 * `-list-syscalls`
@@ -214,15 +215,10 @@ You'll see that the [cpm-dist](https://github.com/skx/cpm-dist) repository conta
 
 There are some options which can change/improve newline handling, I prefer to run `A:!OUTPUT :CR=NONE;LF=BOTH` but you can experiment with "CR" and "LF" separately with the various options (ALL, BOTH, CR, & LF) as you prefer.
 
-### Debug Handling
 
-We expect that all _real_ debugging will involve the comprehensive logfile which is created via the `-log-path` argument to the emulator, however we
-have a "quick debug" option which will merely log the syscalls which are invoked, and this has the advantage that it can be enabled, or disabled, at
-runtime.
+### Version Reporting
 
-`A:!DEBUG.COM` will show the state of the flag, and it can be enabled with `A:!DEBUG 1` or disabled with `!DEBUG 0`.
-
-Finally `A:!VERSION.COM` will show you the version of the emulator you're running.
+`A:!VERSION.COM` will show you the version of the emulator you're running.
 
 
 
@@ -335,6 +331,8 @@ By default input will be read via `termbox` but you may you specify a different 
 (Remember you can change this at run-time too, by running "`A:!INPUT stty`", for example.)
 
 
+
+
 # Debugging Failures & Tweaking Behaviour
 
 When an unimplemented BIOS call is attempted the program it will abort with a fatal error, for example:
@@ -382,6 +380,8 @@ For reference the memory map of our CP/M looks like this:
   * [https://github.com/jhallen/cpm](https://github.com/jhallen/cpm)
     * Run CP/M commands in Linux/Cygwin with this Z80 / BDOS / ADM-3A emulator.
     * Written in C.
+
+
 
 ## Bugs?
 
