@@ -43,7 +43,7 @@ var (
 	// It should be handled and expected by callers.
 	ErrBoot = errors.New("BOOT")
 
-	// ErrTimeout is used when a timeout occurs
+	// ErrTimeout is used when a timeout occurs.
 	ErrTimeout = errors.New("TIMEOUT")
 
 	// ErrUnimplemented will be used to handle a CP/M binary calling an unimplemented syscall.
@@ -118,7 +118,9 @@ type FileCache struct {
 // CPM is the object that holds our emulator state.
 type CPM struct {
 
-	// context for handling timeout
+	// context is used for storing a context, which can be used to configure
+	// a timeout.  The timeout will be fired the next time there is a system-call
+	// made (be it a BIOS or a BDOS call).
 	context context.Context
 
 	// syscallErr holds any error created by a BIOS or BDOS syscall handler.
@@ -1192,9 +1194,16 @@ func (cpm *CPM) Out(addr uint8, val uint8) {
 			slog.String("DE", fmt.Sprintf("%04X", cpm.CPU.States.DE.U16())),
 			slog.String("HL", fmt.Sprintf("%04X", cpm.CPU.States.HL.U16()))))
 
-	// Log an actual message
-	//
-	// This will have the side-effect of logging any register values we've setup
+	// Add on the error, if any was found.
+	if cpm.syscallErr != nil {
+		slog.Group("caught_error",
+			slog.String("message", cpm.syscallErr.Error()))
+	}
+
+	// Log an actual message which is just the name of the syscall.  The intention
+	// here is mostly that we log the structured/grouped fields that we've configured
+	// above - i.e. the register values coming and going from the call, and anything
+	// the handlers added too.
 	if !handler.Noisy {
 		cpm.log.Debug(handler.Desc)
 	}
@@ -1202,15 +1211,6 @@ func (cpm *CPM) Out(addr uint8, val uint8) {
 	// If we got an error we stop
 	if cpm.syscallErr != nil {
 		cpm.CPU.HALT = true
-	}
-
-	// If A == 0x00 then we set the zero flag.
-	//
-	// Not even sure if this is necessary..
-	if cpm.CPU.States.AF.Hi == 0x00 {
-		cpm.CPU.SetFlag(z80.FlagZ)
-	} else {
-		cpm.CPU.ResetFlag(z80.FlagZ)
 	}
 }
 

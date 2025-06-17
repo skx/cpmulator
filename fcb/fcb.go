@@ -401,10 +401,10 @@ func (f *FCB) GetMatches(prefix string) ([]Find, error) {
 			// Populate the host-path before we do anything else.
 			ent.Host = filepath.Join(path)
 
-			// populate the name
+			// populate the name.
 			ent.Name = name
 
-			// populate the size too
+			// populate the size.
 			ent.Size = info.Size()
 
 			// append
