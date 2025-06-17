@@ -2,8 +2,8 @@
 package fcb
 
 import (
+	"io/fs"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"strings"
 	"unicode"
@@ -71,6 +71,9 @@ type Find struct {
 	// Name is the name as CP/M would see it.
 	// This will be upper-cased and in 8.3 format.
 	Name string
+
+	// Size contains the size of the file.
+	Size int64
 }
 
 // GetName returns the name component of an FCB entry.
@@ -377,36 +380,40 @@ func (f *FCB) DoesMatch(name string) bool {
 func (f *FCB) GetMatches(prefix string) ([]Find, error) {
 	var ret []Find
 
-	// Find files in the directory
-	files, err := os.ReadDir(prefix)
-	if err != nil {
-		return ret, err
-	}
+	err := filepath.Walk(prefix, func(path string, info fs.FileInfo, err error) error {
 
-	// For each file
-	for _, file := range files {
-
-		// Ignore directories, we only care about files.
-		if file.IsDir() {
-			continue
+		if err != nil {
+			return err
 		}
 
-		name := strings.ToUpper(file.Name())
+		// Ignore directories, we only care about files.
+		if info.IsDir() {
+			return nil
+		}
+
+		// Upper-case, and remove prefix.
+		name := filepath.Base(strings.ToUpper(path))
+
 		if f.DoesMatch(name) {
 
 			var ent Find
 
 			// Populate the host-path before we do anything else.
-			ent.Host = filepath.Join(prefix, file.Name())
+			ent.Host = filepath.Join(path)
 
-			// populate the name, but note it needs to be upper-cased
+			// populate the name
 			ent.Name = name
+
+			// populate the size too
+			ent.Size = info.Size()
 
 			// append
 			ret = append(ret, ent)
 		}
-	}
+
+		return nil
+	})
 
 	// Return the entries we found, if any.
-	return ret, nil
+	return ret, err
 }

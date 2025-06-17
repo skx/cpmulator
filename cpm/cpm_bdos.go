@@ -635,8 +635,10 @@ func BdosSysCallFileClose(cpm *CPM) error {
 
 // BdosSysCallFindFirst finds the first filename, on disk, that matches the glob in the FCB supplied in DE.
 func BdosSysCallFindFirst(cpm *CPM) error {
+
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
+
 	// Get the bytes which make up the FCB entry.
 	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
 
@@ -727,25 +729,12 @@ func BdosSysCallFindFirst(cpm *CPM) error {
 	// Create a new FCB and store it in the DMA entry
 	x := fcb.FromString(res[0].Name)
 
-	// Get the file-size in records, and add to the FCB
-	tmp, err := os.OpenFile(res[0].Host, os.O_RDONLY, 0644)
-	if err == nil {
-		defer tmp.Close()
+	// Get file size, in blocks.
+	x.RC = uint8(res[0].Size / blkSize)
 
-		fi, err := tmp.Stat()
-		if err == nil {
-
-			fileSize := fi.Size()
-
-			// Get file size, in blocks
-			x.RC = uint8(fileSize / blkSize)
-
-			// If the size is bigger than a multiple we deal with that.
-			if fileSize > int64(int64(x.RC)*int64(blkSize)) {
-				x.RC++
-			}
-
-		}
+	// If the size is bigger than a multiple we deal with that.
+	if res[0].Size > int64(int64(x.RC)*int64(blkSize)) {
+		x.RC++
 	}
 
 	// Log the first result we're returning.
@@ -783,25 +772,12 @@ func BdosSysCallFindNext(cpm *CPM) error {
 	// Create a new FCB and store it in the DMA entry
 	x := fcb.FromString(res.Name)
 
-	// Get the file-size in records, and add to the FCB
-	tmp, err := os.OpenFile(res.Host, os.O_RDONLY, 0644)
-	if err == nil {
-		defer tmp.Close()
+	// Get file size, in blocks.
+	x.RC = uint8(res.Size / blkSize)
 
-		fi, err := tmp.Stat()
-		if err == nil {
-
-			fileSize := fi.Size()
-
-			// Get file size, in blocks
-			x.RC = uint8(fileSize / blkSize)
-
-			// If the size is bigger than a multiple we deal with that.
-			if fileSize > int64(int64(x.RC)*int64(blkSize)) {
-				x.RC++
-			}
-
-		}
+	// If the size is bigger than a multiple we deal with that.
+	if res.Size > int64(int64(x.RC)*int64(blkSize)) {
+		x.RC++
 	}
 
 	// Log that we're returning the next result.
