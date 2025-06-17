@@ -509,7 +509,7 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 
 	// If the size is bigger than a multiple we deal with that.
 	if fileSize > int64(int64(fLen)*int64(blkSize)) {
-		fcbPtr.RC += 1
+		fcbPtr.RC++
 	}
 
 	// Update the FCB in memory.
@@ -731,7 +731,7 @@ func BdosSysCallFindFirst(cpm *CPM) error {
 
 			// If the size is bigger than a multiple we deal with that.
 			if fileSize > int64(int64(x.RC)*int64(blkSize)) {
-				x.RC += 1
+				x.RC++
 			}
 
 		}
@@ -787,7 +787,7 @@ func BdosSysCallFindNext(cpm *CPM) error {
 
 			// If the size is bigger than a multiple we deal with that.
 			if fileSize > int64(int64(x.RC)*int64(blkSize)) {
-				x.RC += 1
+				x.RC++
 			}
 
 		}
