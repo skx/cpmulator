@@ -1358,7 +1358,7 @@ func BdosSysCallDriveSetRO(cpm *CPM) error {
 // Bit 7 of H corresponds to P: while bit 0 of L corresponds to A:. A bit is set if the corresponding drive is
 // set to read-only in software.  As we never set drives to read-only we return 0x0000
 func BdosSysCallDriveROVec(cpm *CPM) error {
-	cpm.CPU.States.HL.SetU16(0xfffe)
+	cpm.CPU.States.HL.SetU16(0xFFFE)
 	return nil
 }
 
@@ -1371,7 +1371,7 @@ func BdosSysCallSetFileAttributes(cpm *CPM) error {
 
 // BdosSysCallGetDriveDPB returns the address of the DPB, which is faked.
 func BdosSysCallGetDriveDPB(cpm *CPM) error {
-	cpm.CPU.States.HL.SetU16(0xff60)
+	cpm.CPU.States.HL.SetU16(0xFF60)
 	return nil
 }
 
