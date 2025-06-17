@@ -232,7 +232,7 @@ func TestOffset(t *testing.T) {
 	}
 
 	// bump
-	f.IncreaseSequentialOffset()
+	f.SetSequentialOffset(128)
 
 	// after
 	after := f.GetSequentialOffset()
@@ -248,7 +248,7 @@ func TestOffset(t *testing.T) {
 	// Do a bunch more increases
 	remain := 128 * 128
 	for remain > 0 {
-		f.IncreaseSequentialOffset()
+		f.SetSequentialOffset(128 + f.GetSequentialOffset())
 		remain--
 	}
 
@@ -283,4 +283,27 @@ func TestIssue238(t *testing.T) {
 		t.Fatalf("Ourself showed up, and it shouldn't have done.")
 	}
 
+}
+
+func TestRandomOffset(t *testing.T) {
+
+	f := FromString("test")
+
+	// before
+	cur := f.GetRandomOffset()
+	if cur != 0 {
+		t.Fatalf("unexpected initial offset")
+	}
+
+	// bump
+	f.SetRandomOffset(12832)
+
+	// after
+	after := f.GetRandomOffset()
+	if after == 0 {
+		t.Fatalf("unexpected offset after increase")
+	}
+	if after != 12832 {
+		t.Fatalf("unexpected offset after increase")
+	}
 }
