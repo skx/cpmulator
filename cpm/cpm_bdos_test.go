@@ -1288,7 +1288,7 @@ func TestFileOpen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open file: err")
 	}
-	if c.CPU.States.HL.Lo != 0xFF {
+	if c.CPU.States.HL.Lo != 0x00 {
 		t.Fatalf("failed to open file: A=%02X", c.CPU.States.AF.Hi)
 	}
 
