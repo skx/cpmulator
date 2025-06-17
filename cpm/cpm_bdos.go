@@ -411,6 +411,12 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 	// Get the actual name
 	fileName := fcbPtr.GetFileName()
 
+	// No filename?  That's an error
+	if fileName == "" {
+		cpm.CPU.States.HL.SetU16(0x00FF)
+		return nil
+	}
+
 	// drive will default to our current drive, if the FCB drive field is 0
 	drive := cpm.currentDrive + 'A'
 	if fcbPtr.Drive != 0 {
@@ -1132,6 +1138,12 @@ func BdosSysCallMakeFile(cpm *CPM) error {
 
 	// Get the actual name
 	fileName := fcbPtr.GetFileName()
+
+	// No filename?  That's an error
+	if fileName == "" {
+		cpm.CPU.States.HL.SetU16(0x00FF)
+		return nil
+	}
 
 	// Is this already cached?  Then cleanup by
 	// closing the file, and removing the cache-key

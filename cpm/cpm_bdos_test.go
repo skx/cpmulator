@@ -835,7 +835,7 @@ func TestMakeFile(t *testing.T) {
 	c.CPU.States.DE.SetU16(0x0200)
 	err = BdosSysCallMakeFile(c)
 	if err != nil {
-		t.Fatalf("error calling CP/M")
+		t.Fatalf("error calling CP/M %s", err.Error())
 	}
 
 	if c.CPU.States.AF.Hi != 0x00 {
@@ -866,7 +866,7 @@ func TestMakeFile(t *testing.T) {
 	c.CPU.States.DE.SetU16(0x1200)
 	err = BdosSysCallMakeFile(c)
 	if err != nil {
-		t.Fatalf("error calling CP/M")
+		t.Fatalf("error calling CP/M: %s", err.Error())
 	}
 	if c.CPU.States.HL.Lo != 0xFF {
 		t.Fatalf("expected error with empty file")
