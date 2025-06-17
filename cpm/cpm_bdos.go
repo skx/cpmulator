@@ -31,7 +31,7 @@ const maxRC = 128
 // array of data to a string.
 //
 // It is used to write FCB values and I/O records to logs.
-func data2String(data []uint8) string {
+func data2String(data []uint8) (string, string) {
 
 	// Ensure we're only dumping a single record
 	if len(data) > 128 {
@@ -45,31 +45,23 @@ func data2String(data []uint8) string {
 		t[n] = e
 	}
 
-	// now output
-	res := ""
+	// HEX and ASCII results
 	hex := ""
 	asc := ""
-	for n, e := range t {
 
-		// Sixteen bytes at a time.
-		if n%16 == 0 && len(hex) > 0 {
-			res += hex
-			res += " | "
-			res += asc
-			res += "\n"
-
-			hex = ""
-			asc = ""
-		}
+	// Process each one
+	for _, e := range t {
 
 		hex += fmt.Sprintf("%02X ", e)
 		if e > 32 && e < 128 {
 			asc += string(e)
 		} else {
-			asc += " "
+			asc += "."
 		}
 	}
-	return res
+
+	// Return
+	return hex, asc
 }
 
 // BdosSysCallExit implements the Exit syscall
@@ -331,7 +323,7 @@ func BdosSysCallDriveAllReset(cpm *CPM) error {
 	cpm.Memory.Set(0x0004, (cpm.userNumber<<4 | cpm.currentDrive))
 
 	// Default return value
-	var ret uint16 = 0
+	var ret uint16 = 0x0000
 
 	// drive will default to our current drive, if the FCB drive field is 0
 	drive := string(cpm.currentDrive + 'A')
@@ -343,8 +335,8 @@ func BdosSysCallDriveAllReset(cpm *CPM) error {
 	files, err := os.ReadDir(path)
 	if err == nil {
 		for _, n := range files {
-			if strings.Contains(n.Name(), "$") {
-				ret = 0xFF
+			if ret == 0x0000 && strings.Contains(n.Name(), "$") {
+				ret = 0x00FF
 			}
 		}
 	}
@@ -395,7 +387,7 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 
 	// Log the FCB
 	cpm.log = cpm.log.With(
-		slog.Group("fcb",
+		slog.Group("fcb_in",
 			slog.String("drive", fmt.Sprintf("%02X", fcbPtr.Drive)),
 			slog.String("name", fcbPtr.GetName()),
 			slog.String("type", fcbPtr.GetType()),
@@ -418,12 +410,6 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 
 	// Get the actual name
 	fileName := fcbPtr.GetFileName()
-
-	// No filename?  That's an error
-	if fileName == "" {
-		cpm.CPU.States.HL.SetU16(0x00FF)
-		return nil
-	}
 
 	// drive will default to our current drive, if the FCB drive field is 0
 	drive := cpm.currentDrive + 'A'
@@ -527,6 +513,19 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 	// Update the FCB in memory.
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
 
+	slog.Group("fcb_out",
+		slog.String("drive", fmt.Sprintf("%02X", fcbPtr.Drive)),
+		slog.String("name", fcbPtr.GetName()),
+		slog.String("type", fcbPtr.GetType()),
+		slog.String("Ex", fmt.Sprintf("%02X", fcbPtr.Ex)),
+		slog.String("S1", fmt.Sprintf("%02X", fcbPtr.S1)),
+		slog.String("S2", fmt.Sprintf("%02X", fcbPtr.S2)),
+		slog.String("RC", fmt.Sprintf("%02X", fcbPtr.RC)),
+		slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
+		slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
+		slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
+		slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)))
+
 	// Return success
 	cpm.CPU.States.HL.SetU16(0x0000)
 	return nil
@@ -551,7 +550,7 @@ func BdosSysCallFileClose(cpm *CPM) error {
 
 	// Log the FCB
 	cpm.log = cpm.log.With(
-		slog.Group("fcb",
+		slog.Group("fcb_in",
 			slog.String("drive", fmt.Sprintf("%02X", fcbPtr.Drive)),
 			slog.String("name", fcbPtr.GetName()),
 			slog.String("type", fcbPtr.GetType()),
@@ -601,16 +600,21 @@ func BdosSysCallFileClose(cpm *CPM) error {
 				if err != nil {
 					return fmt.Errorf("error truncating file %s: %s", obj.name, err)
 				}
+
+				// We truncated
+				cpm.log = cpm.log.With(
+					slog.Group("truncated",
+						slog.String("hostSize", fmt.Sprintf("%d", hostSize)),
+						slog.String("fcbSize", fmt.Sprintf("%d", fcbPtr.RC))))
 			}
 		}
 	}
+
 	// close the handle
 	err := obj.handle.Close()
 	if err != nil {
 		return fmt.Errorf("failed to close file %04X:%s", ptr, err)
 	}
-
-	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
 
 	// Record success
 	cpm.CPU.States.HL.SetU16(0x0000)
@@ -962,7 +966,7 @@ func BdosSysCallRead(cpm *CPM) error {
 		cpm.Memory.SetRange(cpm.dma, data...)
 
 		// Update the next read position
-		fcbPtr.IncreaseSequentialOffset()
+		fcbPtr.SetSequentialOffset(offset + 128)
 
 		// Update the FCB in memory
 		cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
@@ -995,14 +999,16 @@ func BdosSysCallRead(cpm *CPM) error {
 	cpm.Memory.SetRange(cpm.dma, data...)
 
 	// Log the data we read
+	hex, ascii := data2String(data)
 	cpm.log = cpm.log.With(
 		slog.Group("record",
 			slog.String("offset", fmt.Sprintf("%d", offset)),
 			slog.String("size", fmt.Sprintf("%d", fileSize)),
-			slog.String("dump", data2String(data))))
+			slog.String("dump_hex", hex),
+			slog.String("dump_str", ascii)))
 
 	// Update the next read position
-	fcbPtr.IncreaseSequentialOffset()
+	fcbPtr.SetSequentialOffset(offset + 128)
 
 	// Update the FCB in memory
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
@@ -1075,13 +1081,15 @@ func BdosSysCallWrite(cpm *CPM) error {
 	}
 
 	// Log the record we're writing
+	hex, ascii := data2String(data)
 	cpm.log = cpm.log.With(
 		slog.Group("record",
 			slog.String("offset", fmt.Sprintf("%d", offset)),
-			slog.String("dump", data2String(data))))
+			slog.String("dump_hex", hex),
+			slog.String("dump_str", ascii)))
 
 	// Update the next write position
-	fcbPtr.IncreaseSequentialOffset()
+	fcbPtr.SetSequentialOffset(offset + 128)
 
 	// Sigh.
 	fcbPtr.RC++
@@ -1099,6 +1107,7 @@ func BdosSysCallMakeFile(cpm *CPM) error {
 
 	// The pointer to the FCB
 	ptr := cpm.CPU.States.DE.U16()
+
 	// Get the bytes which make up the FCB entry.
 	xxx := cpm.Memory.GetRange(ptr, fcb.SIZE)
 
@@ -1107,7 +1116,7 @@ func BdosSysCallMakeFile(cpm *CPM) error {
 
 	// Log the FCB
 	cpm.log = cpm.log.With(
-		slog.Group("fcb",
+		slog.Group("fcb_in",
 			slog.String("drive", fmt.Sprintf("%02X", fcbPtr.Drive)),
 			slog.String("name", fcbPtr.GetName()),
 			slog.String("type", fcbPtr.GetType()),
@@ -1121,13 +1130,6 @@ func BdosSysCallMakeFile(cpm *CPM) error {
 			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
 		))
 
-	// Reset the offset
-	fcbPtr.Ex = 0
-	fcbPtr.S1 = 0
-	fcbPtr.S2 = 0
-	fcbPtr.RC = 0
-	fcbPtr.Cr = 0
-
 	// Get the actual name
 	fileName := fcbPtr.GetFileName()
 
@@ -1137,12 +1139,6 @@ func BdosSysCallMakeFile(cpm *CPM) error {
 	if ok {
 		obj.handle.Close()
 		delete(cpm.files, fcbPtr.GetCacheKey())
-	}
-
-	// No filename?  That's an error
-	if fileName == "" {
-		cpm.CPU.States.HL.SetU16(0x00FF)
-		return nil
 	}
 
 	// drive will default to our current drive, if the FCB drive field is 0
@@ -1188,34 +1184,38 @@ func BdosSysCallMakeFile(cpm *CPM) error {
 	_, _ = file.Seek(0, io.SeekStart)
 	_ = file.Sync()
 
-	// Get file size, in bytes
-	fi, err := file.Stat()
-	if err != nil {
-		return fmt.Errorf("failed to get file size of %s: %s", fileName, err)
-	}
+	// File size is zero, after the truncation,
+	// so the file size in blocks is also zero.
+	//
+	// The current record must of course also be zero
+	// now.
+	fcbPtr.RC = 0
+	fcbPtr.Cr = 0
 
-	// Get file size, in bytes
-	fileSize := fi.Size()
-
-	// Get file size, in blocks
-	fLen := uint8(fileSize / blkSize)
-
-	// Set record-count
-	fcbPtr.RC = maxRC
-	if fLen < maxRC {
-		fcbPtr.RC = fLen
-	}
-
-	// If the size is bigger than a multiple we deal with that.
-	if fileSize > int64(int64(fcbPtr.RC)*int64(blkSize)) {
-		fcbPtr.RC += 1
-	}
+	fcbPtr.Ex = 0
+	fcbPtr.S2 = 0
 
 	// Save the file-handle
 	cpm.files[fcbPtr.GetCacheKey()] = FileCache{name: fileName, handle: file}
 
 	// Update the FCB in memory
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
+
+	// Log the FCB
+	cpm.log = cpm.log.With(
+		slog.Group("fcb_out",
+			slog.String("drive", fmt.Sprintf("%02X", fcbPtr.Drive)),
+			slog.String("name", fcbPtr.GetName()),
+			slog.String("type", fcbPtr.GetType()),
+			slog.String("Ex", fmt.Sprintf("%02X", fcbPtr.Ex)),
+			slog.String("S1", fmt.Sprintf("%02X", fcbPtr.S1)),
+			slog.String("S2", fmt.Sprintf("%02X", fcbPtr.S2)),
+			slog.String("RC", fmt.Sprintf("%02X", fcbPtr.RC)),
+			slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
+			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
+			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
+		))
 
 	cpm.CPU.States.HL.SetU16(0x0000)
 	return nil
@@ -1443,11 +1443,13 @@ func BdosSysCallReadRand(cpm *CPM) error {
 		}
 
 		// Log the record we read.
+		hex, ascii := data2String(data)
 		cpm.log = cpm.log.With(
 			slog.Group("record",
 				slog.String("offset", fmt.Sprintf("%d", offset)),
 				slog.String("size", fmt.Sprintf("%d", fileSize)),
-				slog.String("dump", data2String(data))))
+				slog.String("dump_hex", hex),
+				slog.String("dump_str", ascii)))
 
 		cpm.Memory.SetRange(cpm.dma, data...)
 		return 0
@@ -1499,10 +1501,7 @@ func BdosSysCallReadRand(cpm *CPM) error {
 		}
 
 		// Get the record to read
-		record := int(int(fcbPtr.R2)<<16) | int(int(fcbPtr.R1)<<8) | int(fcbPtr.R0)
-
-		// Translate the record to a byte-offset
-		offset := int64(record) * blkSize
+		offset := fcbPtr.GetRandomOffset()
 
 		// copy each appropriate byte into the data-area
 		i := 0
@@ -1524,13 +1523,13 @@ func BdosSysCallReadRand(cpm *CPM) error {
 	}
 
 	// Get the record to read
-	record := int(int(fcbPtr.R2)<<16) | int(int(fcbPtr.R1)<<8) | int(fcbPtr.R0)
-
-	// Translate the record to a byte-offset
-	fpos := int64(record) * blkSize
+	offset := fcbPtr.GetRandomOffset() * 128
 
 	// Read the data
-	res := sysRead(obj.handle, fpos)
+	res := sysRead(obj.handle, offset)
+
+	// we have to update this
+	fcbPtr.SetSequentialOffset(offset)
 
 	// Update the FCB in memory
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
@@ -1583,15 +1582,14 @@ func BdosSysCallWriteRand(cpm *CPM) error {
 	data := cpm.Memory.GetRange(cpm.dma, 128)
 
 	// Log the record we're writing
+	hex, ascii := data2String(data)
 	cpm.log = cpm.log.With(
 		slog.Group("record",
-			slog.String("dump", data2String(data))))
-
-	// Get the record to write
-	record := int(int(fcbPtr.R2)<<16) | int(int(fcbPtr.R1)<<8) | int(fcbPtr.R0)
+			slog.String("dump_hex", hex),
+			slog.String("dump_str", ascii)))
 
 	// Get the file position that translates to
-	fpos := int64(record) * blkSize
+	fpos := fcbPtr.GetRandomOffset() * 128
 
 	// Get file size, in bytes
 	fi, err := obj.handle.Stat()
@@ -1621,6 +1619,9 @@ func BdosSysCallWriteRand(cpm *CPM) error {
 	if err != nil {
 		return fmt.Errorf("failed to write to offset %d: %s", fpos, err)
 	}
+
+	// we have to update this
+	fcbPtr.SetSequentialOffset(fpos)
 
 	// Update the FCB in memory
 	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
@@ -1723,22 +1724,13 @@ func BdosSysCallFileSize(cpm *CPM) error {
 
 	// Now we have the size we need to turn it into the number
 	// of records
-	records := int(fileSize / 128)
-
-	// Block size is used so round up, if we need to.
-	if fileSize > int64(int64(records)*int64(blkSize)) {
-		records += 1
-	}
-
-	// Cap the size appropriately.
-	if records >= 65536 {
-		records = 65536
+	records := int64(fileSize / 128)
+	if fileSize > (records * 128) {
+		records++
 	}
 
 	// Store the value in the three fields
-	fcbPtr.R0 = uint8(records & 0xFF)
-	fcbPtr.R1 = uint8(records >> 8)
-	fcbPtr.R2 = uint8(records >> 16)
+	fcbPtr.SetRandomOffset(records)
 
 	cpm.log = cpm.log.With(
 		slog.Group("filesize",
@@ -1746,10 +1738,11 @@ func BdosSysCallFileSize(cpm *CPM) error {
 			slog.String("size", fmt.Sprintf("%d", fileSize)),
 			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
 			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
-			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2))))
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
+			slog.String("confirm", fmt.Sprintf("%d", fcbPtr.GetRandomOffset()))))
 
 	// sanity check because I've messed this up in the past
-	n := int(int(fcbPtr.R2)<<16) | int(int(fcbPtr.R1)<<8) | int(fcbPtr.R0)
+	n := fcbPtr.GetRandomOffset()
 	if n != records {
 		return fmt.Errorf("failed to update because maths is hard %d != %d", n, records)
 	}
@@ -1791,16 +1784,14 @@ func BdosSysCallRandRecord(cpm *CPM) error {
 		))
 
 	// So the sequential offset is found here
-	offset := int(fcbPtr.GetSequentialOffset())
+	offset := fcbPtr.GetSequentialOffset()
 
 	// Now we set the "random record" which is R0,R1,R2
-	fcbPtr.R0 = uint8(offset & 0xFF)
-	fcbPtr.R1 = uint8(offset >> 8)
-	fcbPtr.R2 = uint8(offset >> 16)
+	fcbPtr.SetRandomOffset(int64(offset) / 128)
 
 	// sanity check because I've messed this up in the past
-	n := int(int(fcbPtr.R2)<<16) | int(int(fcbPtr.R1)<<8) | int(fcbPtr.R0)
-	if n != offset {
+	n := fcbPtr.GetRandomOffset()
+	if n != offset*128 {
 		return fmt.Errorf("failed to update because maths is hard %d != %d", n, offset)
 	}
 
