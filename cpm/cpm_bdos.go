@@ -486,6 +486,7 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 	// Now we open from the filesystem
 	file, err := os.OpenFile(fileName, os.O_RDWR, 0644)
 	if err != nil {
+		cpm.log = cpm.log.With(slog.Group("error", slog.String("message", err.Error())))
 		setResult(cpm, 0xFF)
 		return nil
 	}
@@ -496,7 +497,9 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 	// Get file size, in bytes
 	fi, err := file.Stat()
 	if err != nil {
-		return fmt.Errorf("failed to get file size of %s: %s", fileName, err)
+		cpm.log = cpm.log.With(slog.Group("error", slog.String("message", err.Error())))
+		setResult(cpm, 0xFF)
+		return nil
 	}
 
 	// Get file size, in bytes
@@ -602,7 +605,10 @@ func BdosSysCallFileClose(cpm *CPM) error {
 				hostSize = int64(16384*seqEXT + int(128*int(fcbPtr.RC)))
 				err := obj.handle.Truncate(hostSize)
 				if err != nil {
-					return fmt.Errorf("error truncating file %s: %s", obj.name, err)
+					setResult(cpm, 0xFF)
+					cpm.log = cpm.log.With(slog.Group("error", slog.String("message", err.Error())))
+					return nil
+
 				}
 
 				// We truncated
@@ -617,7 +623,9 @@ func BdosSysCallFileClose(cpm *CPM) error {
 	// close the handle
 	err := obj.handle.Close()
 	if err != nil {
-		return fmt.Errorf("failed to close file %04X:%s", ptr, err)
+		setResult(cpm, 0xFF)
+		cpm.log = cpm.log.With(slog.Group("error", slog.String("message", err.Error())))
+		return nil
 	}
 
 	// Record success
@@ -979,21 +987,25 @@ func BdosSysCallRead(cpm *CPM) error {
 	// length of the file
 	fi, err3 := obj.handle.Stat()
 	if err3 != nil {
-		return fmt.Errorf("failed to get file size of: %s", err3)
+		setResult(cpm, 0xFF)
+		cpm.log = cpm.log.With(slog.Group("error", slog.String("message", err3.Error())))
+		return nil
 	}
 	fileSize := fi.Size()
 
 	_, err := obj.handle.Seek(int64(offset), io.SeekStart)
 	if err != nil {
 		setResult(cpm, 0x01)
-		return fmt.Errorf("cannot seek to position %d: %s", offset, err)
+		cpm.log = cpm.log.With(slog.Group("error", slog.String("message", err.Error())))
+		return nil
 	}
 
 	// Read from the file, now we're in the right place
 	_, err = obj.handle.Read(data)
 	if err != nil && err != io.EOF {
 		setResult(cpm, 0x01)
-		return fmt.Errorf("error reading file %s", err)
+		cpm.log = cpm.log.With(slog.Group("error", slog.String("message", err.Error())))
+		return nil
 	}
 
 	// Copy the data to the DMA area
@@ -1071,13 +1083,17 @@ func BdosSysCallWrite(cpm *CPM) error {
 	// Move to the correct place
 	_, err := obj.handle.Seek(int64(offset), io.SeekStart)
 	if err != nil {
-		return fmt.Errorf("cannot seek to position %d: %s", offset, err)
+		setResult(cpm, 0xFF)
+		cpm.log = cpm.log.With(slog.Group("error", slog.String("message", err.Error())))
+		return nil
 	}
 
 	// Write to the open file
 	_, err = obj.handle.Write(data)
 	if err != nil {
-		return fmt.Errorf("error writing to file %s", err)
+		setResult(cpm, 0xFF)
+		cpm.log = cpm.log.With(slog.Group("error", slog.String("message", err.Error())))
+		return nil
 	}
 
 	// Log the record we're writing
@@ -1177,7 +1193,9 @@ func BdosSysCallMakeFile(cpm *CPM) error {
 	// Create the file
 	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
-		return err
+		cpm.log = cpm.log.With(slog.Group("error", slog.String("message", err.Error())))
+		setResult(cpm, 0xFF)
+		return nil
 	}
 
 	// If the file already exists, truncate and rewind.
@@ -1416,6 +1434,7 @@ func BdosSysCallReadRand(cpm *CPM) error {
 		// Get file size, in bytes
 		fi, err := f.Stat()
 		if err != nil {
+			cpm.log = cpm.log.With(slog.Group("error", slog.String("message", err.Error())))
 			return 0xFF
 		}
 		fileSize := fi.Size()
@@ -1428,6 +1447,7 @@ func BdosSysCallReadRand(cpm *CPM) error {
 
 		_, err = f.Seek(offset, io.SeekStart)
 		if err != nil {
+			cpm.log = cpm.log.With(slog.Group("error", slog.String("message", err.Error())))
 			return 0xFF
 		}
 
@@ -1440,6 +1460,7 @@ func BdosSysCallReadRand(cpm *CPM) error {
 			if err != io.EOF {
 				return 0xFF
 			}
+			cpm.log = cpm.log.With(slog.Group("error", slog.String("message", err.Error())))
 		}
 
 		// Log the record we read.
@@ -1592,7 +1613,9 @@ func BdosSysCallWriteRand(cpm *CPM) error {
 	// Get file size, in bytes
 	fi, err := obj.handle.Stat()
 	if err != nil {
-		return fmt.Errorf("failed to get file size of: %s", err)
+		setResult(cpm, 0xFF)
+		cpm.log = cpm.log.With(slog.Group("error", slog.String("message", err.Error())))
+		return nil
 	}
 	fileSize := fi.Size()
 
@@ -1603,19 +1626,26 @@ func BdosSysCallWriteRand(cpm *CPM) error {
 	for padding > 0 {
 		_, er := obj.handle.Write([]byte{0x00})
 		if er != nil {
-			return fmt.Errorf("error adding padding: %s", er)
+			setResult(cpm, 0xFF)
+			cpm.log = cpm.log.With(slog.Group("error", slog.String("message", er.Error())))
+			return nil
+
 		}
 		padding--
 	}
 
 	_, err = obj.handle.Seek(fpos, io.SeekStart)
 	if err != nil {
-		return fmt.Errorf("cannot seek to position %d: %s", fpos, err)
+		setResult(cpm, 0xFF)
+		cpm.log = cpm.log.With(slog.Group("error", slog.String("message", err.Error())))
+		return nil
 	}
 
 	_, err = obj.handle.Write(data)
 	if err != nil {
-		return fmt.Errorf("failed to write to offset %d: %s", fpos, err)
+		setResult(cpm, 0xFF)
+		cpm.log = cpm.log.With(slog.Group("error", slog.String("message", err.Error())))
+		return nil
 	}
 
 	// we have to update this
@@ -1702,7 +1732,9 @@ func BdosSysCallFileSize(cpm *CPM) error {
 
 		file, err := os.OpenFile(fileName, os.O_RDONLY, 0644)
 		if err != nil {
-			return fmt.Errorf("failed to open file for FileSize %s:%s", fileName, err)
+			cpm.log = cpm.log.With(slog.Group("error", slog.String("message", err.Error())))
+			setResult(cpm, 0xFF)
+			return nil
 		}
 
 		// ensure we close
@@ -1711,7 +1743,9 @@ func BdosSysCallFileSize(cpm *CPM) error {
 		// Get file size, in bytes
 		fi, err := file.Stat()
 		if err != nil {
-			return fmt.Errorf("failed to get file size of %s: %s", fileName, err)
+			cpm.log = cpm.log.With(slog.Group("error", slog.String("message", err.Error())))
+			setResult(cpm, 0xFF)
+			return nil
 		}
 
 		fileSize = fi.Size()
