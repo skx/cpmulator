@@ -38,12 +38,9 @@ func data2String(data []uint8) (string, string) {
 		panic("too big")
 	}
 
-	// copy into a record just to deal with short
-	// reads or writes.
+	// copy into a record just to deal with short reads or writes.
 	t := make([]uint8, 128)
-	for n, e := range data {
-		t[n] = e
-	}
+	copy(t, data)
 
 	// HEX and ASCII results
 	hex := ""
@@ -398,8 +395,7 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 			slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
 			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
 			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
-			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
-		))
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2))))
 
 	// Reset the offset
 	fcbPtr.Ex = 0
@@ -567,8 +563,7 @@ func BdosSysCallFileClose(cpm *CPM) error {
 			slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
 			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
 			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
-			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
-		))
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2))))
 
 	// Get the file handle from our cache.
 	obj, ok := cpm.files[fcbPtr.GetCacheKey()]
@@ -653,8 +648,7 @@ func BdosSysCallFindFirst(cpm *CPM) error {
 			slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
 			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
 			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
-			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
-		))
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2))))
 
 	// Look in the correct location.
 	dir := cpm.drives[string(cpm.currentDrive+'A')]
@@ -837,8 +831,7 @@ func BdosSysCallDeleteFile(cpm *CPM) error {
 			slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
 			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
 			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
-			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
-		))
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2))))
 
 	// drive will default to our current drive, if the FCB drive field is 0
 	drive := cpm.currentDrive + 'A'
@@ -920,8 +913,7 @@ func BdosSysCallRead(cpm *CPM) error {
 			slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
 			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
 			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
-			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
-		))
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2))))
 
 	// Get the file handle in our cache.
 	obj, ok := cpm.files[fcbPtr.GetCacheKey()]
@@ -1053,8 +1045,7 @@ func BdosSysCallWrite(cpm *CPM) error {
 			slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
 			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
 			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
-			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
-		))
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2))))
 
 	// Get the file handle in our cache.
 	obj, ok := cpm.files[fcbPtr.GetCacheKey()]
@@ -1133,8 +1124,7 @@ func BdosSysCallMakeFile(cpm *CPM) error {
 			slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
 			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
 			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
-			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
-		))
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2))))
 
 	// Get the actual name
 	fileName := fcbPtr.GetFileName()
@@ -1226,8 +1216,7 @@ func BdosSysCallMakeFile(cpm *CPM) error {
 			slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
 			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
 			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
-			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
-		))
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2))))
 
 	cpm.CPU.States.HL.SetU16(0x0000)
 	return nil
@@ -1260,8 +1249,7 @@ func BdosSysCallRenameFile(cpm *CPM) error {
 			slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
 			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
 			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
-			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
-		))
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2))))
 
 	// Get the actual name
 	fileName := fcbPtr.GetFileName()
@@ -1308,8 +1296,7 @@ func BdosSysCallRenameFile(cpm *CPM) error {
 			slog.String("CR", fmt.Sprintf("%02X", dstPtr.Cr)),
 			slog.String("R0", fmt.Sprintf("%02X", dstPtr.R0)),
 			slog.String("R1", fmt.Sprintf("%02X", dstPtr.R1)),
-			slog.String("R2", fmt.Sprintf("%02X", dstPtr.R2)),
-		))
+			slog.String("R2", fmt.Sprintf("%02X", dstPtr.R2))))
 
 	// Get the name
 	dstName := dstPtr.GetFileName()
@@ -1489,8 +1476,7 @@ func BdosSysCallReadRand(cpm *CPM) error {
 			slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
 			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
 			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
-			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
-		))
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2))))
 
 	// Get the file handle in our cache.
 	obj, ok := cpm.files[fcbPtr.GetCacheKey()]
@@ -1575,8 +1561,7 @@ func BdosSysCallWriteRand(cpm *CPM) error {
 			slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
 			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
 			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
-			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
-		))
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2))))
 
 	// Get the file handle in our cache.
 	obj, ok := cpm.files[fcbPtr.GetCacheKey()]
@@ -1668,8 +1653,7 @@ func BdosSysCallFileSize(cpm *CPM) error {
 			slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
 			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
 			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
-			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
-		))
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2))))
 
 	//
 	// Seems this doesn't require a file to be open.
@@ -1792,8 +1776,7 @@ func BdosSysCallRandRecord(cpm *CPM) error {
 			slog.String("CR", fmt.Sprintf("%02X", fcbPtr.Cr)),
 			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
 			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
-			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2)),
-		))
+			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2))))
 
 	// So the sequential offset is found here
 	offset := fcbPtr.GetSequentialOffset()
