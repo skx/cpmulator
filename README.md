@@ -20,6 +20,10 @@ A companion repository contains a collection of vintage CP/M software you can us
 
 * [https://github.com/skx/cpm-dist](https://github.com/skx/cpm-dist)
 
+[David Lee](https://github.com/davidly) has also put together a great repository containing various vintage CP/M compilers:
+
+* [https://github.com/davidly/cpm_compilers](https://github.com/davidly/cpm_compilers)
+
 
 
 
@@ -290,14 +294,14 @@ You can see the list of implemented syscalls, along with a mention of how comple
 ```
 $ cpmulator -list-syscalls
 BDOS
-	00 P_TERMCPM
-	01 C_READ
-	02 C_WRITE
-	03 A_READ
+    00 P_TERMCPM
+    01 C_READ
+    02 C_WRITE
+    03 A_READ
 ..snip..
 BIOS
-	00  BOOT
-	01  WBOOT
+    00  BOOT
+    01  WBOOT
 ..snip..
 ```
 
