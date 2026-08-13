@@ -31,6 +31,3 @@ The embedded resources do not have 100% full functionality, you cannot bundle a 
   * Here you can tweak that behaviour to change the number of consecutive Ctrl-Cs that will reboot.
     * Require only a single Ctrl-C (`ctrlc 1`)
     * Disable the Ctrl-C reboot behaviour entirely (`ctrlc 0`)
-* [test.z80](test.z80)
-  * A program that determines whether it is running under cpmulator.
-  * If so it shows the version banner.
