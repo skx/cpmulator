@@ -251,7 +251,6 @@ func TestBoot(t *testing.T) {
 	if err != ErrBoot {
 		t.Fatalf("got an error, but the wrong one: %v\n", err)
 	}
-
 }
 
 // TestFind invokes FindFirst and FindNext
@@ -350,7 +349,7 @@ func TestFind(t *testing.T) {
 
 	}
 
-	if found != 9 {
+	if found != 8 {
 		t.Fatalf("found wrong number of embedded files, got %d", found)
 	}
 
@@ -1277,7 +1276,8 @@ func TestFileOpen(t *testing.T) {
 		t.Fatalf("failed to open file: A=%02X", c.CPU.States.AF.Hi)
 	}
 
-	// Try to open a file that doesn't exist
+	// Try to open a file that doesn't exist - this must fail, and
+	// must NOT create the file (that's the job of F_MAKE).
 	fcbPtr = fcb.FromString("invalid.txt")
 	fcbPtr.Drive = 9
 	c.Memory.SetRange(0x0200, fcbPtr.AsBytes()...)
@@ -1288,8 +1288,12 @@ func TestFileOpen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to open file: err")
 	}
-	if c.CPU.States.HL.Lo != 0x00 {
-		t.Fatalf("failed to open file: A=%02X", c.CPU.States.AF.Hi)
+	if c.CPU.States.HL.Lo != 0xFF {
+		t.Fatalf("opening a missing file should fail: A=%02X", c.CPU.States.AF.Hi)
+	}
+	if _, statErr := os.Stat("invalid.txt"); statErr == nil {
+		os.Remove("invalid.txt")
+		t.Fatalf("opening a missing file must not create it")
 	}
 
 	// Try to open an embedded file
@@ -1326,7 +1330,6 @@ func TestFileOpen(t *testing.T) {
 	if c.CPU.States.HL.Lo != 0xFF {
 		t.Fatalf("failed to open file: A=%02X", c.CPU.States.AF.Hi)
 	}
-
 }
 
 func TestRead(t *testing.T) {

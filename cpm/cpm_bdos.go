@@ -28,6 +28,31 @@ const blkSize = 128
 // maxRC is the maximum read count
 const maxRC = 128
 
+// extentSize is the number of bytes covered by a single logical extent
+// (Ex/S2 pair) - 128 records of 128 bytes each.
+const extentSize = maxRC * blkSize
+
+// recordCountForExtent returns the value the FCB's RC field should hold
+// for the extent identified by ex/s2, given the file's current size on
+// the host.
+func recordCountForExtent(fileSize int64, ex uint8, s2 uint8) uint8 {
+	extentStart := int64(s2)*524288 + int64(ex)*extentSize
+
+	remaining := fileSize - extentStart
+	if remaining <= 0 {
+		return 0
+	}
+
+	recs := remaining / blkSize
+	if remaining%blkSize != 0 {
+		recs++
+	}
+	if recs > maxRC {
+		recs = maxRC
+	}
+	return uint8(recs)
+}
+
 // data2String is a simple helper that is designed to dump a small
 // array of data to a string.
 //
@@ -487,8 +512,9 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 		return nil
 	}
 
-	// Now we open from the filesystem
-	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_RDWR, 0644)
+	// Now we open from the filesystem - but only if it exists.  We cannot create it
+	// if it is missing.
+	file, err := os.OpenFile(fileName, os.O_RDWR, 0644)
 	if err != nil {
 		cpm.log = cpm.log.With(slog.Group("error", slog.String("message", err.Error())))
 		setResult(cpm, 0xFF)
@@ -968,8 +994,14 @@ func BdosSysCallRead(cpm *CPM) error {
 		// Update the next read position
 		fcbPtr.SetSequentialOffset(offset + 128)
 
-		// Update the FCB in memory
-		cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
+		// Recompute the RC which should be set.
+		fcbPtr.RC = recordCountForExtent(int64(len(file)), fcbPtr.Ex, fcbPtr.S2)
+
+		// Update the fields in-RAM.
+		cpm.Memory.Set(ptr+fcb.OffsetEx, fcbPtr.Ex)
+		cpm.Memory.Set(ptr+fcb.OffsetS2, fcbPtr.S2)
+		cpm.Memory.Set(ptr+fcb.OffsetCr, fcbPtr.Cr)
+		cpm.Memory.Set(ptr+fcb.OffsetRC, fcbPtr.RC)
 
 		// All done
 		return nil
@@ -1022,6 +1054,9 @@ func BdosSysCallRead(cpm *CPM) error {
 	// Update the next read position
 	fcbPtr.SetSequentialOffset(offset + 128)
 
+	// Calculate the correct RC to set.
+	fcbPtr.RC = recordCountForExtent(fileSize, fcbPtr.Ex, fcbPtr.S2)
+
 	// Log the FCB
 	cpm.log = cpm.log.With(
 		slog.Group("fcb_out",
@@ -1039,8 +1074,11 @@ func BdosSysCallRead(cpm *CPM) error {
 			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
 			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2))))
 
-	// Update the FCB in memory
-	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
+	// Update only the fields in RAM.
+	cpm.Memory.Set(ptr+fcb.OffsetEx, fcbPtr.Ex)
+	cpm.Memory.Set(ptr+fcb.OffsetS2, fcbPtr.S2)
+	cpm.Memory.Set(ptr+fcb.OffsetRC, fcbPtr.RC)
+	cpm.Memory.Set(ptr+fcb.OffsetCr, fcbPtr.Cr)
 
 	// All done
 	if err == io.EOF {
@@ -1130,11 +1168,16 @@ func BdosSysCallWrite(cpm *CPM) error {
 	// Update the next write position
 	fcbPtr.SetSequentialOffset(offset + 128)
 
-	// Sigh.
-	fcbPtr.RC++
+	// Recompute the RC which should be set.
+	if fi, statErr := obj.handle.Stat(); statErr == nil {
+		fcbPtr.RC = recordCountForExtent(fi.Size(), fcbPtr.Ex, fcbPtr.S2)
+	}
 
-	// Update the FCB in memory
-	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
+	// Update the fields in RAM.
+	cpm.Memory.Set(ptr+fcb.OffsetEx, fcbPtr.Ex)
+	cpm.Memory.Set(ptr+fcb.OffsetS2, fcbPtr.S2)
+	cpm.Memory.Set(ptr+fcb.OffsetRC, fcbPtr.RC)
+	cpm.Memory.Set(ptr+fcb.OffsetCr, fcbPtr.Cr)
 
 	// All done
 	setResult(cpm, 0x00)
@@ -1580,8 +1623,16 @@ func BdosSysCallReadRand(cpm *CPM) error {
 	// we have to update this
 	fcbPtr.SetSequentialOffset(offset)
 
-	// Update the FCB in memory
-	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
+	// Recompute the RC which should be set.
+	if fi, statErr := obj.handle.Stat(); statErr == nil {
+		fcbPtr.RC = recordCountForExtent(fi.Size(), fcbPtr.Ex, fcbPtr.S2)
+	}
+
+	// Update the fields in RAM.
+	cpm.Memory.Set(ptr+fcb.OffsetEx, fcbPtr.Ex)
+	cpm.Memory.Set(ptr+fcb.OffsetS2, fcbPtr.S2)
+	cpm.Memory.Set(ptr+fcb.OffsetCr, fcbPtr.Cr)
+	cpm.Memory.Set(ptr+fcb.OffsetRC, fcbPtr.RC)
 
 	setResult(cpm, res)
 	return nil
@@ -1685,8 +1736,16 @@ func BdosSysCallWriteRand(cpm *CPM) error {
 	// we have to update this
 	fcbPtr.SetSequentialOffset(fpos)
 
-	// Update the FCB in memory
-	cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
+	// Recompute the RC which should be set.
+	if fi, statErr := obj.handle.Stat(); statErr == nil {
+		fcbPtr.RC = recordCountForExtent(fi.Size(), fcbPtr.Ex, fcbPtr.S2)
+	}
+
+	// Update the fields in RAM.
+	cpm.Memory.Set(ptr+fcb.OffsetEx, fcbPtr.Ex)
+	cpm.Memory.Set(ptr+fcb.OffsetS2, fcbPtr.S2)
+	cpm.Memory.Set(ptr+fcb.OffsetRC, fcbPtr.RC)
+	cpm.Memory.Set(ptr+fcb.OffsetCr, fcbPtr.Cr)
 
 	setResult(cpm, 0x00)
 	return nil

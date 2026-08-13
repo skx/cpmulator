@@ -12,6 +12,17 @@ import (
 // SIZE contains the size of the FCB structure
 var SIZE = 36
 
+// Offsets of the individual fields within the FCB.
+//
+// We refer to these individually when updating values in
+// our read/write handlers.
+const (
+	OffsetEx = 12
+	OffsetS2 = 14
+	OffsetRC = 15
+	OffsetCr = 32
+)
+
 // FCB is a structure which is used to hold details about file entries, although
 // later versions of CP/M support directories we do not.
 //
