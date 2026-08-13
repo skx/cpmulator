@@ -208,28 +208,27 @@ func TestGetMatches(t *testing.T) {
 		t.Fatalf("failed to get matches")
 	}
 
-	if len(out) < 10 {
-		t.Fatalf("unexpected number of matches got %d", len(out))
-	}
-
 	// sort the files - so we can be predictable
 	sort.Slice(out, func(i, j int) bool {
 		return out[i].Name < out[j].Name
 	})
 
-	// first file, alphabetically
-	if out[0].Host != "../ccp/ccp.go" {
+	// The repository root only has main.go directly inside it that fits
+	// an 8.3 name (main_test.go is 9 characters before the dot, too long
+	// for a CP/M filename) - everything else lives in subdirectories,
+	// which must not be recursed into.
+	if len(out) != 1 {
+		t.Fatalf("unexpected number of matches got %d", len(out))
+	}
+
+	if out[0].Host != "../main.go" {
 		t.Fatalf("unexpected name %s", out[0].Host)
 	}
 
-	found := false
 	for _, e := range out {
-		if e.Host == "../static/static.go" {
-			found = true
+		if e.Host == "../ccp/ccp.go" || e.Host == "../static/static.go" {
+			t.Fatalf("match unexpectedly recursed into a subdirectory: %s", e.Host)
 		}
-	}
-	if !found {
-		t.Fatalf("failed to find static.go")
 	}
 
 	_, err = f.GetMatches("!>>//path/not/found")
