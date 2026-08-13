@@ -1469,7 +1469,7 @@ func BdosSysCallReadRand(cpm *CPM) error {
 		// If the offset we're reading from is bigger than the file size then
 		// we have to return a failure.
 		if offset >= fileSize {
-			return 06
+			return 0x01
 		}
 
 		_, err = f.Seek(offset, io.SeekStart)
