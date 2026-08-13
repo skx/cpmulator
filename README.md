@@ -128,7 +128,7 @@ There are a pair of CCP implementations included within the emulator, and they c
   * Launch the emulator via `cpmulator -ccp=ccp ..`, or use `A:!CCP CCP` to change to it at run-time.
 * "ccpz"
   * An enhanced CCP, which is the default
-  * "`GET 0100 FOO.COM`" will load a binary into RAM, at address 0x100.  Then "`JMP 0100`" will launch it.
+  * "`GET 0100 FOO.COM`" will load a binary into RAM, at address 0x100.  Then "`JUMP 0100`" will launch it.
   * There are also built-in `PEEK` and `POKE` commands which can show/set memory contents.
   * `LIST file.ext` will "print" the contents of `file.ext`, but see the note later about printer-output (TLDR; We write it to `print.log`.)
   * The prompt will show the currently-selected user-number, for example if you run "USER 3".
