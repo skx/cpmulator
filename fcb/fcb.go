@@ -2,8 +2,8 @@
 package fcb
 
 import (
-	"io/fs"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"strings"
 	"unicode"
@@ -380,26 +380,32 @@ func (f *FCB) DoesMatch(name string) bool {
 func (f *FCB) GetMatches(prefix string) ([]Find, error) {
 	var ret []Find
 
-	err := filepath.Walk(prefix, func(path string, info fs.FileInfo, err error) error {
+	entries, err := os.ReadDir(prefix)
+	if err != nil {
+		return nil, err
+	}
 
-		if err != nil {
-			return err
-		}
+	for _, entry := range entries {
 
 		// Ignore directories, we only care about files.
-		if info.IsDir() {
-			return nil
+		if entry.IsDir() {
+			continue
 		}
 
-		// Upper-case, and remove prefix.
-		name := filepath.Base(strings.ToUpper(path))
+		// Upper-case the name.
+		name := strings.ToUpper(entry.Name())
 
 		if f.DoesMatch(name) {
+
+			info, err := entry.Info()
+			if err != nil {
+				return nil, err
+			}
 
 			var ent Find
 
 			// Populate the host-path before we do anything else.
-			ent.Host = filepath.Join(path)
+			ent.Host = filepath.Join(prefix, entry.Name())
 
 			// populate the name.
 			ent.Name = name
@@ -410,10 +416,8 @@ func (f *FCB) GetMatches(prefix string) ([]Find, error) {
 			// append
 			ret = append(ret, ent)
 		}
-
-		return nil
-	})
+	}
 
 	// Return the entries we found, if any.
-	return ret, err
+	return ret, nil
 }
