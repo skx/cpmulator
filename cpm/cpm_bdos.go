@@ -1866,7 +1866,7 @@ func BdosSysCallFileSize(cpm *CPM) error {
 	// sanity check because I've messed this up in the past
 	n := fcbPtr.GetRandomOffset()
 	if n != records {
-		return fmt.Errorf("failed to update because maths is hard %d != %d", n, records)
+		return fmt.Errorf("BdosSysCallFileSize: failed to update because maths is hard %d != %d", n, records)
 	}
 
 	// Update the FCB in memory
@@ -1910,12 +1910,17 @@ func BdosSysCallRandRecord(cpm *CPM) error {
 	offset := fcbPtr.GetSequentialOffset()
 
 	// Now we set the "random record" which is R0,R1,R2
-	fcbPtr.SetRandomOffset(int64(offset) / 128)
+	records := int64(offset) / 128
+	fcbPtr.SetRandomOffset(records)
 
-	// sanity check because I've messed this up in the past
+	// Sanity check
 	n := fcbPtr.GetRandomOffset()
-	if n != offset*128 {
-		return fmt.Errorf("failed to update because maths is hard %d != %d", n, offset)
+	if n != records {
+		return fmt.Errorf(
+			"BdosSysCallRandRecord: failed to update because maths is hard %d != %d",
+			n,
+			records,
+		)
 	}
 
 	// Update the FCB in memory.
