@@ -472,7 +472,7 @@ func TestDriveGetSet(t *testing.T) {
 	}
 
 	// Set a drive
-	c.CPU.States.AF.Hi = 3
+	c.CPU.States.DE.Lo = 3
 	err = BdosSysCallDriveSet(c)
 	if err != nil {
 		t.Fatalf("failed to call CP/M")
@@ -489,7 +489,7 @@ func TestDriveGetSet(t *testing.T) {
 	}
 
 	// Set a drive to a bogus value
-	c.CPU.States.AF.Hi = 0xFF
+	c.CPU.States.DE.Lo = 0xFF
 	err = BdosSysCallDriveSet(c)
 	if err != nil {
 		t.Fatalf("failed to call CP/M")
