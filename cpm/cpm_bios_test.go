@@ -100,17 +100,17 @@ func TestCustom(t *testing.T) {
 
 	// Get a null/space terminated string from memory
 	getStringFromMemory := func(cpm *CPM, addr uint16) string {
-		str := ""
+		var str strings.Builder
 		x := cpm.Memory.Get(addr)
 		for x != ' ' && x != 0x00 {
-			str += string(x)
+			str.WriteString(string(x))
 			addr++
 			x = cpm.Memory.Get(addr)
 		}
 
 		// Useful when the CCP has passed a string, because
 		// that uppercases all input
-		return strings.ToLower(str)
+		return strings.ToLower(str.String())
 	}
 
 	// Create a new helper

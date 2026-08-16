@@ -89,30 +89,30 @@ type Find struct {
 
 // GetName returns the name component of an FCB entry.
 func (f *FCB) GetName() string {
-	t := ""
+	var t strings.Builder
 
 	for _, c := range f.Name {
 		if c != 0x00 {
-			t += string(c)
+			t.WriteString(string(c))
 		}
 	}
-	return strings.TrimSpace(t)
+	return strings.TrimSpace(t.String())
 }
 
 // GetType returns the type/extension component of an FCB entry.
 //
 // If the extension is null, or empty, we return the empty string.
 func (f *FCB) GetType() string {
-	t := ""
+	var t strings.Builder
 
 	for _, c := range f.Type {
 		if unicode.IsPrint(rune(c)) {
-			t += string(c)
+			t.WriteString(string(c))
 		} else {
-			t += " "
+			t.WriteString(" ")
 		}
 	}
-	return t
+	return t.String()
 }
 
 // GetFileName returns the name and suffix, but importantly it removes
@@ -133,26 +133,26 @@ func (f *FCB) GetFileName() string {
 // object in some way - it's the name of the file, as seen by the
 // CP/M system.
 func (f *FCB) GetCacheKey() string {
-	t := ""
+	var t strings.Builder
 
 	// Name
 	for _, c := range f.Name {
 		if unicode.IsPrint(rune(c)) {
-			t += string(c)
+			t.WriteString(string(c))
 		} else {
-			t += " "
+			t.WriteString(" ")
 		}
 	}
 
 	// Suffix
 	for _, c := range f.Type {
 		if unicode.IsPrint(rune(c)) {
-			t += string(c)
+			t.WriteString(string(c))
 		} else {
-			t += " "
+			t.WriteString(" ")
 		}
 	}
-	return t
+	return t.String()
 
 }
 
@@ -249,7 +249,7 @@ func FromString(str string) FCB {
 
 	// No suffix?
 	if len(parts) == 1 {
-		t := ""
+		var t strings.Builder
 
 		// pad the value
 		name := parts[0]
@@ -260,15 +260,15 @@ func FromString(str string) FCB {
 		// process to change "*" to "????"
 		for _, c := range name {
 			if c == '*' {
-				t += "?????????"
+				t.WriteString("?????????")
 				break
 			} else {
-				t += string(c)
+				t.WriteString(string(c))
 			}
 		}
 
 		// Copy the result into place, noting that copy will truncate
-		copy(tmp.Name[:], t)
+		copy(tmp.Name[:], t.String())
 	}
 	if len(parts) == 2 {
 		t := ""

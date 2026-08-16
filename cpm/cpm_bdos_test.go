@@ -3,6 +3,7 @@ package cpm
 import (
 	"errors"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -251,6 +252,7 @@ func TestBoot(t *testing.T) {
 	if err != ErrBoot {
 		t.Fatalf("got an error, but the wrong one: %v\n", err)
 	}
+
 }
 
 // TestFind invokes FindFirst and FindNext
@@ -430,14 +432,14 @@ func TestReadLine(t *testing.T) {
 	}
 
 	// What did we get?
-	text := ""
+	var text strings.Builder
 	i := 0
 	for i < int(got) {
-		text += string(c.Memory.Get(uint16(0x0102 + i)))
+		text.WriteString(string(c.Memory.Get(uint16(0x0102 + i))))
 		i++
 	}
 
-	if text != "steve" {
+	if text.String() != "steve" {
 		t.Fatalf("wrong text received")
 	}
 
@@ -1202,6 +1204,64 @@ func TestWriteFile(t *testing.T) {
 	}
 }
 
+// TestWriteFileExtentCrossing ensures that the FCB's RC (record-count)
+// field tracks the CURRENT extent only, rather than growing without
+// bound, once a sequential write crosses a 16KB extent boundary.
+func TestWriteFileExtentCrossing(t *testing.T) {
+
+	c, err := New(WithPrinterPath("26.log"))
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	c.Memory = new(memory.Memory)
+	c.SetDrives(false)
+
+	name := "EXTENT.ME"
+	os.Remove(name)
+	defer os.Remove(name)
+
+	fcbPtr := fcb.FromString(name)
+	fcbPtr.Drive = 5
+	c.Memory.SetRange(0x0200, fcbPtr.AsBytes()...)
+
+	c.CPU.States.DE.SetU16(0x0200)
+	if err = BdosSysCallMakeFile(c); err != nil {
+		t.Fatalf("error calling CP/M")
+	}
+	if c.CPU.States.AF.Hi != 0x00 {
+		t.Fatalf("creation failed")
+	}
+
+	// Fill the DMA area with a single, arbitrary, 128-byte record.
+	for i := range 128 {
+		c.Memory.Set(c.dma+uint16(i), byte(i))
+	}
+
+	// Write 130 records: 128 fills the first extent exactly, the
+	// remaining two land in the second extent.
+	for i := range 130 {
+		c.CPU.States.DE.SetU16(0x0200)
+		err = BdosSysCallWrite(c)
+		if err != nil {
+			t.Fatalf("got error writing to file: %s", err)
+		}
+		if c.CPU.States.AF.Hi != 0x00 {
+			t.Fatalf("got error writing record %d to file: A=%02X", i, c.CPU.States.AF.Hi)
+		}
+	}
+
+	// The FCB should now show extent 1, with RC describing only the
+	// two records written into that extent - NOT 130, and NOT some
+	// wrapped-around uint8 value.
+	updated := fcb.FromBytes(c.Memory.GetRange(0x0200, fcb.SIZE))
+	if updated.Ex != 1 {
+		t.Fatalf("expected to be in extent 1, got Ex=%02X", updated.Ex)
+	}
+	if updated.RC != 2 {
+		t.Fatalf("expected RC to describe the current extent (2), got RC=%02X", updated.RC)
+	}
+}
+
 // TestReadFile tests reading a sequential record from an open file.
 func TestReadFile(t *testing.T) {
 
@@ -1230,6 +1290,87 @@ func TestReadFile(t *testing.T) {
 		t.Fatalf("expected an error")
 	}
 
+}
+
+// TestReadFileExtentCrossing ensures that the FCB's RC
+// field tracks the CURRENT extent only, rather than staying pinned at
+// whatever it was when the file was opened, once a sequential read
+// crosses a 16KB extent boundary.
+func TestReadFileExtentCrossing(t *testing.T) {
+
+	c, err := New(WithPrinterPath("26.log"))
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	c.Memory = new(memory.Memory)
+	c.fixupRAM()
+	c.SetDrives(false)
+
+	name := "EXTENT2.ME"
+	os.Remove(name)
+	defer os.Remove(name)
+
+	// Create the file, and write 130 records to it - enough to fill
+	// the first extent (128 records) and spill two records into the
+	// second.
+	fcbPtr := fcb.FromString(name)
+	fcbPtr.Drive = 5
+	c.Memory.SetRange(0x0200, fcbPtr.AsBytes()...)
+
+	c.CPU.States.DE.SetU16(0x0200)
+	if err = BdosSysCallMakeFile(c); err != nil {
+		t.Fatalf("error calling CP/M")
+	}
+	if c.CPU.States.AF.Hi != 0x00 {
+		t.Fatalf("creation failed")
+	}
+
+	for i := range 128 {
+		c.Memory.Set(c.dma+uint16(i), byte(i))
+	}
+	for i := range 130 {
+		c.CPU.States.DE.SetU16(0x0200)
+		if err = BdosSysCallWrite(c); err != nil {
+			t.Fatalf("got error writing record %d: %s", i, err)
+		}
+	}
+	c.CPU.States.DE.SetU16(0x0200)
+	if err = BdosSysCallFileClose(c); err != nil {
+		t.Fatalf("failed to close file after writing: %s", err)
+	}
+
+	// Re-open the file for reading, and consume all 130 records
+	// sequentially.
+	fcbPtr = fcb.FromString(name)
+	fcbPtr.Drive = 5
+	c.Memory.SetRange(0x0200, fcbPtr.AsBytes()...)
+	c.CPU.States.DE.SetU16(0x0200)
+	if err = BdosSysCallFileOpen(c); err != nil {
+		t.Fatalf("failed to open file: %s", err)
+	}
+	if c.CPU.States.AF.Hi != 0x00 {
+		t.Fatalf("failed to open file: A=%02X", c.CPU.States.AF.Hi)
+	}
+
+	for i := range 130 {
+		c.CPU.States.DE.SetU16(0x0200)
+		if err = BdosSysCallRead(c); err != nil {
+			t.Fatalf("got error reading record %d: %s", i, err)
+		}
+		if c.CPU.States.AF.Hi != 0x00 {
+			t.Fatalf("got error reading record %d: A=%02X", i, c.CPU.States.AF.Hi)
+		}
+	}
+
+	// Having crossed into extent 1, RC must describe that extent's
+	// two records - NOT the stale extent-0 value of 128 (0x80).
+	updated := fcb.FromBytes(c.Memory.GetRange(0x0200, fcb.SIZE))
+	if updated.Ex != 1 {
+		t.Fatalf("expected to be in extent 1, got Ex=%02X", updated.Ex)
+	}
+	if updated.RC != 2 {
+		t.Fatalf("expected RC to describe the current extent (2), got RC=%02X", updated.RC)
+	}
 }
 
 // TestFileOpen ensures we can open files.
@@ -1330,6 +1471,7 @@ func TestFileOpen(t *testing.T) {
 	if c.CPU.States.HL.Lo != 0xFF {
 		t.Fatalf("failed to open file: A=%02X", c.CPU.States.AF.Hi)
 	}
+
 }
 
 func TestRead(t *testing.T) {
@@ -1464,6 +1606,48 @@ func TestRead(t *testing.T) {
 		t.Fatalf("read rand (virtual) failed")
 	}
 
+}
+
+// TestReadRandPastEOF confirms we return 01 from reads after the end of
+// file.  Not 06.  This is required for turbo pascal.
+func TestReadRandPastEOF(t *testing.T) {
+
+	c, err := New()
+	if err != nil {
+		t.Fatalf("failed to create CPM")
+	}
+	c.Memory = new(memory.Memory)
+	c.SetDrives(false)
+
+	name := "PASTEOF.ME"
+	os.Remove(name)
+	defer os.Remove(name)
+
+	fcbPtr := fcb.FromString(name)
+	fcbPtr.Drive = 5
+	c.Memory.SetRange(0x0200, fcbPtr.AsBytes()...)
+
+	c.CPU.States.DE.SetU16(0x0200)
+	if err = BdosSysCallMakeFile(c); err != nil {
+		t.Fatalf("failed to create file: %s", err)
+	}
+
+	// Write a single 128-byte record, then try to randomly read the
+	// record right after it - i.e. one record past EOF.
+	c.CPU.States.DE.SetU16(0x0200)
+	if err = BdosSysCallWrite(c); err != nil {
+		t.Fatalf("failed to write to file: %s", err)
+	}
+
+	fcbPtr.SetRandomOffset(1)
+	c.Memory.SetRange(0x0200, fcbPtr.AsBytes()...)
+	c.CPU.States.DE.SetU16(0x0200)
+	if err = BdosSysCallReadRand(c); err != nil {
+		t.Fatalf("error calling CP/M: %s", err)
+	}
+	if c.CPU.States.AF.Hi != 0x01 {
+		t.Fatalf("expected 0x01 (reading unwritten data) reading past EOF, got A=%02X", c.CPU.States.AF.Hi)
+	}
 }
 
 func TestTicks(t *testing.T) {
@@ -1627,18 +1811,18 @@ func TestExecOutput(t *testing.T) {
 	got := c.Memory.Get(0x0101)
 
 	// What did we get?
-	text := ""
+	var text strings.Builder
 	i := 0
 	for i < int(got) {
-		text += string(c.Memory.Get(uint16(0x0102 + i)))
+		text.WriteString(string(c.Memory.Get(uint16(0x0102 + i))))
 		i++
 	}
 
 	if got != 05 {
-		t.Fatalf("returned wrong amount, got %s - %d", text, got)
+		t.Fatalf("returned wrong amount, got %s - %d", text.String(), got)
 	}
 
-	if text != "steve" {
+	if text.String() != "steve" {
 		t.Fatalf("wrong text received")
 	}
 }

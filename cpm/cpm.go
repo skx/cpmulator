@@ -492,6 +492,11 @@ func New(options ...Option) (*CPM, error) {
 		Handler: BdosSysCallFileTimeDate,
 		Fake:    true,
 	}
+	bdos[103] = Handler{ // ZDE
+		Desc:    "F_WRITEXFCB",
+		Handler: BdosSysCallWriteExtFCB,
+		Fake:    true,
+	}
 	bdos[105] = Handler{
 		Desc:    "T_GET",
 		Handler: BdosSysCallTime,

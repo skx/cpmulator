@@ -69,13 +69,13 @@ func data2String(data []uint8) (string, string) {
 	copy(t, data)
 
 	// HEX and ASCII results
-	hex := ""
+	var hex strings.Builder
 	asc := ""
 
 	// Process each one
 	for _, e := range t {
 
-		hex += fmt.Sprintf("%02X ", e)
+		hex.WriteString(fmt.Sprintf("%02X ", e))
 		if e > 32 && e < 128 {
 			asc += string(e)
 		} else {
@@ -84,7 +84,7 @@ func data2String(data []uint8) (string, string) {
 	}
 
 	// Return
-	return hex, asc
+	return hex.String(), asc
 }
 
 // setResult sets up all four of the registers that we should
@@ -245,12 +245,12 @@ func BdosSysCallSetIOByte(cpm *CPM) error {
 func BdosSysCallWriteString(cpm *CPM) error {
 	addr := cpm.CPU.States.DE.U16()
 
-	str := ""
+	var str strings.Builder
 
 	c := cpm.Memory.Get(addr)
 	for c != '$' {
 		// save the string we write
-		str += string(c)
+		str.WriteString(string(c))
 
 		cpm.output.PutCharacter(c)
 		addr++
@@ -259,8 +259,8 @@ func BdosSysCallWriteString(cpm *CPM) error {
 
 	// Log the message we wrote, and its length.
 	cpm.log = slog.With(
-		slog.String("output", str),
-		slog.String("length", fmt.Sprintf("%d", len(str))))
+		slog.String("output", str.String()),
+		slog.String("length", fmt.Sprintf("%d", len(str.String()))))
 
 	setResult(cpm, 0x00)
 	return nil
@@ -392,12 +392,9 @@ func BdosSysCallDriveSet(cpm *CPM) error {
 
 	// The drive number passed to this routine is 0 for A:, 1 for B:
 	// up to 15 for P:.
-	drv := cpm.CPU.States.AF.Hi
-
-	// P: is the maximum
-	if drv > 15 {
-		drv = 15
-	}
+	drv := min(
+		// P: is the maximum
+		cpm.CPU.States.AF.Hi, 15)
 
 	// set the drive
 	cpm.currentDrive = drv
@@ -499,10 +496,7 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 		fLen := uint8(len(virt) / blkSize)
 
 		// Set record-count
-		fcbPtr.RC = maxRC
-		if fLen < maxRC {
-			fcbPtr.RC = fLen
-		}
+		fcbPtr.RC = min(fLen, maxRC)
 
 		// Update the FCB in memory.
 		cpm.Memory.SetRange(ptr, fcbPtr.AsBytes()...)
@@ -539,10 +533,7 @@ func BdosSysCallFileOpen(cpm *CPM) error {
 	fLen := uint8(fileSize / blkSize)
 
 	// Set record-count
-	fcbPtr.RC = maxRC
-	if fLen < maxRC {
-		fcbPtr.RC = fLen
-	}
+	fcbPtr.RC = min(fLen, maxRC)
 
 	// If the size is bigger than a multiple we deal with that.
 	if fileSize > int64(int64(fLen)*int64(blkSize)) {
@@ -1181,6 +1172,12 @@ func BdosSysCallWrite(cpm *CPM) error {
 
 	// All done
 	setResult(cpm, 0x00)
+	return nil
+}
+
+// BdosSysCallWriteExtFCB is a fake handler
+func BdosSysCallWriteExtFCB(cpm *CPM) error {
+	cpm.CPU.States.HL.SetU16(0x0000)
 	return nil
 }
 

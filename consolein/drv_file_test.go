@@ -3,6 +3,7 @@ package consolein
 import (
 	"io"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -39,7 +40,7 @@ func TestFileSetup(t *testing.T) {
 	}
 
 	c := 0
-	str := ""
+	var str strings.Builder
 
 	x.delayUntil = time.Now().Add(1 * time.Second)
 
@@ -49,12 +50,12 @@ func TestFileSetup(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to get character")
 		}
-		str += string(out)
+		str.WriteString(string(out))
 
 		c++
 	}
-	if str != "hi" {
-		t.Fatalf("error in string, got '%v' '%s'", str, str)
+	if str.String() != "hi" {
+		t.Fatalf("error in string, got '%v' '%s'", str.String(), str.String())
 	}
 
 	if ch.PendingInput() {
@@ -227,7 +228,7 @@ func TestNewlineN(t *testing.T) {
 	}
 
 	c := 0
-	str := ""
+	var str strings.Builder
 
 	for c < 3 {
 		var out byte
@@ -235,12 +236,12 @@ func TestNewlineN(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to get character")
 		}
-		str += string(out)
+		str.WriteString(string(out))
 
 		c++
 	}
-	if str != "hi\n" {
-		t.Fatalf("error in string, got '%v' '%s'", str, str)
+	if str.String() != "hi\n" {
+		t.Fatalf("error in string, got '%v' '%s'", str.String(), str.String())
 	}
 
 }
@@ -278,7 +279,7 @@ func TestNewlineM(t *testing.T) {
 	}
 
 	c := 0
-	str := ""
+	var str strings.Builder
 
 	for c < 3 {
 		var out byte
@@ -286,12 +287,12 @@ func TestNewlineM(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to get character")
 		}
-		str += string(out)
+		str.WriteString(string(out))
 
 		c++
 	}
-	if str != "hi"+string('') {
-		t.Fatalf("error in string, got '%v' '%s'", str, str)
+	if str.String() != "hi"+string('') {
+		t.Fatalf("error in string, got '%v' '%s'", str.String(), str.String())
 	}
 }
 
@@ -328,7 +329,7 @@ func TestNewlineBoth(t *testing.T) {
 	}
 
 	c := 0
-	str := ""
+	var str strings.Builder
 
 	for c < 4 {
 		var out byte
@@ -336,12 +337,12 @@ func TestNewlineBoth(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to get character")
 		}
-		str += string(out)
+		str.WriteString(string(out))
 
 		c++
 	}
-	if str != "hi"+string('')+"\n" {
-		t.Fatalf("error in string, got '%v' '%s'", str, str)
+	if str.String() != "hi"+string('')+"\n" {
+		t.Fatalf("error in string, got '%v' '%s'", str.String(), str.String())
 	}
 }
 
@@ -412,7 +413,7 @@ func TestNewlineMissing(t *testing.T) {
 	}
 
 	c := 0
-	str := ""
+	var str strings.Builder
 
 	for c < 3 {
 		var out byte
@@ -420,12 +421,12 @@ func TestNewlineMissing(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to get character")
 		}
-		str += string(out)
+		str.WriteString(string(out))
 
 		c++
 	}
-	if str != "hi\n" {
-		t.Fatalf("error in string, got '%v' '%s'", str, str)
+	if str.String() != "hi\n" {
+		t.Fatalf("error in string, got '%v' '%s'", str.String(), str.String())
 	}
 }
 

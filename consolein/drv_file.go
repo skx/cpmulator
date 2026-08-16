@@ -134,7 +134,7 @@ func (fi *FileInput) parseOptions(data []byte) []byte {
 
 	// Split the header by newlines and process
 	h := string(header)
-	for _, line := range strings.Split(h, "\n") {
+	for line := range strings.SplitSeq(h, "\n") {
 
 		// Trim any leading/trailing whitespace.
 		line = strings.TrimSpace(line)
