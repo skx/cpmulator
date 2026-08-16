@@ -507,12 +507,13 @@ func TestDefaultDrivers(t *testing.T) {
 // TestTimeout tries to test if a timeout is happening
 func TestTimeout(t *testing.T) {
 
-	// Timeout after 10milliseconds
+	// Timeout after 1milliseconds
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(1)*time.Millisecond)
 	defer cancel()
 
-	// We want to make sure that we've already exceeded our limit before we run the test.
-	time.Sleep(250 * time.Millisecond)
+	<-ctx.Done()
+
+	cancel()
 
 	// Create a new CP/M helper
 	obj, err := New(WithContext(ctx))
