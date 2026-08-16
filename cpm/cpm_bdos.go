@@ -394,7 +394,7 @@ func BdosSysCallDriveSet(cpm *CPM) error {
 	// up to 15 for P:.
 	drv := min(
 		// P: is the maximum
-		cpm.CPU.States.AF.Hi, 15)
+		cpm.CPU.States.DE.Lo, 15)
 
 	// set the drive
 	cpm.currentDrive = drv
