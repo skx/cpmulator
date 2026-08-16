@@ -70,21 +70,21 @@ func data2String(data []uint8) (string, string) {
 
 	// HEX and ASCII results
 	var hex strings.Builder
-	asc := ""
+	var asc strings.Builder
 
 	// Process each one
 	for _, e := range t {
 
 		hex.WriteString(fmt.Sprintf("%02X ", e))
 		if e > 32 && e < 128 {
-			asc += string(e)
+			asc.WriteString(string(e))
 		} else {
-			asc += "."
+			asc.WriteString(".")
 		}
 	}
 
 	// Return
-	return hex.String(), asc
+	return hex.String(), asc.String()
 }
 
 // setResult sets up all four of the registers that we should
