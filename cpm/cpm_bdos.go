@@ -1418,7 +1418,7 @@ func BdosSysCallDriveGet(cpm *CPM) error {
 // BdosSysCallSetDMA updates the address of the DMA area, which is used for block I/O.
 func BdosSysCallSetDMA(cpm *CPM) error {
 
-	// Get the address from BC
+	// Get the address from DE
 	addr := cpm.CPU.States.DE.U16()
 
 	// Update the DMA value.
