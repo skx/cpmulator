@@ -902,7 +902,7 @@ func (cpm *CPM) Execute(args []string) error {
 		States: z80.States{
 			SPR: z80.SPR{
 				PC: cpm.start,
-				SP: 0xFFFF,
+				SP: 0xFFFE,
 			},
 		},
 		Memory: cpm.Memory,
