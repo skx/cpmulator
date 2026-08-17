@@ -149,12 +149,12 @@ func BdosSysCallAuxRead(cpm *CPM) error {
 	return nil
 }
 
-// BdosSysCallAuxWrite writes the single character in the C register
+// BdosSysCallAuxWrite writes the single character in the E register
 // auxiliary / punch output.
 func BdosSysCallAuxWrite(cpm *CPM) error {
 
 	// The character we're going to write
-	c := cpm.CPU.States.BC.Lo
+	c := cpm.CPU.States.DE.Lo
 	cpm.output.PutCharacter(c)
 
 	setResult(cpm, 0x00)
