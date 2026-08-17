@@ -380,13 +380,11 @@ func main() {
 
 			// Deliberate stop of execution
 			if err == cpm.ErrHalt {
-				fmt.Printf("\r\n")
 				return
 			}
 
 			// Reboot attempt, also fine
 			if err == cpm.ErrBoot {
-				fmt.Printf("\r\n")
 				return
 			}
 
@@ -402,8 +400,6 @@ func main() {
 			unclean = true
 
 		}
-
-		fmt.Printf("\r\n")
 		return
 	}
 
