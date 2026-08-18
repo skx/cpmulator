@@ -392,9 +392,7 @@ func BdosSysCallDriveSet(cpm *CPM) error {
 
 	// The drive number passed to this routine is 0 for A:, 1 for B:
 	// up to 15 for P:.
-	drv := min(
-		// P: is the maximum
-		cpm.CPU.States.DE.Lo, 15)
+	drv := cpm.CPU.States.DE.Lo & 0x0F
 
 	// set the drive
 	cpm.currentDrive = drv
