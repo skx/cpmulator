@@ -65,6 +65,10 @@ var (
 
 	// DefaultDMAAddress is the default address of the DMA area, post-boot.
 	DefaultDMAAddress uint16 = 0x0080
+
+	// DefaultStack is the stack default when starting, or rebooting
+	DefaultStack uint16 = 0xFFFE
+
 )
 
 // HandlerType contains the signature of a function we use to
@@ -902,7 +906,7 @@ func (cpm *CPM) Execute(args []string) error {
 		States: z80.States{
 			SPR: z80.SPR{
 				PC: cpm.start,
-				SP: 0xFFFE,
+				SP: DefaultStack,
 			},
 		},
 		Memory: cpm.Memory,
