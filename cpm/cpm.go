@@ -68,7 +68,6 @@ var (
 
 	// DefaultStack is the stack default when starting, or rebooting
 	DefaultStack uint16 = 0xFFFE
-
 )
 
 // HandlerType contains the signature of a function we use to
@@ -205,6 +204,9 @@ type CPM struct {
 	// 1  -> B:
 	// 15 -> P:
 	currentDrive uint8
+
+	// activeDrives holds the drives which aer logged in, as a bitmask
+	activeDrives uint16
 
 	// userNumber contains the current user number.
 	//
@@ -409,7 +411,6 @@ func New(options ...Option) (*CPM, error) {
 	bdos[24] = Handler{
 		Desc:    "DRV_LOGINVEC",
 		Handler: BdosSysCallLoginVec,
-		Fake:    true,
 	}
 	bdos[25] = Handler{
 		Desc:    "DRV_GET",
