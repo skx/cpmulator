@@ -357,6 +357,9 @@ func BdosSysCallDriveAllReset(cpm *CPM) error {
 	// Reset disk - but leave the user-number alone
 	cpm.currentDrive = 0
 
+	// The only active drive is A
+	cpm.activeDrives = 0x0001
+
 	// Update RAM
 	cpm.Memory.Set(0x0004, (cpm.userNumber<<4 | cpm.currentDrive))
 
@@ -393,6 +396,10 @@ func BdosSysCallDriveSet(cpm *CPM) error {
 	// The drive number passed to this routine is 0 for A:, 1 for B:
 	// up to 15 for P:.
 	drv := cpm.CPU.States.DE.Lo & 0x0F
+
+	// Set the appropriate bit of our login vector
+	mask := uint16(2 ^ drv)
+	cpm.activeDrives = cpm.activeDrives | mask
 
 	// set the drive
 	cpm.currentDrive = drv
@@ -1402,8 +1409,7 @@ func BdosSysCallRenameFile(cpm *CPM) error {
 
 // BdosSysCallLoginVec returns the list of logged in drives.
 func BdosSysCallLoginVec(cpm *CPM) error {
-	cpm.CPU.States.HL.Hi = 0xFF
-	cpm.CPU.States.HL.Lo = 0xFF
+	cpm.CPU.States.HL.SetU16(cpm.activeDrives)
 	return nil
 }
 
