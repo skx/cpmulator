@@ -1947,14 +1947,8 @@ func BdosSysCallRandRecord(cpm *CPM) error {
 // Resetting a drive removes its software read-only status.
 func BdosSysCallDriveReset(cpm *CPM) error {
 
-	// reset values, via XOR.  I think that's fine.
-	//
-	// If input is 0xFFFF and no drives are rest of
-	// of course that marks all drives as read only.
-	//
-	// Hrm.
-	//
-	cpm.roDrives = cpm.roDrives ^ cpm.CPU.States.DE.U16()
+    // Clear the marker-bit for each set bit in DE
+    cpm.roDrives = cpm.roDrives &^ cpm.CPU.States.DE.U16()
 
 	// return success.
 	cpm.CPU.States.HL.SetU16(0x0000)
