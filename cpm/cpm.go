@@ -474,9 +474,6 @@ func New(options ...Option) (*CPM, error) {
 	bdos[40] = Handler{
 		Desc:    "F_WRITEZF",
 		Handler: BdosSysCallWriteRand,
-
-		// We don't zero-pad
-		Fake: true,
 	}
 	bdos[42] = Handler{
 		Desc:    "F_LOCK",

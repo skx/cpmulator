@@ -1756,6 +1756,10 @@ func BdosSysCallWriteRand(cpm *CPM) error {
 			slog.String("dump_hex", hex),
 			slog.String("dump_str", ascii)))
 
+	// Zero-fill the hole we're filling in.
+	//
+	// Technically this is only required for F_WRITEZF, but we do the same
+	// thing for F_WRITERAND and this handler is shared for those two syscalls.
 	for padding > 0 {
 		_, er := obj.handle.Write([]byte{0x00})
 		if er != nil {
