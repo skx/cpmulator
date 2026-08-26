@@ -208,6 +208,10 @@ type CPM struct {
 	// activeDrives holds the drives which aer logged in, as a bitmask
 	activeDrives uint16
 
+	// roDrives records read-only drives.
+	// One bit for each drive, the same as activeDrives
+	roDrives uint16
+
 	// userNumber contains the current user number.
 	//
 	// Valid values are 0-15.
@@ -428,12 +432,10 @@ func New(options ...Option) (*CPM, error) {
 	bdos[28] = Handler{
 		Desc:    "DRV_SETRO",
 		Handler: BdosSysCallDriveSetRO,
-		Fake:    true,
 	}
 	bdos[29] = Handler{
 		Desc:    "DRV_ROVEC",
 		Handler: BdosSysCallDriveROVec,
-		Fake:    true,
 	}
 	bdos[30] = Handler{
 		Desc:    "F_ATTRIB",
@@ -468,7 +470,6 @@ func New(options ...Option) (*CPM, error) {
 	bdos[37] = Handler{
 		Desc:    "DRV_RESET",
 		Handler: BdosSysCallDriveReset,
-		Fake:    true,
 	}
 	bdos[40] = Handler{
 		Desc:    "F_WRITEZF",
@@ -620,7 +621,7 @@ func New(options ...Option) (*CPM, error) {
 		return uint16(num & 0xFFFF)
 	}
 
-	// Create the emulator object and return it
+	// Create the emulator object
 	tmp := &CPM{
 		BDOSSyscalls: bdos,
 		BIOSSyscalls: bios,
@@ -647,6 +648,7 @@ func New(options ...Option) (*CPM, error) {
 		}
 	}
 
+	// Now return the configured structure.
 	return tmp, nil
 }
 
