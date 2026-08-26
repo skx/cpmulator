@@ -87,6 +87,17 @@ func data2String(data []uint8) (string, string) {
 	return hex.String(), asc.String()
 }
 
+// driveIsReadOnly tests to see if the destination fcb points to a read-only drive.
+func driveIsReadOnly(cpm *CPM, fcbPtr fcb.FCB) bool {
+	drv := cpm.currentDrive
+	if fcbPtr.Drive != 0 {
+		drv = fcbPtr.Drive - 1
+	}
+
+	// test the read-only bitset
+	return cpm.roDrives&(uint16(1)<<drv) != 0
+}
+
 // setResult sets up all four of the registers that we should
 // return to BDOS - A, B, H, L.
 func setResult(cpm *CPM, res uint8) {
@@ -858,6 +869,12 @@ func BdosSysCallDeleteFile(cpm *CPM) error {
 			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
 			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2))))
 
+	// Deleting a file from a read-only drive is not permitted.
+	if driveIsReadOnly(cpm, fcbPtr) {
+		setResult(cpm, 0xFF)
+		return nil
+	}
+
 	// drive will default to our current drive, if the FCB drive field is 0
 	drive := cpm.currentDrive + 'A'
 	if fcbPtr.Drive != 0 {
@@ -1122,6 +1139,12 @@ func BdosSysCallWrite(cpm *CPM) error {
 			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
 			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2))))
 
+	// Writing to a read-only drive is not permitted.
+	if driveIsReadOnly(cpm, fcbPtr) {
+		setResult(cpm, 0xFF)
+		return nil
+	}
+
 	// Get the file handle in our cache.
 	obj, ok := cpm.files[fcbPtr.GetCacheKey()]
 	if !ok {
@@ -1223,6 +1246,12 @@ func BdosSysCallMakeFile(cpm *CPM) error {
 
 	// No filename?  That's an error
 	if fileName == "" {
+		setResult(cpm, 0xFF)
+		return nil
+	}
+
+	// Creating a file on a read-only drive is not permitted.
+	if driveIsReadOnly(cpm, fcbPtr) {
 		setResult(cpm, 0xFF)
 		return nil
 	}
@@ -1347,6 +1376,12 @@ func BdosSysCallRenameFile(cpm *CPM) error {
 			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
 			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2))))
 
+	// Renaming a file on a read-only drive is not permitted.
+	if driveIsReadOnly(cpm, fcbPtr) {
+		setResult(cpm, 0xFF)
+		return nil
+	}
+
 	// Get the actual name
 	fileName := fcbPtr.GetFileName()
 
@@ -1448,7 +1483,7 @@ func BdosSysCallDriveSetRO(cpm *CPM) error {
 
 	// Set the appropriate bit of our mask
 	drv := cpm.currentDrive
-	mask := uint16(2 ^ drv)
+	mask := uint16(1) << drv
 
 	// Update the RO vector
 	cpm.roDrives = cpm.roDrives | mask
@@ -1673,6 +1708,12 @@ func BdosSysCallWriteRand(cpm *CPM) error {
 			slog.String("R0", fmt.Sprintf("%02X", fcbPtr.R0)),
 			slog.String("R1", fmt.Sprintf("%02X", fcbPtr.R1)),
 			slog.String("R2", fmt.Sprintf("%02X", fcbPtr.R2))))
+
+	// Writing to a read-only drive is not permitted.
+	if driveIsReadOnly(cpm, fcbPtr) {
+		setResult(cpm, 0xFF)
+		return nil
+	}
 
 	// Get the file handle in our cache.
 	obj, ok := cpm.files[fcbPtr.GetCacheKey()]
@@ -1947,10 +1988,10 @@ func BdosSysCallRandRecord(cpm *CPM) error {
 // Resetting a drive removes its software read-only status.
 func BdosSysCallDriveReset(cpm *CPM) error {
 
-    // Clear the marker-bit for each set bit in DE
-    cpm.roDrives = cpm.roDrives &^ cpm.CPU.States.DE.U16()
+	// Clear the marker-bit for each set bit in DE
+	cpm.roDrives = cpm.roDrives &^ cpm.CPU.States.DE.U16()
 
-	// return success.
+	// success.
 	cpm.CPU.States.HL.SetU16(0x0000)
 	return nil
 }
