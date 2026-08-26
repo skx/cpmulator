@@ -360,6 +360,9 @@ func BdosSysCallDriveAllReset(cpm *CPM) error {
 	// The only active drive is A
 	cpm.activeDrives = 0x0001
 
+	// No drives are read-only
+	cpm.roDrives = 0x0000
+
 	// Update RAM
 	cpm.Memory.Set(0x0004, (cpm.userNumber<<4 | cpm.currentDrive))
 
@@ -1441,19 +1444,22 @@ func BdosSysCallDriveAlloc(cpm *CPM) error {
 }
 
 // BdosSysCallDriveSetRO will mark the current drive as being read-only.
-//
-// This call is faked.
 func BdosSysCallDriveSetRO(cpm *CPM) error {
+
+	// Set the appropriate bit of our mask
+	drv := cpm.currentDrive
+	mask := uint16(2 ^ drv)
+
+	// Update the RO vector
+	cpm.roDrives = cpm.roDrives | mask
+
 	cpm.CPU.States.HL.SetU16(0x0000)
 	return nil
 }
 
 // BdosSysCallDriveROVec will return a bitfield describing which drives are read-only.
-//
-// Bit 7 of H corresponds to P: while bit 0 of L corresponds to A:. A bit is set if the corresponding drive is
-// set to read-only in software.  As we never set drives to read-only we return 0x0000
 func BdosSysCallDriveROVec(cpm *CPM) error {
-	cpm.CPU.States.HL.SetU16(0xFFFE)
+	cpm.CPU.States.HL.SetU16(cpm.roDrives)
 	return nil
 }
 
@@ -1940,6 +1946,17 @@ func BdosSysCallRandRecord(cpm *CPM) error {
 // A bit is set if the corresponding drive should be reset.
 // Resetting a drive removes its software read-only status.
 func BdosSysCallDriveReset(cpm *CPM) error {
+
+	// reset values, via XOR.  I think that's fine.
+	//
+	// If input is 0xFFFF and no drives are rest of
+	// of course that marks all drives as read only.
+	//
+	// Hrm.
+	//
+	cpm.roDrives = cpm.roDrives ^ cpm.CPU.States.DE.U16()
+
+	// return success.
 	cpm.CPU.States.HL.SetU16(0x0000)
 	return nil
 }
