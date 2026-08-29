@@ -956,6 +956,23 @@ func (cpm *CPM) Execute(args []string) error {
 		}
 	}
 
+	interruptCtx, cancelInterrupts := context.WithCancel(cpm.context)
+	defer cancelInterrupts()
+
+	go func() {
+		ticker := time.NewTicker(time.Second / 50)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-interruptCtx.Done():
+				return
+			case <-ticker.C:
+				cpm.CPU.Interrupt = z80.IM2Interrupt(0)
+			}
+		}
+	}()
+
 	for {
 		// Reset the state of any saved error and the halt-flag.
 		cpm.syscallErr = nil
