@@ -507,13 +507,9 @@ func TestDefaultDrivers(t *testing.T) {
 // TestTimeout tries to test if a timeout is happening
 func TestTimeout(t *testing.T) {
 
-	// Timeout after 1milliseconds
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(1)*time.Millisecond)
+	// Timeout after 10 milliseconds.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(10)*time.Millisecond)
 	defer cancel()
-
-	<-ctx.Done()
-
-	cancel()
 
 	// Create a new CP/M helper
 	obj, err := New(WithContext(ctx))
@@ -532,8 +528,8 @@ func TestTimeout(t *testing.T) {
 	}
 	defer os.Remove(file.Name())
 
-	// Write "RET" to the file
-	_, err = file.Write([]byte{0xC9})
+	// Our program is an infinite loop - no BDOS/BIOS calls.
+	_, err = file.Write([]byte{0xC3, 0x00, 0x01})
 	if err != nil {
 		t.Fatalf("failed to write program to temporary file")
 	}
@@ -556,6 +552,7 @@ func TestTimeout(t *testing.T) {
 		t.Fatalf("expected timeout error, got %v instead", err)
 	}
 
+	// cleanup
 	defer func() {
 		tErr := obj.IOTearDown()
 		if tErr != nil {
