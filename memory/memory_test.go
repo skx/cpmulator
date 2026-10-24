@@ -107,3 +107,28 @@ func TestLoadFile(t *testing.T) {
 		}
 	}
 }
+
+// TestGetRangeWrap ensures that reading a range of memory that goes past the
+// end of the address space wraps around correctly.
+func TestGetRangeWrap(t *testing.T) {
+
+	mem := new(Memory)
+
+	// Get 1k of memory one byte before the
+	// end of RAM
+	out := mem.GetRange(65534, 1024)
+	if len(out) != 1024 {
+		t.Fatalf("wrong size")
+	}
+}
+
+// TestSetRangeWrap ensures that writing a range of memory that goes past the
+// end of the address space wraps around correctly.
+func TestSetRangeWrap(t *testing.T) {
+
+	mem := new(Memory)
+
+	data := []uint8{0x01, 0x02, 0x03, 0x04, 0x05, 0x06}
+
+	mem.SetRange(0xFFFE, data...)
+}

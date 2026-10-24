@@ -72,5 +72,11 @@ func (m *Memory) Set(addr uint16, value uint8) {
 // SetRange copies bytes from the given data to the specified
 // starting address in RAM.
 func (m *Memory) SetRange(addr uint16, data ...uint8) {
-	copy(m.buf[int(addr):int(addr)+len(data)], data)
+	l := len(data)
+	i := 0
+	for i < l {
+		m.buf[addr] = data[i]
+		i++
+		addr++
+	}
 }
